@@ -12,7 +12,11 @@ import { api } from '@/shared/api/client';
 import { getApiErrorMessage, isVersionConflict } from '@/shared/api/errors';
 import { unwrap } from '@/shared/api/request';
 import type { components } from '@/shared/api/schema';
-import { formatNumber, formatWords } from '@/shared/lib/format';
+import {
+  formatAuthorSheets,
+  formatNumber,
+  formatWords,
+} from '@/shared/lib/format';
 import {
   canContain,
   findTreeNode,
@@ -403,6 +407,10 @@ export function StructurePage() {
                   <span className="font-medium text-ink-900">
                     {formatWords(selectedBook.wordCount)}
                   </span>
+                </div>
+                <div className="mt-1 flex items-center justify-between text-[11px] text-ink-500">
+                  <span>Авторские листы</span>
+                  <span>{formatAuthorSheets(selectedBook.authorSheets)}</span>
                 </div>
                 <Progress
                   className="mt-2"

@@ -1,4 +1,5 @@
 import type { components } from '@/shared/api/schema';
+import { authorSheetsFromCharacters } from '@/shared/lib/format';
 import { createMockIllustration } from './image';
 
 type User = components['schemas']['User'];
@@ -23,6 +24,37 @@ export type MockState = {
   assets: Asset[];
   exports: ExportJob[];
 };
+
+type CountFields = { characterCount: number; authorSheets: number };
+type BookSeed = Omit<Book, keyof CountFields>;
+type DocumentSeed = Omit<Document, keyof CountFields>;
+type BookNodeSeed = Omit<BookNode, keyof CountFields | 'children'> & {
+  children?: BookNodeSeed[];
+};
+
+function approximateCharacterCount(wordCount: number): number {
+  return Math.round(wordCount * 6);
+}
+
+export function withMockCounts<T extends { wordCount: number }>(
+  seed: T,
+): T & CountFields {
+  const characterCount = approximateCharacterCount(seed.wordCount);
+  return {
+    ...seed,
+    characterCount,
+    authorSheets: authorSheetsFromCharacters(characterCount),
+  };
+}
+
+export function normalizeMockNode(seed: BookNodeSeed): BookNode {
+  const { children, ...rest } = seed;
+  const node = withMockCounts(rest) as BookNode;
+  if (children?.length) {
+    node.children = children.map(normalizeMockNode);
+  }
+  return node;
+}
 
 const now = new Date('2026-10-26T09:30:00.000Z').toISOString();
 const yesterday = new Date('2026-10-25T17:20:00.000Z').toISOString();
@@ -73,7 +105,7 @@ const viewerProject: Project = {
   version: 2,
 };
 
-export const mockBook: Book = {
+const mockBookSeed: BookSeed = {
   id: '33333333-3333-4333-8333-333333333333',
   projectId: mockProject.id,
   title: 'Книга первая. Пепел',
@@ -91,7 +123,9 @@ export const mockBook: Book = {
   version: 7,
 };
 
-const viewerBook: Book = {
+export const mockBook: Book = withMockCounts(mockBookSeed);
+
+const viewerBookSeed: BookSeed = {
   id: '33333333-3333-4333-8333-333333333334',
   projectId: viewerProject.id,
   title: 'Тихие комнаты',
@@ -107,6 +141,8 @@ const viewerBook: Book = {
   updatedAt: yesterday,
   version: 3,
 };
+
+const viewerBook: Book = withMockCounts(viewerBookSeed);
 
 const chapterOneContent = {
   type: 'doc',
@@ -185,7 +221,7 @@ const viewerChapterContent = {
   ],
 };
 
-const documentOne: Document = {
+const documentOneSeed: DocumentSeed = {
   id: '88888888-8888-4888-8888-888888888888',
   projectId: mockProject.id,
   kind: 'text',
@@ -197,7 +233,9 @@ const documentOne: Document = {
   canonical: chapterOneContent,
 };
 
-const sceneDocument: Document = {
+const documentOne: Document = withMockCounts(documentOneSeed);
+
+const sceneDocumentSeed: DocumentSeed = {
   id: '88888888-8888-4888-8888-888888888889',
   projectId: mockProject.id,
   kind: 'text',
@@ -209,7 +247,9 @@ const sceneDocument: Document = {
   canonical: sceneOneContent,
 };
 
-const viewerDocument: Document = {
+const sceneDocument: Document = withMockCounts(sceneDocumentSeed);
+
+const viewerDocumentSeed: DocumentSeed = {
   id: '88888888-8888-4888-8888-888888888890',
   projectId: viewerProject.id,
   kind: 'text',
@@ -221,7 +261,9 @@ const viewerDocument: Document = {
   canonical: viewerChapterContent,
 };
 
-export const mockNodes: BookNode[] = [
+const viewerDocument: Document = withMockCounts(viewerDocumentSeed);
+
+const mockNodeSeeds: BookNodeSeed[] = [
   {
     id: '44444444-4444-4444-8444-444444444441',
     bookId: mockBook.id,
@@ -367,6 +409,8 @@ export const mockNodes: BookNode[] = [
     version: 1,
   },
 ];
+
+export const mockNodes: BookNode[] = mockNodeSeeds.map(normalizeMockNode);
 
 export const mockCharacters: Character[] = [
   {

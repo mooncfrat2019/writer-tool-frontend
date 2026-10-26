@@ -663,6 +663,13 @@ export interface components {
             coverUrl?: string | null;
             targetWordCount?: number;
             wordCount: number;
+            /** @description Unicode characters including spaces, aggregated across all book documents */
+            characterCount: number;
+            /**
+             * Format: double
+             * @description characterCount divided by 40000 (author sheets, АЛ)
+             */
+            authorSheets: number;
             language?: string;
             /** Format: date-time */
             createdAt: string;
@@ -716,6 +723,13 @@ export interface components {
             /** Format: uuid */
             documentId?: string | null;
             wordCount: number;
+            /** @description Unicode characters including spaces, aggregated across this node and its descendants */
+            characterCount: number;
+            /**
+             * Format: double
+             * @description characterCount divided by 40000 (author sheets, АЛ)
+             */
+            authorSheets: number;
             children?: components["schemas"]["BookNode"][];
             /** Format: date-time */
             createdAt: string;
@@ -771,6 +785,13 @@ export interface components {
             kind: "text" | "diagram";
             title: string;
             wordCount: number;
+            /** @description Unicode characters including spaces */
+            characterCount: number;
+            /**
+             * Format: double
+             * @description characterCount divided by 40000 (author sheets, АЛ)
+             */
+            authorSheets: number;
             /** Format: int64 */
             version: number;
             /** Format: date-time */

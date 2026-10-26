@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { cn } from '@/shared/lib/utils';
-import { formatNumber } from '@/shared/lib/format';
+import { formatAuthorSheets, formatNumber } from '@/shared/lib/format';
 import {
   flattenTree,
   resolveNodeDrop,
@@ -141,6 +141,8 @@ function SortableNode({
               <span>{nodeTypeLabels[node.type]}</span>
               <span aria-hidden="true">·</span>
               <span>{formatNumber(node.wordCount)} слов</span>
+              <span aria-hidden="true">·</span>
+              <span>{formatAuthorSheets(node.authorSheets)}</span>
               {node.targetWordCount ? (
                 <>
                   <span aria-hidden="true">·</span>

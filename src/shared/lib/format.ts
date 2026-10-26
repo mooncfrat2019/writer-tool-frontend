@@ -1,5 +1,12 @@
 const numberFormatter = new Intl.NumberFormat('ru-RU');
 
+export const CHARACTERS_PER_AUTHOR_SHEET = 40000;
+
+const authorSheetsFormatter = new Intl.NumberFormat('ru-RU', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
 const dateFormatter = new Intl.DateTimeFormat('ru-RU', {
   day: 'numeric',
   month: 'long',
@@ -37,6 +44,15 @@ function pluralize(value: number, forms: readonly [string, string, string]): str
 
 export function formatWords(value: number): string {
   return `${formatNumber(value)} ${pluralize(value, ['слово', 'слова', 'слов'])}`;
+}
+
+export function authorSheetsFromCharacters(characterCount: number): number {
+  return (Number.isFinite(characterCount) ? characterCount : 0) / CHARACTERS_PER_AUTHOR_SHEET;
+}
+
+export function formatAuthorSheets(value: number): string {
+  const safe = Number.isFinite(value) ? value : 0;
+  return `${authorSheetsFormatter.format(safe)} а.л.`;
 }
 
 export function formatDate(value: string | Date): string {

@@ -22,6 +22,8 @@ function node(
     status: 'outline',
     sortKey: '000000',
     wordCount: 0,
+    characterCount: 0,
+    authorSheets: 0,
     version: 1,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',

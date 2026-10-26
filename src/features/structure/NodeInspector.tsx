@@ -13,7 +13,11 @@ import { api } from '@/shared/api/client';
 import { getApiErrorMessage, isVersionConflict } from '@/shared/api/errors';
 import { unwrap } from '@/shared/api/request';
 import type { components } from '@/shared/api/schema';
-import { formatNumber, formatWords } from '@/shared/lib/format';
+import {
+  formatAuthorSheets,
+  formatNumber,
+  formatWords,
+} from '@/shared/lib/format';
 import {
   countTreeNodes,
   flattenTree,
@@ -123,8 +127,9 @@ function PlanningPanel({
           value={percent}
           label={`Выполнение целевого объёма: ${percent}%`}
         />
-        <p className="mt-1.5 text-right text-[11px] text-ink-500">
-          {target > 0 ? `${percent}% цели` : 'Цель по объёму не задана'}
+        <p className="mt-1.5 flex items-center justify-between text-[11px] text-ink-500">
+          <span>{formatAuthorSheets(book.authorSheets)}</span>
+          <span>{target > 0 ? `${percent}% цели` : 'Цель по объёму не задана'}</span>
         </p>
       </div>
 
@@ -156,6 +161,8 @@ function PlanningPanel({
                       {targetWords > 0
                         ? `${formatNumber(node.wordCount)} / ${formatNumber(targetWords)} слов`
                         : formatWords(node.wordCount)}
+                      {' · '}
+                      {formatAuthorSheets(node.authorSheets)}
                     </span>
                   </button>
                   {node.documentId ? (
@@ -303,7 +310,9 @@ export function NodeInspector({
             {node.title}
           </h2>
           <p className="mt-1 text-xs text-ink-500">
-            {node.documentId ? formatWords(node.wordCount) : 'Без собственного текста'}
+            {node.documentId
+              ? `${formatWords(node.wordCount)} · ${formatAuthorSheets(node.authorSheets)}`
+              : 'Без собственного текста'}
           </p>
         </div>
       </div>

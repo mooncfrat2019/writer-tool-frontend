@@ -8,7 +8,7 @@ export default defineConfig({
   retries: 0,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://localhost:5174',
     trace: 'retain-on-failure',
   },
   projects: [
@@ -18,8 +18,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'pnpm dev --mode real',
-    url: 'http://localhost:5173',
+    command: 'pnpm dev --mode real --port 5174',
+    url: 'http://localhost:5174',
     reuseExistingServer: false,
     timeout: 120_000,
   },

@@ -35,11 +35,12 @@ development "Демо-данные" indicator to reset it.
 Start the backend (see the backend README), then:
 
 ```bash
-pnpm dev --mode real
+pnpm dev:real       # http://localhost:5174
 ```
 
 `.env.real` enables the Vite proxy from `/api` to `http://localhost:8080`.
-The backend must be running on `:8080`.
+The backend must be running on `:8080`. Real mode uses port **5174** so it can
+run alongside the mock dev server on 5173.
 
 ## API contract
 

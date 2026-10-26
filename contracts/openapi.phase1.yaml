@@ -1273,7 +1273,7 @@ components:
 
     Book:
       type: object
-      required: [id, projectId, title, status, seriesOrder, wordCount, createdAt, updatedAt, version]
+      required: [id, projectId, title, status, seriesOrder, wordCount, characterCount, authorSheets, createdAt, updatedAt, version]
       properties:
         id:
           type: string
@@ -1298,6 +1298,13 @@ components:
           type: integer
         wordCount:
           type: integer
+        characterCount:
+          type: integer
+          description: Unicode characters including spaces, aggregated across all book documents
+        authorSheets:
+          type: number
+          format: double
+          description: characterCount divided by 40000 (author sheets, АЛ)
         language:
           type: string
         createdAt:
@@ -1373,7 +1380,7 @@ components:
       enum: [idea, outline, draft, revised, final]
     BookNode:
       type: object
-      required: [id, bookId, type, title, status, sortKey, wordCount, createdAt, updatedAt, version]
+      required: [id, bookId, type, title, status, sortKey, wordCount, characterCount, authorSheets, createdAt, updatedAt, version]
       properties:
         id:
           type: string
@@ -1406,6 +1413,13 @@ components:
           format: uuid
         wordCount:
           type: integer
+        characterCount:
+          type: integer
+          description: Unicode characters including spaces, aggregated across this node and its descendants
+        authorSheets:
+          type: number
+          format: double
+          description: characterCount divided by 40000 (author sheets, АЛ)
         children:
           type: array
           items:
@@ -1500,7 +1514,7 @@ components:
 
     Document:
       type: object
-      required: [id, projectId, kind, title, wordCount, version, updatedAt]
+      required: [id, projectId, kind, title, wordCount, characterCount, authorSheets, version, updatedAt]
       properties:
         id:
           type: string
@@ -1515,6 +1529,13 @@ components:
           type: string
         wordCount:
           type: integer
+        characterCount:
+          type: integer
+          description: Unicode characters including spaces
+        authorSheets:
+          type: number
+          format: double
+          description: characterCount divided by 40000 (author sheets, АЛ)
         version:
           type: integer
           format: int64

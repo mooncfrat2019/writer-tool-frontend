@@ -35,13 +35,20 @@ import { api } from '@/shared/api/client';
 import { getApiErrorMessage, isVersionConflict } from '@/shared/api/errors';
 import { unwrap } from '@/shared/api/request';
 import type { components } from '@/shared/api/schema';
-import { formatWords } from '@/shared/lib/format';
+import {
+  authorSheetsFromCharacters,
+  formatAuthorSheets,
+  formatWords,
+} from '@/shared/lib/format';
 import {
   findNodePath,
   findTreeNode,
   type BookNode,
 } from '@/shared/lib/tree';
-import { countProseMirrorWords } from '@/shared/lib/wordCount';
+import {
+  countProseMirrorCharacters,
+  countProseMirrorWords,
+} from '@/shared/lib/wordCount';
 import { cn } from '@/shared/lib/utils';
 import { Badge } from '@/shared/ui/badge';
 import { Button } from '@/shared/ui/button';
@@ -377,6 +384,9 @@ function EditorSession({
   const [wordCount, setWordCount] = useState(
     document.wordCount || countProseMirrorWords(document.canonical),
   );
+  const [characterCount, setCharacterCount] = useState(
+    document.characterCount || countProseMirrorCharacters(document.canonical),
+  );
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved');
   const [conflictDocument, setConflictDocument] = useState<Document | null>(null);
   const [conflictError, setConflictError] = useState<string | null>(null);
@@ -427,6 +437,7 @@ function EditorSession({
       const json = currentEditor.getJSON();
       latestContentRef.current = json;
       setWordCount(countProseMirrorWords(json));
+      setCharacterCount(countProseMirrorCharacters(json));
       if (saveStatusRef.current !== 'saving' && saveStatusRef.current !== 'conflict') {
         setStatus('dirty');
       }
@@ -571,6 +582,7 @@ function EditorSession({
     latestContentRef.current = content;
     versionRef.current = conflictDocument.version;
     setWordCount(countProseMirrorWords(content));
+    setCharacterCount(countProseMirrorCharacters(content));
     setConflictDocument(null);
     setConflictError(null);
     setStatus('saved');
@@ -593,6 +605,7 @@ function EditorSession({
     .slice(0, -1)
     .map((item) => item.title)
     .join(' / ');
+  const authorSheets = authorSheetsFromCharacters(characterCount);
 
   return (
     <div className="min-h-screen bg-paper-50">
@@ -637,7 +650,7 @@ function EditorSession({
 
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <span className="hidden text-xs text-ink-500 sm:inline">
-              {formatWords(wordCount)}
+              {formatWords(wordCount)} · {formatAuthorSheets(authorSheets)}
             </span>
             {canEdit ? (
               <SaveIndicator status={saveStatus} />
@@ -675,7 +688,9 @@ function EditorSession({
             <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <Badge tone="neutral">{nodeTypeLabels[node.type]}</Badge>
-                <span className="text-xs text-ink-500">{formatWords(wordCount)}</span>
+                <span className="text-xs text-ink-500">
+                  {formatWords(wordCount)} · {formatAuthorSheets(authorSheets)}
+                </span>
               </div>
               <span className="hidden text-[11px] text-ink-500 md:inline">
                 Автосохранение после паузы · Ctrl+S
@@ -786,7 +801,7 @@ function EditorSession({
         </article>
 
         <p className="mt-6 text-center text-[11px] text-ink-500">
-          {formatWords(wordCount)}
+          {formatWords(wordCount)} · {formatAuthorSheets(authorSheets)}
           {canEdit ? ' · текст сохраняется автоматически' : ' · только просмотр'}
         </p>
       </main>

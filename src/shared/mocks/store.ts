@@ -1,9 +1,13 @@
-import { countProseMirrorWords } from '@/shared/lib/wordCount';
+import { authorSheetsFromCharacters } from '@/shared/lib/format';
+import {
+  countProseMirrorCharacters,
+  countProseMirrorWords,
+} from '@/shared/lib/wordCount';
 import { createInitialMockState, type MockState } from './data';
 
 export const MOCK_STORAGE_KEY = 'writer-tool.mock.v1';
 export const MOCK_SESSION_KEY = 'writer-tool.mock.session.v1';
-const STORAGE_VERSION = 1;
+const STORAGE_VERSION = 2;
 
 type PersistedMockState = {
   version: number;
@@ -81,6 +85,8 @@ export function recalculateMockState(target: MockState): void {
   for (const document of target.documents) {
     if (document.kind === 'text' && document.canonical) {
       document.wordCount = countProseMirrorWords(document.canonical);
+      document.characterCount = countProseMirrorCharacters(document.canonical);
+      document.authorSheets = authorSheetsFromCharacters(document.characterCount);
     }
   }
 
@@ -96,29 +102,41 @@ export function recalculateMockState(target: MockState): void {
     siblings.sort((left, right) => left.sortKey.localeCompare(right.sortKey));
   }
 
-  const aggregate = (nodeId: string): number => {
+  const aggregate = (nodeId: string): { words: number; characters: number } => {
     const node = target.nodes.find((candidate) => candidate.id === nodeId);
     if (!node) {
-      return 0;
+      return { words: 0, characters: 0 };
     }
-    const ownWords = node.documentId ? (documents.get(node.documentId)?.wordCount ?? 0) : 0;
-    const childWords = (byParent.get(node.id) ?? []).reduce(
-      (total, child) => total + aggregate(child.id),
-      0,
-    );
+    const document = node.documentId ? documents.get(node.documentId) : undefined;
+    const ownWords = document?.wordCount ?? 0;
+    const ownCharacters = document?.characterCount ?? 0;
+    let childWords = 0;
+    let childCharacters = 0;
+    for (const child of byParent.get(node.id) ?? []) {
+      const childTotals = aggregate(child.id);
+      childWords += childTotals.words;
+      childCharacters += childTotals.characters;
+    }
     node.wordCount = ownWords + childWords;
-    return node.wordCount;
+    node.characterCount = ownCharacters + childCharacters;
+    node.authorSheets = authorSheetsFromCharacters(node.characterCount);
+    return { words: node.wordCount, characters: node.characterCount };
   };
 
   for (const book of target.books) {
     const rootNodes = byParent.get(null) ?? [];
-    let total = 0;
+    let totalWords = 0;
+    let totalCharacters = 0;
     for (const node of rootNodes) {
       if (node.bookId === book.id) {
-        total += aggregate(node.id);
+        const totals = aggregate(node.id);
+        totalWords += totals.words;
+        totalCharacters += totals.characters;
       }
     }
-    book.wordCount = total;
+    book.wordCount = totalWords;
+    book.characterCount = totalCharacters;
+    book.authorSheets = authorSheetsFromCharacters(totalCharacters);
   }
 
   for (const project of target.projects) {
