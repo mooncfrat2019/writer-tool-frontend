@@ -57,22 +57,39 @@ test('registers, restores the session and writes through the real API', async ({
 
   await page.getByRole('button', { name: 'Открыть в редакторе' }).click();
   await expect(page.locator('.ProseMirror')).toBeVisible();
+  await expect(page.getByTestId('collab-status')).toHaveAttribute(
+    'data-status',
+    'connected',
+  );
 
   const editor = page.locator('.ProseMirror');
   await editor.click();
-  const saveResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/documents/') &&
-      response.url().endsWith('/content') &&
-      response.request().method() === 'PUT' &&
-      response.ok(),
-  );
   await page.keyboard.type('Интеграционный тест реального API.');
-  await saveResponse;
-  await expect(page.getByText('Сохранено')).toBeVisible();
+  await expect(page.getByText('Сохранено')).toBeVisible({ timeout: 10_000 });
+
+  const editorUrl = page.url();
+  const secondPage = await page.context().newPage();
+  await secondPage.goto(editorUrl);
+  await expect(secondPage.locator('.ProseMirror')).toBeVisible();
+  await expect(secondPage.getByTestId('collab-status')).toHaveAttribute(
+    'data-status',
+    'connected',
+  );
+  await expect(secondPage.locator('.ProseMirror')).toContainText(
+    'Интеграционный тест реального API.',
+    { timeout: 10_000 },
+  );
+  await expect(
+    secondPage.locator('[title*="Интеграционный Автор"]'),
+  ).toHaveCount(2, { timeout: 10_000 });
+  await secondPage.close();
 
   await page.reload();
   await expect(page.locator('.ProseMirror')).toBeVisible();
+  await expect(page.getByTestId('collab-status')).toHaveAttribute(
+    'data-status',
+    'connected',
+  );
   await expect(page.locator('.ProseMirror')).toContainText(
     'Интеграционный тест реального API.',
   );

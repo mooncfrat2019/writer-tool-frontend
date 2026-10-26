@@ -489,6 +489,58 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationFailed'
 
+  /documents/{documentId}/collab-token:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+    post:
+      tags: [Documents]
+      operationId: createCollabToken
+      description: |
+        Issues a short-lived, document-scoped token for the collaboration
+        WebSocket. The token is passed as the `token` query parameter when
+        connecting to `websocketPath`.
+      responses:
+        '200':
+          description: Collaboration token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollabToken'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /documents/{documentId}/canonical:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+    put:
+      tags: [Documents]
+      operationId: saveDocumentCanonical
+      description: |
+        Phase 2 projection endpoint. The collaborative client sends a debounced
+        canonical ProseMirror JSON snapshot so exports, search and word/author
+        sheet counts stay current. The Yjs state remains the source of truth.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentCanonicalUpdate'
+      responses:
+        '200':
+          description: Saved projection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
   /projects/{projectId}/characters:
     parameters:
       - $ref: '#/components/parameters/ProjectId'
@@ -1561,6 +1613,28 @@ components:
         version:
           type: integer
           format: int64
+
+    DocumentCanonicalUpdate:
+      type: object
+      required: [canonical]
+      properties:
+        canonical:
+          type: object
+          additionalProperties: true
+          description: ProseMirror JSON projection from the collaborative client
+
+    CollabToken:
+      type: object
+      required: [token, expiresAt, websocketPath]
+      properties:
+        token:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        websocketPath:
+          type: string
+          examples: ['/collab/0192...']
 
     CharacterRole:
       type: string

@@ -26,6 +26,11 @@ export default defineConfig(({ mode }) => {
                 target: proxyTarget,
                 changeOrigin: true,
               },
+              '/collab': {
+                target: proxyTarget,
+                changeOrigin: true,
+                ws: true,
+              },
             }
           : undefined,
     },

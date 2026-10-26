@@ -303,6 +303,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/documents/{documentId}/collab-token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Issues a short-lived, document-scoped token for the collaboration
+         *     WebSocket. The token is passed as the `token` query parameter when
+         *     connecting to `websocketPath`.
+         */
+        post: operations["createCollabToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/documents/{documentId}/canonical": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * @description Phase 2 projection endpoint. The collaborative client sends a debounced
+         *     canonical ProseMirror JSON snapshot so exports, search and word/author
+         *     sheet counts stay current. The Yjs state remains the source of truth.
+         */
+        put: operations["saveDocumentCanonical"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{projectId}/characters": {
         parameters: {
             query?: never;
@@ -810,6 +856,19 @@ export interface components {
             };
             /** Format: int64 */
             version: number;
+        };
+        DocumentCanonicalUpdate: {
+            /** @description ProseMirror JSON projection from the collaborative client */
+            canonical: {
+                [key: string]: unknown;
+            };
+        };
+        CollabToken: {
+            token: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /** @example /collab/0192... */
+            websocketPath: string;
         };
         /** @enum {string} */
         CharacterRole: "protagonist" | "antagonist" | "deuteragonist" | "supporting" | "minor" | "other";
@@ -1738,6 +1797,59 @@ export interface operations {
             };
             403: components["responses"]["Forbidden"];
             409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    createCollabToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Collaboration token */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollabToken"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    saveDocumentCanonical: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocumentCanonicalUpdate"];
+            };
+        };
+        responses: {
+            /** @description Saved projection */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Document"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
             422: components["responses"]["ValidationFailed"];
         };
     };

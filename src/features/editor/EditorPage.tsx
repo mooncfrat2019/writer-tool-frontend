@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
+import { Collaboration } from '@tiptap/extension-collaboration';
+import { CollaborationCaret } from '@tiptap/extension-collaboration-caret';
 import { EditorContent, useEditor, useEditorState, type Editor, type JSONContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import {
@@ -25,6 +27,7 @@ import {
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -53,6 +56,12 @@ import { cn } from '@/shared/lib/utils';
 import { Badge } from '@/shared/ui/badge';
 import { Button } from '@/shared/ui/button';
 import { ErrorState } from '@/shared/ui/error-state';
+import { CollabStatus, PresenceAvatars } from './CollabPresence';
+import {
+  collabEnabled,
+  useCollabSession,
+  type CollabSession,
+} from './useCollabSession';
 import { Skeleton } from '@/shared/ui/skeleton';
 import {
   nodeStatusLabels,
@@ -306,8 +315,9 @@ function EditorWorkspace({
         }),
       ),
   });
+  const collab = useCollabSession(documentId, collabEnabled());
 
-  if (documentQuery.isLoading) {
+  if (documentQuery.isLoading || collab.loading) {
     return (
       <div className="min-h-screen bg-paper-50">
         <header className="border-b border-paper-200 px-5 py-3">
@@ -320,6 +330,26 @@ function EditorWorkspace({
           <Skeleton className="mt-3 h-5 w-4/5" />
         </div>
       </div>
+    );
+  }
+
+  if (collab.error) {
+    return (
+      <main className="min-h-screen bg-paper-50 px-5 py-12">
+        <div className="mx-auto max-w-3xl">
+          <Button variant="ghost" onClick={onBack}>
+            <ArrowLeft size={15} />
+            К структуре
+          </Button>
+          <div className="mt-5">
+            <ErrorState
+              title="Совместное редактирование недоступно"
+              description={collab.error}
+              onRetry={() => window.location.reload()}
+            />
+          </div>
+        </div>
+      </main>
     );
   }
 
@@ -355,6 +385,7 @@ function EditorWorkspace({
       path={path}
       document={documentQuery.data}
       canEdit={canEdit}
+      collab={collab.session ?? undefined}
       onBack={onBack}
     />
   );
@@ -367,6 +398,7 @@ type EditorSessionProps = {
   path: BookNode[];
   document: Document;
   canEdit: boolean;
+  collab?: CollabSession;
   onBack: () => void;
 };
 
@@ -377,6 +409,7 @@ function EditorSession({
   path,
   document,
   canEdit,
+  collab,
   onBack,
 }: EditorSessionProps) {
   const queryClient = useQueryClient();
@@ -419,9 +452,27 @@ function EditorSession({
     }, delay);
   }, [canEdit]);
 
+  const collabDoc = collab?.ydoc;
+  const collabProvider = collab?.provider;
+  const collabUser = collab?.user;
+  const extensions = useMemo(
+    () =>
+      collabDoc && collabProvider && collabUser
+        ? [
+            StarterKit.configure({ undoRedo: false }),
+            Collaboration.configure({ document: collabDoc }),
+            CollaborationCaret.configure({
+              provider: collabProvider,
+              user: collabUser,
+            }),
+          ]
+        : [StarterKit],
+    [collabDoc, collabProvider, collabUser],
+  );
+
   const editor = useEditor({
-    extensions: [StarterKit],
-    content: toJSONContent(document.canonical),
+    extensions,
+    content: collab ? undefined : toJSONContent(document.canonical),
     editable: canEdit,
     editorProps: {
       attributes: {
@@ -434,6 +485,9 @@ function EditorSession({
       if (isHydratingRef.current) {
         return;
       }
+      if (collab && !collab.syncedRef.current) {
+        return;
+      }
       const json = currentEditor.getJSON();
       latestContentRef.current = json;
       setWordCount(countProseMirrorWords(json));
@@ -444,6 +498,20 @@ function EditorSession({
       scheduleSave(900);
     },
   });
+
+  useEffect(() => {
+    if (!collab?.synced || !editor || !canEdit) {
+      return;
+    }
+    const json = editor.getJSON();
+    latestContentRef.current = json;
+    const timer = window.setTimeout(() => {
+      setWordCount(countProseMirrorWords(json));
+      setCharacterCount(countProseMirrorCharacters(json));
+    }, 0);
+    scheduleSave(200);
+    return () => window.clearTimeout(timer);
+  }, [collab?.synced, editor, canEdit, scheduleSave]);
 
   const refreshConflict = useCallback(async () => {
     setConflictLoading(true);
@@ -482,6 +550,30 @@ function EditorSession({
     setStatus('saving');
 
     try {
+      if (collab) {
+        const saved = unwrap(
+          await api.PUT('/documents/{documentId}/canonical', {
+            params: { path: { documentId: document.id } },
+            body: {
+              canonical: snapshot as unknown as Record<string, unknown>,
+            },
+          }),
+        );
+        queryClient.setQueryData(['document', document.id], saved);
+
+        void queryClient.invalidateQueries({ queryKey: ['book-tree'] });
+        void queryClient.invalidateQueries({ queryKey: ['books', projectId] });
+        void queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+
+        if (latestContentRef.current !== snapshot) {
+          setStatus('dirty');
+          scheduleSave(500);
+        } else {
+          setStatus('saved');
+        }
+        return;
+      }
+
       const saved = unwrap(
         await api.PUT('/documents/{documentId}/content', {
           params: { path: { documentId: document.id } },
@@ -526,6 +618,7 @@ function EditorSession({
     }
   }, [
     canEdit,
+    collab,
     document.id,
     projectId,
     queryClient,
@@ -652,6 +745,8 @@ function EditorSession({
             <span className="hidden text-xs text-ink-500 sm:inline">
               {formatWords(wordCount)} · {formatAuthorSheets(authorSheets)}
             </span>
+            {collab ? <CollabStatus session={collab} /> : null}
+            {collab ? <PresenceAvatars users={collab.users} /> : null}
             {canEdit ? (
               <SaveIndicator status={saveStatus} />
             ) : (

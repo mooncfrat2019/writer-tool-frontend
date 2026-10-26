@@ -4,8 +4,10 @@ React + TypeScript SPA for Writer Tool, a book-planning and writing SaaS.
 
 Phase 1 implements authentication, the project library, book structure
 (parts / chapters / scenes), the chapter editor, character cards with
-relations and illustrations, and the export workflow. Real-time collaboration,
-worlds, timeline and diagrams are later phases.
+relations and illustrations, and the export workflow. Phase 2 adds real-time
+collaboration through Yjs/Hocuspocus, presence avatars, local IndexedDB
+persistence and a canonical projection save. Worlds, timeline and diagrams are
+later phases.
 
 The product plan lives in the backend repository at
 `writer-tool-backend/docs/PLAN.md`. The frontend-specific specification is in
@@ -38,9 +40,11 @@ Start the backend (see the backend README), then:
 pnpm dev:real       # http://localhost:5174
 ```
 
-`.env.real` enables the Vite proxy from `/api` to `http://localhost:8080`.
-The backend must be running on `:8080`. Real mode uses port **5174** so it can
-run alongside the mock dev server on 5173.
+`.env.real` enables the Vite proxy from `/api` and `/collab` to
+`http://localhost:8080`, and turns on `VITE_COLLAB_ENABLED`. The backend must be
+running on `:8080`. Real mode uses port **5174** so it can run alongside the mock
+dev server on 5173. Open two browser tabs on the same chapter to see live
+collaboration and presence.
 
 ## API contract
 
