@@ -18,7 +18,7 @@ type ApiResult<T> = {
   response: Response;
 };
 
-export async function unwrap<T>(result: ApiResult<T>): Promise<T> {
+export function unwrap<T>(result: ApiResult<T>): T {
   if (result.error) {
     throw new ApiError(result.error);
   }

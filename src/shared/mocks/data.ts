@@ -1,19 +1,32 @@
 import type { components } from '@/shared/api/schema';
+import { createMockIllustration } from './image';
 
 type User = components['schemas']['User'];
 type Project = components['schemas']['Project'];
-type ProjectSummary = components['schemas']['ProjectSummary'];
-type ProjectMember = components['schemas']['ProjectMember'];
 type Book = components['schemas']['Book'];
 type BookNode = components['schemas']['BookNode'];
 type Document = components['schemas']['Document'];
 type Character = components['schemas']['Character'];
 type CharacterRelation = components['schemas']['CharacterRelation'];
 type Attachment = components['schemas']['Attachment'];
-type ExportJob = components['schemas']['ExportJob'];
 type Asset = components['schemas']['Asset'];
+type ExportJob = components['schemas']['ExportJob'];
 
-const now = new Date('2026-10-26T12:00:00.000Z').toISOString();
+export type MockState = {
+  projects: Project[];
+  books: Book[];
+  nodes: BookNode[];
+  documents: Document[];
+  characters: Character[];
+  relations: CharacterRelation[];
+  attachments: Attachment[];
+  assets: Asset[];
+  exports: ExportJob[];
+};
+
+const now = new Date('2026-10-26T09:30:00.000Z').toISOString();
+const yesterday = new Date('2026-10-25T17:20:00.000Z').toISOString();
+const earlier = new Date('2026-10-20T11:00:00.000Z').toISOString();
 
 export const mockUser: User = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -21,10 +34,10 @@ export const mockUser: User = {
   displayName: 'Анна Автор',
   avatarUrl: null,
   emailVerified: true,
-  createdAt: now,
+  createdAt: new Date('2025-02-14T10:00:00.000Z').toISOString(),
 };
 
-export const mockProjectSummary: ProjectSummary = {
+export const mockProject: Project = {
   id: '22222222-2222-4222-8222-222222222222',
   title: 'Хроники Пепельной Луны',
   description:
@@ -34,36 +47,31 @@ export const mockProjectSummary: ProjectSummary = {
   role: 'owner',
   membersCount: 2,
   booksCount: 1,
-  wordCount: 12480,
+  wordCount: 0,
   coverUrl: null,
   updatedAt: now,
-};
-
-export const mockProject: Project = {
-  ...mockProjectSummary,
   settings: {},
-  createdAt: now,
+  createdAt: new Date('2025-11-04T09:00:00.000Z').toISOString(),
   version: 3,
 };
 
-export const mockMembers: ProjectMember[] = [
-  {
-    userId: mockUser.id,
-    displayName: mockUser.displayName,
-    email: mockUser.email,
-    avatarUrl: null,
-    role: 'owner',
-    joinedAt: now,
-  },
-  {
-    userId: '11111111-1111-4111-8111-111111111112',
-    displayName: 'Илья Редактор',
-    email: 'editor@example.com',
-    avatarUrl: null,
-    role: 'editor',
-    joinedAt: now,
-  },
-];
+const viewerProject: Project = {
+  id: '22222222-2222-4222-8222-222222222223',
+  title: 'Сад незакрытых дверей',
+  description:
+    'Магический реализм о семье, которая каждое лето возвращается в дом, где двери открываются в чужие воспоминания.',
+  genre: 'Магический реализм',
+  language: 'ru',
+  role: 'viewer',
+  membersCount: 3,
+  booksCount: 1,
+  wordCount: 0,
+  coverUrl: null,
+  updatedAt: yesterday,
+  settings: {},
+  createdAt: new Date('2026-01-19T12:00:00.000Z').toISOString(),
+  version: 2,
+};
 
 export const mockBook: Book = {
   id: '33333333-3333-4333-8333-333333333333',
@@ -75,79 +83,147 @@ export const mockBook: Book = {
   synopsis:
     'Мира возвращается в город, где её никто не помнит, и находит список имён тех, кто должен исчезнуть.',
   coverUrl: null,
-  targetWordCount: 120000,
-  wordCount: 12480,
+  targetWordCount: 120_000,
+  wordCount: 0,
   language: 'ru',
-  createdAt: now,
+  createdAt: new Date('2025-11-04T09:05:00.000Z').toISOString(),
   updatedAt: now,
   version: 7,
 };
 
-export const mockDocument: Document = {
+const viewerBook: Book = {
+  id: '33333333-3333-4333-8333-333333333334',
+  projectId: viewerProject.id,
+  title: 'Тихие комнаты',
+  subtitle: 'Сад незакрытых дверей',
+  seriesOrder: 1,
+  status: 'revising',
+  synopsis: 'Лето, которое семья проведёт между воспоминаниями и собственным домом.',
+  coverUrl: null,
+  targetWordCount: 80_000,
+  wordCount: 0,
+  language: 'ru',
+  createdAt: new Date('2026-01-21T08:00:00.000Z').toISOString(),
+  updatedAt: yesterday,
+  version: 3,
+};
+
+const chapterOneContent = {
+  type: 'doc',
+  content: [
+    {
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
+          text: 'Город просыпался медленно, будто нехотя возвращался из чужого сна. Мира стояла на площади и смотрела, как первые лучи скользят по пепельным крышам.',
+        },
+      ],
+    },
+    {
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
+          text: 'Она помнила этот город другим. Помнила имена, лица, запах хлеба из пекарни на углу. Но сейчас на углу была только пустая витрина, а над дверью висела табличка: «Скоро открытие».',
+        },
+      ],
+    },
+    {
+      type: 'blockquote',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              text: '«Каждые семь лет город забывает. Каждые семь лет кто-то должен помнить».',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
+          text: 'В кармане пальто лежал сложенный вчетверо лист. На нём было семь имён. Первое имя было её собственным.',
+        },
+      ],
+    },
+  ],
+};
+
+const sceneOneContent = {
+  type: 'doc',
+  content: [
+    {
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
+          text: 'Площадь пахла мокрым камнем и старой золой. Ветер перебирал афиши на стене ратуши, и Мира впервые за одиннадцать лет ощутила себя дома.',
+        },
+      ],
+    },
+  ],
+};
+
+const viewerChapterContent = {
+  type: 'doc',
+  content: [
+    {
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
+          text: 'В июле сад переставал принадлежать времени. Двери в конце дорожки открывались в комнаты, которых в доме никогда не было, и бабушка просила не запоминать то, что мы там увидим.',
+        },
+      ],
+    },
+  ],
+};
+
+const documentOne: Document = {
   id: '88888888-8888-4888-8888-888888888888',
   projectId: mockProject.id,
   kind: 'text',
   title: 'Глава 1. Пробуждение',
-  wordCount: 812,
+  wordCount: 0,
   version: 12,
   snapshotAt: now,
   updatedAt: now,
-  canonical: {
-    type: 'doc',
-    content: [
-      {
-        type: 'heading',
-        attrs: { level: 1 },
-        content: [{ type: 'text', text: 'Глава 1. Пробуждение' }],
-      },
-      {
-        type: 'paragraph',
-        content: [
-          {
-            type: 'text',
-            text: 'Город просыпался медленно, будто нехотя возвращался из чужого сна. Мира стояла на площади и смотрела, как первые лучи скользят по пепельным крышам.',
-          },
-        ],
-      },
-      {
-        type: 'paragraph',
-        content: [
-          {
-            type: 'text',
-            text: 'Она помнила этот город другим. Помнила имена, лица, запах хлеба из пекарни на углу. Но сейчас на углу была только пустая витрина, а над дверью висела табличка: «Скоро открытие».',
-          },
-        ],
-      },
-      {
-        type: 'blockquote',
-        content: [
-          {
-            type: 'paragraph',
-            content: [
-              {
-                type: 'text',
-                text: '«Каждые семь лет город забывает. Каждые семь лет кто-то должен помнить».',
-              },
-            ],
-          },
-        ],
-      },
-      {
-        type: 'paragraph',
-        content: [
-          {
-            type: 'text',
-            text: 'В кармане пальто лежал сложенный вчетверо лист. На нём было семь имён. Первое имя было её собственным.',
-          },
-        ],
-      },
-    ],
-  },
+  canonical: chapterOneContent,
+};
+
+const sceneDocument: Document = {
+  id: '88888888-8888-4888-8888-888888888889',
+  projectId: mockProject.id,
+  kind: 'text',
+  title: 'Сцена 1. Площадь',
+  wordCount: 0,
+  version: 2,
+  snapshotAt: now,
+  updatedAt: now,
+  canonical: sceneOneContent,
+};
+
+const viewerDocument: Document = {
+  id: '88888888-8888-4888-8888-888888888890',
+  projectId: viewerProject.id,
+  kind: 'text',
+  title: 'Глава 1. Июль',
+  wordCount: 0,
+  version: 4,
+  snapshotAt: yesterday,
+  updatedAt: yesterday,
+  canonical: viewerChapterContent,
 };
 
 export const mockNodes: BookNode[] = [
   {
-    id: '44444444-4444-4444-8444-444444444444',
+    id: '44444444-4444-4444-8444-444444444441',
     bookId: mockBook.id,
     parentId: null,
     type: 'part',
@@ -155,72 +231,140 @@ export const mockNodes: BookNode[] = [
     synopsis: 'Мира возвращается в Пепельный город и понимает, что её никто не помнит.',
     notes: '',
     status: 'draft',
-    sortKey: 'a0',
-    targetWordCount: 40000,
+    sortKey: '000000',
+    targetWordCount: 40_000,
     povCharacterId: null,
     documentId: null,
-    wordCount: 12480,
+    wordCount: 0,
     createdAt: now,
     updatedAt: now,
     version: 1,
-    children: [
-      {
-        id: '55555555-5555-4555-8555-555555555555',
-        bookId: mockBook.id,
-        parentId: '44444444-4444-4444-8444-444444444444',
-        type: 'chapter',
-        title: 'Глава 1. Пробуждение',
-        synopsis: 'Мира приходит на площадь и находит список имён.',
-        notes: 'POV Мира. Первое появление списка.',
-        status: 'draft',
-        sortKey: 'a0',
-        targetWordCount: 3500,
-        povCharacterId: '99999999-9999-4999-8999-999999999999',
-        documentId: mockDocument.id,
-        wordCount: 812,
-        createdAt: now,
-        updatedAt: now,
-        version: 4,
-        children: [
-          {
-            id: '66666666-6666-4666-8666-666666666666',
-            bookId: mockBook.id,
-            parentId: '55555555-5555-4555-8555-555555555555',
-            type: 'scene',
-            title: 'Сцена 1. Площадь',
-            synopsis: 'Мира вспоминает город, которого больше нет.',
-            notes: '',
-            status: 'draft',
-            sortKey: 'a0',
-            targetWordCount: 1500,
-            povCharacterId: '99999999-9999-4999-8999-999999999999',
-            documentId: '88888888-8888-4888-8888-888888888889',
-            wordCount: 812,
-            createdAt: now,
-            updatedAt: now,
-            version: 2,
-          },
-        ],
-      },
-      {
-        id: '77777777-7777-4777-8777-777777777777',
-        bookId: mockBook.id,
-        parentId: '44444444-4444-4444-8444-444444444444',
-        type: 'chapter',
-        title: 'Глава 2. Список',
-        synopsis: 'Мира пытается понять, кто оставил список и почему её имя первое.',
-        notes: '',
-        status: 'outline',
-        sortKey: 'a1',
-        targetWordCount: 4000,
-        povCharacterId: '99999999-9999-4999-8999-999999999999',
-        documentId: null,
-        wordCount: 0,
-        createdAt: now,
-        updatedAt: now,
-        version: 1,
-      },
-    ],
+  },
+  {
+    id: '55555555-5555-4555-8555-555555555551',
+    bookId: mockBook.id,
+    parentId: '44444444-4444-4444-8444-444444444441',
+    type: 'chapter',
+    title: 'Глава 1. Пробуждение',
+    synopsis: 'Мира приходит на площадь и находит список имён.',
+    notes: 'POV Мира. Первое появление списка.',
+    status: 'draft',
+    sortKey: '000000',
+    targetWordCount: 3_500,
+    povCharacterId: '99999999-9999-4999-8999-999999999999',
+    documentId: documentOne.id,
+    wordCount: 0,
+    createdAt: now,
+    updatedAt: now,
+    version: 4,
+  },
+  {
+    id: '66666666-6666-4666-8666-666666666661',
+    bookId: mockBook.id,
+    parentId: '55555555-5555-4555-8555-555555555551',
+    type: 'scene',
+    title: 'Сцена 1. Площадь',
+    synopsis: 'Мира вспоминает город, которого больше нет.',
+    notes: '',
+    status: 'draft',
+    sortKey: '000000',
+    targetWordCount: 1_500,
+    povCharacterId: '99999999-9999-4999-8999-999999999999',
+    documentId: sceneDocument.id,
+    wordCount: 0,
+    createdAt: now,
+    updatedAt: now,
+    version: 2,
+  },
+  {
+    id: '55555555-5555-4555-8555-555555555552',
+    bookId: mockBook.id,
+    parentId: '44444444-4444-4444-8444-444444444441',
+    type: 'chapter',
+    title: 'Глава 2. Список',
+    synopsis: 'Мира пытается понять, кто оставил список и почему её имя первое.',
+    notes: '',
+    status: 'outline',
+    sortKey: '000001',
+    targetWordCount: 4_000,
+    povCharacterId: '99999999-9999-4999-8999-999999999999',
+    documentId: null,
+    wordCount: 0,
+    createdAt: now,
+    updatedAt: now,
+    version: 1,
+  },
+  {
+    id: '44444444-4444-4444-8444-444444444442',
+    bookId: mockBook.id,
+    parentId: null,
+    type: 'part',
+    title: 'Часть II. Седьмое имя',
+    synopsis: 'Список ведёт Миру в архив, где хранят чужие воспоминания.',
+    notes: '',
+    status: 'idea',
+    sortKey: '000001',
+    targetWordCount: 45_000,
+    povCharacterId: null,
+    documentId: null,
+    wordCount: 0,
+    createdAt: now,
+    updatedAt: now,
+    version: 1,
+  },
+  {
+    id: '55555555-5555-4555-8555-555555555553',
+    bookId: mockBook.id,
+    parentId: '44444444-4444-4444-8444-444444444442',
+    type: 'chapter',
+    title: 'Глава 3. Стена имён',
+    synopsis: 'Кай показывает Мире архив, но скрывает одну из дверей.',
+    notes: '',
+    status: 'idea',
+    sortKey: '000000',
+    targetWordCount: 4_200,
+    povCharacterId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    documentId: null,
+    wordCount: 0,
+    createdAt: now,
+    updatedAt: now,
+    version: 1,
+  },
+  {
+    id: '44444444-4444-4444-8444-444444444443',
+    bookId: viewerBook.id,
+    parentId: null,
+    type: 'part',
+    title: 'Часть I. Июль',
+    synopsis: 'Семья открывает дом, который помнит больше, чем они.',
+    notes: '',
+    status: 'revised',
+    sortKey: '000000',
+    targetWordCount: 30_000,
+    povCharacterId: null,
+    documentId: null,
+    wordCount: 0,
+    createdAt: yesterday,
+    updatedAt: yesterday,
+    version: 1,
+  },
+  {
+    id: '55555555-5555-4555-8555-555555555554',
+    bookId: viewerBook.id,
+    parentId: '44444444-4444-4444-8444-444444444443',
+    type: 'chapter',
+    title: 'Глава 1. Июль',
+    synopsis: 'Первая дверь открывается сама.',
+    notes: 'Только просмотр.',
+    status: 'revised',
+    sortKey: '000000',
+    targetWordCount: 3_000,
+    povCharacterId: null,
+    documentId: viewerDocument.id,
+    wordCount: 0,
+    createdAt: yesterday,
+    updatedAt: yesterday,
+    version: 1,
   },
 ];
 
@@ -249,7 +393,7 @@ export const mockCharacters: Character[] = [
     color: '#8a5a2b',
     avatarUrl: null,
     customFields: { temp: 'Спокойная под давлением' },
-    createdAt: now,
+    createdAt: earlier,
     updatedAt: now,
     version: 5,
   },
@@ -262,7 +406,7 @@ export const mockCharacters: Character[] = [
     role: 'deuteragonist',
     age: '31',
     birthDate: 'год 1020 от Основания',
-    appearance: 'Седой виск, серые глаза, всегда в перчатках.',
+    appearance: 'Седой висок, серые глаза, всегда в перчатках.',
     personality: 'Сдержанный, обязательный, боится привязанности.',
     motivation: 'Сберечь город любой ценой, даже если для этого придётся лгать.',
     goal: 'Не допустить, чтобы Мира узнала правду о седьмом списке.',
@@ -277,7 +421,7 @@ export const mockCharacters: Character[] = [
     color: '#4a6a7a',
     avatarUrl: null,
     customFields: {},
-    createdAt: now,
+    createdAt: earlier,
     updatedAt: now,
     version: 3,
   },
@@ -305,15 +449,32 @@ export const mockCharacters: Character[] = [
     color: '#7a4a5a',
     avatarUrl: null,
     customFields: {},
-    createdAt: now,
+    createdAt: earlier,
     updatedAt: now,
     version: 2,
+  },
+  {
+    id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+    projectId: viewerProject.id,
+    name: 'Вера',
+    role: 'supporting',
+    age: '34',
+    appearance: 'Летнее платье, сандалии, ключ на шнурке.',
+    personality: 'Спокойная до тех пор, пока не заходит речь о саде.',
+    tags: ['дом', 'лето'],
+    status: 'alive',
+    color: '#6d6a52',
+    avatarUrl: null,
+    customFields: {},
+    createdAt: earlier,
+    updatedAt: yesterday,
+    version: 1,
   },
 ];
 
 export const mockRelations: CharacterRelation[] = [
   {
-    id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+    id: 'dddddddd-dddd-4ddd-8ddd-ddddddddddd1',
     projectId: mockProject.id,
     fromCharacterId: '99999999-9999-4999-8999-999999999999',
     toCharacterId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -340,46 +501,79 @@ export const mockRelations: CharacterRelation[] = [
   },
 ];
 
+export const mockAssets: Asset[] = [
+  {
+    id: '12121212-1212-4212-8212-121212121212',
+    projectId: mockProject.id,
+    mime: 'image/svg+xml',
+    sizeBytes: 48_000,
+    width: 960,
+    height: 640,
+    status: 'ready',
+    url: createMockIllustration('Мира на площади'),
+    thumbUrl: createMockIllustration('Мира на площади'),
+    createdAt: now,
+  },
+];
+
 export const mockAttachments: Attachment[] = [
   {
     id: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
-    assetId: '12121212-1212-4212-8212-121212121212',
+    assetId: mockAssets[0].id,
     targetType: 'character',
     targetId: '99999999-9999-4999-8999-999999999999',
     role: 'illustration',
     caption: 'Мира на площади',
     sortOrder: 0,
-    url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800',
-    thumbUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=240',
+    url: mockAssets[0].url,
+    thumbUrl: mockAssets[0].thumbUrl,
     createdAt: now,
   },
 ];
 
-export const mockAsset: Asset = {
-  id: '12121212-1212-4212-8212-121212121212',
-  projectId: mockProject.id,
-  mime: 'image/jpeg',
-  sizeBytes: 482000,
-  width: 1200,
-  height: 800,
-  status: 'ready',
-  url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800',
-  thumbUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=240',
-  createdAt: now,
-};
-
 export const mockExports: ExportJob[] = [
   {
-    id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+    id: 'aaaaaaaa-1111-4aaa-8aaa-aaaaaaaaaaaa',
     projectId: mockProject.id,
     format: 'docx',
     status: 'succeeded',
     progress: 100,
     error: null,
     warnings: [],
-    downloadUrl: 'https://example.com/exports/hroniki-pelnoy-luny.docx',
-    createdAt: now,
-    startedAt: now,
-    finishedAt: now,
+    downloadUrl: 'https://example.com/exports/pepelnaya-luna.docx',
+    createdAt: earlier,
+    startedAt: earlier,
+    finishedAt: earlier,
+  },
+  {
+    id: 'aaaaaaaa-2222-4aaa-8aaa-aaaaaaaaaaaa',
+    projectId: mockProject.id,
+    format: 'fb2',
+    status: 'failed',
+    progress: 48,
+    error: 'Не удалось собрать сноски главы 2.',
+    warnings: ['Обложка не найдена, используется пустая страница.'],
+    downloadUrl: null,
+    createdAt: yesterday,
+    startedAt: yesterday,
+    finishedAt: yesterday,
   },
 ];
+
+export function createInitialMockState(): MockState {
+  return {
+    projects: [structuredClone(mockProject), structuredClone(viewerProject)],
+    books: [structuredClone(mockBook), structuredClone(viewerBook)],
+    nodes: structuredClone(mockNodes),
+    documents: [
+      structuredClone(documentOne),
+      structuredClone(sceneDocument),
+      structuredClone(viewerDocument),
+    ],
+    characters: structuredClone(mockCharacters),
+    relations: structuredClone(mockRelations),
+    attachments: structuredClone(mockAttachments),
+    assets: structuredClone(mockAssets),
+    exports: structuredClone(mockExports),
+  };
+}

@@ -1,5 +1,6 @@
 import createClient from 'openapi-fetch';
 import { getAccessToken } from './token';
+import { emitUnauthorized } from './unauthorized';
 import type { paths } from './schema';
 
 export const api = createClient<paths>({
@@ -14,5 +15,13 @@ api.use({
       request.headers.set('Authorization', `Bearer ${token}`);
     }
     return request;
+  },
+  onResponse({ request, response }) {
+    const path = new URL(request.url).pathname;
+    const isAuthRequest = path.includes('/auth/');
+    if (response.status === 401 && !isAuthRequest) {
+      emitUnauthorized();
+    }
+    return response;
   },
 });
