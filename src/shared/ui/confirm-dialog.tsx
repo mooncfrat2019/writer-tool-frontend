@@ -17,6 +17,7 @@ type ConfirmDialogProps = {
   confirmLabel?: string;
   cancelLabel?: string;
   pending?: boolean;
+  pendingLabel?: string;
   destructive?: boolean;
   onConfirm: () => void;
 };
@@ -29,6 +30,7 @@ export function ConfirmDialog({
   confirmLabel = 'Подтвердить',
   cancelLabel = 'Отмена',
   pending = false,
+  pendingLabel = 'Удаление…',
   destructive = true,
   onConfirm,
 }: ConfirmDialogProps) {
@@ -49,7 +51,7 @@ export function ConfirmDialog({
             disabled={pending}
             onClick={onConfirm}
           >
-            {pending ? 'Удаление…' : confirmLabel}
+            {pending ? pendingLabel : confirmLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

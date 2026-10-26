@@ -45,6 +45,39 @@ export function collabEnabled(): boolean {
   return import.meta.env.VITE_COLLAB_ENABLED === 'true';
 }
 
+function generationKey(documentId: string): string {
+  return `writer-tool-doc-generation-${documentId}`;
+}
+
+function readStoredGeneration(documentId: string): string | null {
+  try {
+    return window.localStorage.getItem(generationKey(documentId));
+  } catch {
+    return null;
+  }
+}
+
+function storeGeneration(documentId: string, generation: string): void {
+  try {
+    window.localStorage.setItem(generationKey(documentId), generation);
+  } catch {
+    // Generation tracking is best-effort; the server still rejects stale tokens.
+  }
+}
+
+function clearLocalYjs(documentId: string): Promise<void> {
+  return new Promise((resolve) => {
+    try {
+      const request = window.indexedDB.deleteDatabase(`writer-tool-doc-${documentId}`);
+      request.onsuccess = () => resolve();
+      request.onerror = () => resolve();
+      request.onblocked = () => resolve();
+    } catch {
+      resolve();
+    }
+  });
+}
+
 export function useCollabSession(documentId: string, enabled: boolean): CollabState {
   const [state, setState] = useState<CollabState>(() =>
     enabled
@@ -117,6 +150,18 @@ export function useCollabSession(documentId: string, enabled: boolean): CollabSt
           return;
         }
 
+        // A generation changes on version restore. Drop the local Yjs state
+        // before connecting, otherwise the offline copy would merge the old
+        // text back into the restored document.
+        const generation = String(token.generation);
+        if (readStoredGeneration(documentId) !== generation) {
+          await clearLocalYjs(documentId);
+          storeGeneration(documentId, generation);
+        }
+        if (cancelled) {
+          return;
+        }
+
         const currentUser = getSessionState().user;
         const user = {
           name: currentUser?.displayName ?? 'Автор',
@@ -147,7 +192,8 @@ export function useCollabSession(documentId: string, enabled: boolean): CollabSt
         provider.on('authenticationFailed', () => {
           setState((current) => ({
             ...current,
-            error: 'Не удалось подключиться к совместному редактированию.',
+            error:
+              'Соединение отклонено. Возможно, документ был восстановлен из версии — перезагрузите страницу.',
           }));
         });
         provider.setAwarenessField('user', user);

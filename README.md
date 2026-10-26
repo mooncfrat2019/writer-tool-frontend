@@ -6,8 +6,9 @@ Phase 1 implements authentication, the project library, book structure
 (parts / chapters / scenes), the chapter editor, character cards with
 relations and illustrations, and the export workflow. Phase 2 adds real-time
 collaboration through Yjs/Hocuspocus, presence avatars, local IndexedDB
-persistence and a canonical projection save. Worlds, timeline and diagrams are
-later phases.
+persistence, server-side canonical projection, project/chapter share links,
+and version history with restore. Worlds, timeline and diagrams are later
+phases.
 
 The product plan lives in the backend repository at
 `writer-tool-backend/docs/PLAN.md`. The frontend-specific specification is in
@@ -45,6 +46,16 @@ pnpm dev:real       # http://localhost:5174
 running on `:8080`. Real mode uses port **5174** so it can run alongside the mock
 dev server on 5173. Open two browser tabs on the same chapter to see live
 collaboration and presence.
+
+Sharing is available in real mode:
+
+- project: Structure → «Поделиться»;
+- chapter: select a node → «Поделиться главой» in the inspector.
+
+The recipient opens the link, signs in or registers, accepts, and lands in the
+project or the shared chapter editor. The editor header also exposes «История
+версий»: snapshots can be created manually and restored; restore disconnects
+other peers and reloads clients with a new document generation.
 
 ## API contract
 

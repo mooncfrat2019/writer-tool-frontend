@@ -12,6 +12,7 @@ import {
   CircleAlert,
   Clock3,
   CloudOff,
+  History,
   Italic,
   List,
   ListOrdered,
@@ -36,6 +37,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api } from '@/shared/api/client';
 import { getApiErrorMessage, isVersionConflict } from '@/shared/api/errors';
+import { isRealApiMode } from '@/shared/api/mode';
 import { unwrap } from '@/shared/api/request';
 import type { components } from '@/shared/api/schema';
 import {
@@ -57,6 +59,7 @@ import { Badge } from '@/shared/ui/badge';
 import { Button } from '@/shared/ui/button';
 import { ErrorState } from '@/shared/ui/error-state';
 import { CollabStatus, PresenceAvatars } from './CollabPresence';
+import { VersionHistoryDialog } from './VersionHistoryDialog';
 import {
   collabEnabled,
   useCollabSession,
@@ -401,10 +404,11 @@ type EditorSessionProps = {
   canEdit: boolean;
   collab?: CollabSession;
   collabFallbackReason?: string | null;
+  backLabel?: string;
   onBack: () => void;
 };
 
-function EditorSession({
+export function EditorSession({
   projectId,
   node,
   book,
@@ -413,10 +417,12 @@ function EditorSession({
   canEdit,
   collab,
   collabFallbackReason,
+  backLabel,
   onBack,
 }: EditorSessionProps) {
   const queryClient = useQueryClient();
   const [focusMode, setFocusMode] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [wordCount, setWordCount] = useState(
     document.wordCount || countProseMirrorWords(document.canonical),
   );
@@ -711,10 +717,10 @@ function EditorSession({
             type="button"
             className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded px-1.5 text-sm text-ink-500 transition hover:bg-paper-100 hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
             onClick={onBack}
-            aria-label="Вернуться к структуре"
+            aria-label={backLabel ?? 'Вернуться к структуре'}
           >
             <ArrowLeft size={17} />
-            <span className="hidden sm:inline">К структуре</span>
+            <span className="hidden sm:inline">{backLabel ?? 'К структуре'}</span>
           </button>
 
           <div className="min-w-0 flex-1">
@@ -763,6 +769,18 @@ function EditorSession({
             ) : (
               <Badge tone="neutral">Только чтение</Badge>
             )}
+            {isRealApiMode ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="История версий"
+                title="История версий"
+                onClick={() => setHistoryOpen(true)}
+              >
+                <History size={16} />
+              </Button>
+            ) : null}
             {canEdit ? (
               <Button
                 type="button"
@@ -911,6 +929,13 @@ function EditorSession({
           {canEdit ? ' · текст сохраняется автоматически' : ' · только просмотр'}
         </p>
       </main>
+
+      <VersionHistoryDialog
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        documentId={document.id}
+        canEdit={canEdit}
+      />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import {
   BookOpen,
   FileText,
   PenLine,
+  Share2,
   Trash2,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -11,6 +12,7 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { api } from '@/shared/api/client';
 import { getApiErrorMessage, isVersionConflict } from '@/shared/api/errors';
+import { isRealApiMode } from '@/shared/api/mode';
 import { unwrap } from '@/shared/api/request';
 import type { components } from '@/shared/api/schema';
 import {
@@ -41,6 +43,7 @@ import {
   nodeStatusTones,
   nodeTypeLabels,
 } from './constants';
+import { ShareDialog } from '@/features/sharing/ShareDialog';
 import { NodeDeleteDialog } from './NodeDeleteDialog';
 import {
   nodeFormSchema,
@@ -209,6 +212,7 @@ export function NodeInspector({
 }: NodeInspectorProps) {
   const queryClient = useQueryClient();
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const lastSyncedNodeRef = useRef<string | null>(null);
   const {
     register,
@@ -318,14 +322,26 @@ export function NodeInspector({
       </div>
 
       {node.documentId ? (
-        <Button
-          className="mt-4 w-full"
-          variant="accent"
-          onClick={() => onOpenEditor(node)}
-        >
-          <PenLine size={15} />
-          Открыть в редакторе
-        </Button>
+        <>
+          <Button
+            className="mt-4 w-full"
+            variant="accent"
+            onClick={() => onOpenEditor(node)}
+          >
+            <PenLine size={15} />
+            Открыть в редакторе
+          </Button>
+          {canEdit && isRealApiMode ? (
+            <Button
+              className="mt-2 w-full"
+              variant="outline"
+              onClick={() => setShareOpen(true)}
+            >
+              <Share2 size={15} />
+              Поделиться главой
+            </Button>
+          ) : null}
+        </>
       ) : (
         <p className="mt-4 rounded-md border border-paper-200 bg-paper-100/60 px-3 py-2 text-xs leading-relaxed text-ink-500">
           У частей нет отдельного документа. Пишите тексты в главах и сценах.
@@ -458,6 +474,19 @@ export function NodeInspector({
           <Trash2 size={14} />
           Удалить элемент
         </Button>
+      ) : null}
+
+      {node.documentId ? (
+        <ShareDialog
+          open={shareOpen}
+          onOpenChange={setShareOpen}
+          projectId={book.projectId}
+          target={{
+            targetType: 'document',
+            targetId: node.documentId,
+            title: node.title,
+          }}
+        />
       ) : null}
 
       <NodeDeleteDialog

@@ -349,6 +349,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/documents/{documentId}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        get: operations["listDocumentVersions"];
+        put?: never;
+        /** @description Creates a manual snapshot of the current canonical document. */
+        post: operations["createDocumentVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/documents/{documentId}/versions/{versionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: components["parameters"]["DocumentId"];
+                versionId: components["parameters"]["VersionId"];
+            };
+            cookie?: never;
+        };
+        get: operations["getDocumentVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/documents/{documentId}/versions/{versionId}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: components["parameters"]["DocumentId"];
+                versionId: components["parameters"]["VersionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Restores a canonical snapshot. Active collaboration peers are
+         *     disconnected; clients reload and receive the restored Yjs state.
+         */
+        post: operations["restoreDocumentVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{projectId}/characters": {
         parameters: {
             query?: never;
@@ -557,6 +618,96 @@ export interface paths {
             cookie?: never;
         };
         get: operations["downloadExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectId}/share-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get: operations["listShareLinks"];
+        put?: never;
+        post: operations["createShareLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/share-links/{shareId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shareId: components["parameters"]["ShareId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["revokeShareLink"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/share-links/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: components["parameters"]["ShareToken"];
+            };
+            cookie?: never;
+        };
+        get: operations["previewShareLink"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/share-links/{token}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: components["parameters"]["ShareToken"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["acceptShareLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shared/documents/{documentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        get: operations["getSharedDocument"];
         put?: never;
         post?: never;
         delete?: never;
@@ -870,6 +1021,11 @@ export interface components {
             /** @example /collab/0192... */
             websocketPath: string;
             /**
+             * Format: int64
+             * @description Incremented on version restore; stale clients must reload
+             */
+            generation: number;
+            /**
              * @description False for legacy documents that have canonical content but no Yjs
              *     state yet. Such documents stay on the Phase 1 REST editor until a
              *     server-side migration seeds their Yjs document.
@@ -1136,6 +1292,109 @@ export interface components {
             items: components["schemas"]["ExportJob"][];
             nextCursor?: string | null;
         };
+        /** @enum {string} */
+        ShareTargetType: "project" | "document";
+        /** @enum {string} */
+        ShareRole: "viewer" | "editor";
+        ShareLinkCreate: {
+            targetType: components["schemas"]["ShareTargetType"];
+            /**
+             * Format: uuid
+             * @description Document id when targetType is document; ignored for project
+             */
+            targetId?: string;
+            role: components["schemas"]["ShareRole"];
+            /**
+             * @description 0 means the link does not expire
+             * @default 168
+             */
+            expiresInHours: number;
+            maxUses?: number | null;
+        };
+        ShareLink: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            projectId: string;
+            targetType: components["schemas"]["ShareTargetType"];
+            /** Format: uuid */
+            targetId: string;
+            role: components["schemas"]["ShareRole"];
+            /** Format: date-time */
+            expiresAt?: string | null;
+            maxUses?: number | null;
+            useCount: number;
+            /** Format: date-time */
+            revokedAt?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** @description Relative share URL, returned only when the link is created */
+            url?: string | null;
+        };
+        ShareLinkList: {
+            items: components["schemas"]["ShareLink"][];
+        };
+        ShareLinkPreview: {
+            valid: boolean;
+            reason?: string;
+            projectTitle: string;
+            targetTitle: string;
+            targetType: components["schemas"]["ShareTargetType"];
+            role: components["schemas"]["ShareRole"];
+        };
+        ShareLinkAccept: {
+            /** Format: uuid */
+            projectId: string;
+            targetType: components["schemas"]["ShareTargetType"];
+            /** Format: uuid */
+            targetId: string;
+            /** Format: uuid */
+            documentId?: string | null;
+            /** Format: uuid */
+            nodeId?: string | null;
+            role: components["schemas"]["ShareRole"];
+            viaProject: boolean;
+        };
+        SharedProject: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+        };
+        /** @enum {string} */
+        DocumentVersionSource: "client" | "collab" | "manual" | "restore";
+        DocumentVersion: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            documentId: string;
+            /** Format: int64 */
+            version: number;
+            wordCount: number;
+            characterCount: number;
+            /** Format: double */
+            authorSheets?: number;
+            source: components["schemas"]["DocumentVersionSource"];
+            /** Format: date-time */
+            createdAt: string;
+        };
+        DocumentVersionList: {
+            items: components["schemas"]["DocumentVersion"][];
+        };
+        DocumentVersionDetail: {
+            version: components["schemas"]["DocumentVersion"];
+            canonical: {
+                [key: string]: unknown;
+            };
+        };
+        SharedDocument: {
+            document: components["schemas"]["Document"];
+            node: components["schemas"]["BookNode"];
+            book: components["schemas"]["Book"];
+            project: components["schemas"]["SharedProject"];
+            path: components["schemas"]["BookNode"][];
+            role: components["schemas"]["ShareRole"];
+            viaProject: boolean;
+        };
     };
     responses: {
         /** @description Authentication required or token invalid */
@@ -1213,6 +1472,9 @@ export interface components {
         AttachmentId: string;
         AssetId: string;
         ExportId: string;
+        ShareId: string;
+        ShareToken: string;
+        VersionId: string;
         Cursor: string;
         Limit: number;
     };
@@ -1861,6 +2123,108 @@ export interface operations {
             422: components["responses"]["ValidationFailed"];
         };
     };
+    listDocumentVersions: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical document snapshots, newest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentVersionList"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createDocumentVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Snapshot created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentVersion"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getDocumentVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: components["parameters"]["DocumentId"];
+                versionId: components["parameters"]["VersionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Version metadata and canonical content */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentVersionDetail"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    restoreDocumentVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: components["parameters"]["DocumentId"];
+                versionId: components["parameters"]["VersionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Restored document */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Document"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
     listCharacters: {
         parameters: {
             query?: {
@@ -2400,6 +2764,159 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    listShareLinks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Share links created for the project */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareLinkList"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createShareLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShareLinkCreate"];
+            };
+        };
+        responses: {
+            /** @description Share link created; the raw token is returned only once */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareLink"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    revokeShareLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shareId: components["parameters"]["ShareId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Share link revoked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    previewShareLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: components["parameters"]["ShareToken"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Public share link metadata */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareLinkPreview"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    acceptShareLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: components["parameters"]["ShareToken"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Access granted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareLinkAccept"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description Link expired, revoked or exhausted */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getSharedDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Document accessible through a project membership or share link */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SharedDocument"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
 }

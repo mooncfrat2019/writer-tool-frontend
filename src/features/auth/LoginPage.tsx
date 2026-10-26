@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -12,6 +12,7 @@ import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
 import { AuthLayout } from './AuthLayout';
 import { loginSchema, type LoginValues } from './schemas';
+import { getAuthRedirect, redirectQuery } from './redirect';
 import { setSessionFromAuth } from './session';
 
 const isMockMode =
@@ -20,6 +21,7 @@ const isMockMode =
 export function LoginPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const redirect = getAuthRedirect();
   const [formError, setFormError] = useState<string | null>(null);
   const {
     register,
@@ -44,6 +46,10 @@ export function LoginPage() {
       setSessionFromAuth(data);
       queryClient.clear();
       toast.success('С возвращением. Продолжим книгу.');
+      if (redirect) {
+        window.location.assign(redirect);
+        return;
+      }
       void navigate({ to: '/projects' });
     },
     onError: (error) => {
@@ -59,9 +65,12 @@ export function LoginPage() {
       footer={
         <p>
           Нет аккаунта?{' '}
-          <Link className="font-medium text-accent-700 underline-offset-4 hover:underline" to="/register">
+          <a
+            className="font-medium text-accent-700 underline-offset-4 hover:underline"
+            href={`/register${redirectQuery(redirect)}`}
+          >
             Создать аккаунт
-          </Link>
+          </a>
         </p>
       }
     >

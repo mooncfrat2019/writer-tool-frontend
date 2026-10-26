@@ -5,11 +5,13 @@ import {
   ChevronDown,
   Layers,
   Plus,
+  Share2,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { api } from '@/shared/api/client';
 import { getApiErrorMessage, isVersionConflict } from '@/shared/api/errors';
+import { isRealApiMode } from '@/shared/api/mode';
 import { unwrap } from '@/shared/api/request';
 import type { components } from '@/shared/api/schema';
 import {
@@ -48,6 +50,7 @@ import {
   bookStatusLabels,
   nodeTypeLabels,
 } from './constants';
+import { ShareDialog } from '@/features/sharing/ShareDialog';
 import { BookCreateDialog } from './BookCreateDialog';
 import { NodeCreateDialog } from './NodeCreateDialog';
 import { NodeDeleteDialog } from './NodeDeleteDialog';
@@ -72,6 +75,7 @@ export function StructurePage() {
     nodeId: string;
   } | null>(null);
   const [bookDialogOpen, setBookDialogOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<BookNode | null>(null);
   const [createDialog, setCreateDialog] = useState<{
     open: boolean;
@@ -292,6 +296,12 @@ export function StructurePage() {
           ) : null}
           {canEdit ? (
             <>
+              {isRealApiMode && selectedBook ? (
+                <Button variant="outline" onClick={() => setShareOpen(true)}>
+                  <Share2 size={16} />
+                  Поделиться
+                </Button>
+              ) : null}
               <Button variant="outline" onClick={() => setBookDialogOpen(true)}>
                 <BookPlus size={16} />
                 Новая книга
@@ -482,6 +492,19 @@ export function StructurePage() {
           </div>
         </>
       )}
+
+      {selectedBook ? (
+        <ShareDialog
+          open={shareOpen}
+          onOpenChange={setShareOpen}
+          projectId={projectId}
+          target={{
+            targetType: 'project',
+            targetId: projectId,
+            title: selectedBook.title,
+          }}
+        />
+      ) : null}
 
       <BookCreateDialog
         projectId={projectId}

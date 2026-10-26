@@ -23,6 +23,7 @@ tags:
   - name: Characters
   - name: Assets
   - name: Exports
+  - name: Sharing
 
 paths:
   /auth/register:
@@ -541,6 +542,92 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationFailed'
 
+  /documents/{documentId}/versions:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+    get:
+      tags: [Documents]
+      operationId: listDocumentVersions
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Canonical document snapshots, newest first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentVersionList'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Documents]
+      operationId: createDocumentVersion
+      description: Creates a manual snapshot of the current canonical document.
+      responses:
+        '201':
+          description: Snapshot created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentVersion'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /documents/{documentId}/versions/{versionId}:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+      - $ref: '#/components/parameters/VersionId'
+    get:
+      tags: [Documents]
+      operationId: getDocumentVersion
+      responses:
+        '200':
+          description: Version metadata and canonical content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentVersionDetail'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /documents/{documentId}/versions/{versionId}/restore:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+      - $ref: '#/components/parameters/VersionId'
+    post:
+      tags: [Documents]
+      operationId: restoreDocumentVersion
+      description: |
+        Restores a canonical snapshot. Active collaboration peers are
+        disconnected; clients reload and receive the restored Yjs state.
+      responses:
+        '200':
+          description: Restored document
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
   /projects/{projectId}/characters:
     parameters:
       - $ref: '#/components/parameters/ProjectId'
@@ -943,6 +1030,115 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
 
+  /projects/{projectId}/share-links:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [Sharing]
+      operationId: listShareLinks
+      responses:
+        '200':
+          description: Share links created for the project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShareLinkList'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Sharing]
+      operationId: createShareLink
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShareLinkCreate'
+      responses:
+        '201':
+          description: Share link created; the raw token is returned only once
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShareLink'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /share-links/{shareId}:
+    parameters:
+      - $ref: '#/components/parameters/ShareId'
+    delete:
+      tags: [Sharing]
+      operationId: revokeShareLink
+      responses:
+        '204':
+          description: Share link revoked
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /share-links/{token}:
+    parameters:
+      - $ref: '#/components/parameters/ShareToken'
+    get:
+      tags: [Sharing]
+      operationId: previewShareLink
+      security: []
+      responses:
+        '200':
+          description: Public share link metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShareLinkPreview'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /share-links/{token}/accept:
+    parameters:
+      - $ref: '#/components/parameters/ShareToken'
+    post:
+      tags: [Sharing]
+      operationId: acceptShareLink
+      responses:
+        '200':
+          description: Access granted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShareLinkAccept'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          description: Link expired, revoked or exhausted
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /shared/documents/{documentId}:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+    get:
+      tags: [Sharing]
+      operationId: getSharedDocument
+      responses:
+        '200':
+          description: Document accessible through a project membership or share link
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SharedDocument'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1009,6 +1205,27 @@ components:
         format: uuid
     ExportId:
       name: exportId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ShareId:
+      name: shareId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ShareToken:
+      name: token
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 16
+    VersionId:
+      name: versionId
       in: path
       required: true
       schema:
@@ -1625,7 +1842,7 @@ components:
 
     CollabToken:
       type: object
-      required: [token, expiresAt, websocketPath, collabAvailable]
+      required: [token, expiresAt, websocketPath, collabAvailable, generation]
       properties:
         token:
           type: string
@@ -1635,6 +1852,10 @@ components:
         websocketPath:
           type: string
           examples: ['/collab/0192...']
+        generation:
+          type: integer
+          format: int64
+          description: Incremented on version restore; stale clients must reload
         collabAvailable:
           type: boolean
           description: |
@@ -2148,3 +2369,185 @@ components:
             $ref: '#/components/schemas/ExportJob'
         nextCursor:
           type: [string, 'null']
+
+    ShareTargetType:
+      type: string
+      enum: [project, document]
+    ShareRole:
+      type: string
+      enum: [viewer, editor]
+    ShareLinkCreate:
+      type: object
+      required: [targetType, role]
+      properties:
+        targetType:
+          $ref: '#/components/schemas/ShareTargetType'
+        targetId:
+          type: string
+          format: uuid
+          description: Document id when targetType is document; ignored for project
+        role:
+          $ref: '#/components/schemas/ShareRole'
+        expiresInHours:
+          type: integer
+          minimum: 0
+          maximum: 8760
+          default: 168
+          description: 0 means the link does not expire
+        maxUses:
+          type: [integer, 'null']
+          minimum: 1
+    ShareLink:
+      type: object
+      required: [id, projectId, targetType, targetId, role, useCount, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        targetType:
+          $ref: '#/components/schemas/ShareTargetType'
+        targetId:
+          type: string
+          format: uuid
+        role:
+          $ref: '#/components/schemas/ShareRole'
+        expiresAt:
+          type: [string, 'null']
+          format: date-time
+        maxUses:
+          type: [integer, 'null']
+        useCount:
+          type: integer
+        revokedAt:
+          type: [string, 'null']
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        url:
+          type: [string, 'null']
+          description: Relative share URL, returned only when the link is created
+    ShareLinkList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShareLink'
+    ShareLinkPreview:
+      type: object
+      required: [valid, projectTitle, targetTitle, targetType, role]
+      properties:
+        valid:
+          type: boolean
+        reason:
+          type: string
+        projectTitle:
+          type: string
+        targetTitle:
+          type: string
+        targetType:
+          $ref: '#/components/schemas/ShareTargetType'
+        role:
+          $ref: '#/components/schemas/ShareRole'
+    ShareLinkAccept:
+      type: object
+      required: [projectId, targetType, targetId, role, viaProject]
+      properties:
+        projectId:
+          type: string
+          format: uuid
+        targetType:
+          $ref: '#/components/schemas/ShareTargetType'
+        targetId:
+          type: string
+          format: uuid
+        documentId:
+          type: [string, 'null']
+          format: uuid
+        nodeId:
+          type: [string, 'null']
+          format: uuid
+        role:
+          $ref: '#/components/schemas/ShareRole'
+        viaProject:
+          type: boolean
+    SharedProject:
+      type: object
+      required: [id, title]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+    DocumentVersionSource:
+      type: string
+      enum: [client, collab, manual, restore]
+    DocumentVersion:
+      type: object
+      required: [id, documentId, version, wordCount, characterCount, source, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        documentId:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          format: int64
+        wordCount:
+          type: integer
+        characterCount:
+          type: integer
+        authorSheets:
+          type: number
+          format: double
+        source:
+          $ref: '#/components/schemas/DocumentVersionSource'
+        createdAt:
+          type: string
+          format: date-time
+    DocumentVersionList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentVersion'
+    DocumentVersionDetail:
+      type: object
+      required: [version, canonical]
+      properties:
+        version:
+          $ref: '#/components/schemas/DocumentVersion'
+        canonical:
+          type: object
+          additionalProperties: true
+
+    SharedDocument:
+      type: object
+      required: [document, node, book, project, path, role, viaProject]
+      properties:
+        document:
+          $ref: '#/components/schemas/Document'
+        node:
+          $ref: '#/components/schemas/BookNode'
+        book:
+          $ref: '#/components/schemas/Book'
+        project:
+          $ref: '#/components/schemas/SharedProject'
+        path:
+          type: array
+          items:
+            $ref: '#/components/schemas/BookNode'
+        role:
+          $ref: '#/components/schemas/ShareRole'
+        viaProject:
+          type: boolean

@@ -73,6 +73,25 @@ async function requireAuth() {
   }
 }
 
+const shareRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/share/$token',
+  component: lazyRouteComponent(
+    () => import('@/features/sharing/SharePage'),
+    'SharePage',
+  ),
+});
+
+const sharedDocumentRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/shared/documents/$documentId',
+  beforeLoad: requireAuth,
+  component: lazyRouteComponent(
+    () => import('@/features/sharing/SharedDocumentPage'),
+    'SharedDocumentPage',
+  ),
+});
+
 const projectsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/projects',
@@ -134,6 +153,8 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
   registerRoute,
+  shareRoute,
+  sharedDocumentRoute,
   projectsRoute,
   projectRoute.addChildren([structureRoute, charactersRoute, characterRoute, exportsRoute]),
   editorRoute,
