@@ -102,8 +102,44 @@ test('shares a chapter by link and collaborates across users', async ({
   await page.keyboard.type(' Ответ владельца.');
   await expect(recipientEditor).toContainText('Ответ владельца.');
 
-  await expect(recipient.locator('[title*="Владелец Книги"]')).toHaveCount(1);
-  await expect(page.locator('[title*="Соавтор"]')).toHaveCount(1);
+  await expect(
+    recipient
+      .getByTestId('presence-avatars')
+      .locator('[title*="Владелец Книги"]'),
+  ).toHaveCount(1);
+  await expect(
+    page.getByTestId('presence-avatars').locator('[title*="Соавтор"]'),
+  ).toHaveCount(1);
+
+  // The collaborator cursor is a compact avatar, not a blocking name plate.
+  await expect(page.locator('.collab-caret__avatar')).toHaveCount(1, {
+    timeout: 10_000,
+  });
+  await expect(page.locator('.collaboration-carets__label')).toHaveCount(0);
+  await expect(page.locator('.collab-caret__avatar')).toHaveAttribute(
+    'title',
+    'Соавтор',
+  );
+
+  // Revoke the link while the collaborator is still in the editor.
+  await page.getByRole('button', { name: 'Вернуться к структуре' }).click();
+  await expect(page.getByRole('heading', { name: 'Структура' })).toBeVisible();
+  await tree
+    .locator('[data-testid="structure-node-chapter"]')
+    .filter({ hasText: 'Глава для шеринга' })
+    .click();
+  await page.getByRole('button', { name: 'Поделиться главой' }).click();
+  const revokeDialog = page.getByRole('dialog');
+  await revokeDialog.getByRole('button', { name: 'Отозвать ссылку' }).click();
+  await expect(revokeDialog.getByText('Отозвана', { exact: true })).toBeVisible({
+    timeout: 10_000,
+  });
+  await page.keyboard.press('Escape');
+
+  await expect(
+    recipient.getByRole('heading', { name: 'Доступ отозван' }),
+  ).toBeVisible({ timeout: 20_000 });
+  await expect(recipient.locator('.ProseMirror')).toHaveCount(0);
 
   await recipientContext.close();
 });

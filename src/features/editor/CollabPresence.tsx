@@ -42,6 +42,7 @@ export function PresenceAvatars({ users }: { users: CollabUser[] }) {
     <div
       className="hidden items-center -space-x-1.5 sm:flex"
       aria-label={`Участники: ${visible.map((user) => user.name).join(', ')}`}
+      data-testid="presence-avatars"
     >
       {visible.map((user) => (
         <span

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
 import { Collaboration } from '@tiptap/extension-collaboration';
 import { CollaborationCaret } from '@tiptap/extension-collaboration-caret';
+import type { DecorationAttrs } from '@tiptap/pm/view';
 import { EditorContent, useEditor, useEditorState, type Editor, type JSONContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import {
@@ -98,6 +99,47 @@ function toJSONContent(value: unknown): JSONContent {
     return value as JSONContent;
   }
   return EMPTY_DOCUMENT;
+}
+
+function collaborationInitials(name: unknown): string {
+  const value = typeof name === 'string' ? name.trim() : '';
+  if (!value) {
+    return '•';
+  }
+  return value
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0))
+    .join('')
+    .toLocaleUpperCase('ru');
+}
+
+function collaborationColor(user: Record<string, unknown>): string {
+  return typeof user.color === 'string' ? user.color : '#8a5a2b';
+}
+
+function renderCollaborationCaret(user: Record<string, unknown>): HTMLElement {
+  const color = collaborationColor(user);
+  const caret = document.createElement('span');
+  caret.className = 'collab-caret';
+  caret.style.borderColor = color;
+
+  const avatar = document.createElement('span');
+  avatar.className = 'collab-caret__avatar';
+  avatar.style.backgroundColor = color;
+  avatar.textContent = collaborationInitials(user.name);
+  avatar.title = typeof user.name === 'string' ? user.name : 'Соавтор';
+  caret.appendChild(avatar);
+  return caret;
+}
+
+function renderCollaborationSelection(user: Record<string, unknown>): DecorationAttrs {
+  return {
+    nodeName: 'span',
+    class: 'collab-selection',
+    title: typeof user.name === 'string' ? user.name : 'Соавтор',
+    style: `background-color: ${collaborationColor(user)}26;`,
+  };
 }
 
 async function loadEditorNode(projectId: string, nodeId: string): Promise<EditorNodeInfo> {
@@ -336,6 +378,27 @@ function EditorWorkspace({
     );
   }
 
+  if (collab.accessRevoked) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-paper-50 px-5 py-12">
+        <div className="w-full max-w-lg rounded-xl border border-paper-200 bg-white/70 p-8 text-center">
+          <h1 className="font-serif text-3xl text-ink-900">Доступ отозван</h1>
+          <p className="mt-3 text-sm leading-relaxed text-ink-500">
+            Владелец отозвал доступ к этому документу. Редактирование остановлено,
+            локальная копия удалена.
+          </p>
+          <Button
+            className="mt-6"
+            variant="accent"
+            onClick={() => window.location.assign('/projects')}
+          >
+            К проектам
+          </Button>
+        </div>
+      </main>
+    );
+  }
+
   if (collab.error) {
     return (
       <main className="min-h-screen bg-paper-50 px-5 py-12">
@@ -473,6 +536,8 @@ export function EditorSession({
             CollaborationCaret.configure({
               provider: collabProvider,
               user: collabUser,
+              render: renderCollaborationCaret,
+              selectionRender: renderCollaborationSelection,
             }),
           ]
         : [StarterKit],

@@ -29,6 +29,7 @@ export type CollabState = {
   loading: boolean;
   error: string | null;
   fallbackReason: string | null;
+  accessRevoked: boolean;
 };
 
 const USER_COLORS = ['#8a5a2b', '#4a6a7a', '#7a4a5a', '#4a7a5a', '#6a5a8a'];
@@ -81,10 +82,25 @@ function clearLocalYjs(documentId: string): Promise<void> {
 export function useCollabSession(documentId: string, enabled: boolean): CollabState {
   const [state, setState] = useState<CollabState>(() =>
     enabled
-      ? { session: null, loading: true, error: null, fallbackReason: null }
-      : { session: null, loading: false, error: null, fallbackReason: null },
+      ? {
+          session: null,
+          loading: true,
+          error: null,
+          fallbackReason: null,
+          accessRevoked: false,
+        }
+      : {
+          session: null,
+          loading: false,
+          error: null,
+          fallbackReason: null,
+          accessRevoked: false,
+        },
   );
   const syncedRef = useRef(false);
+  const providerRef = useRef<HocuspocusProvider | null>(null);
+  const accessRevokedRef = useRef(false);
+  const checkAccessRef = useRef<() => void>(() => undefined);
 
   useEffect(() => {
     if (!enabled) {
@@ -96,6 +112,7 @@ export function useCollabSession(documentId: string, enabled: boolean): CollabSt
     let persistence: IndexeddbPersistence | null = null;
     const ydoc = new Y.Doc();
     syncedRef.current = false;
+    accessRevokedRef.current = false;
 
     const updateSession = (patch: Partial<CollabSession>) => {
       setState((current) => {
@@ -146,6 +163,7 @@ export function useCollabSession(documentId: string, enabled: boolean): CollabSt
             loading: false,
             error: null,
             fallbackReason: token.reason ?? 'legacy_document_without_yjs_state',
+            accessRevoked: false,
           });
           return;
         }
@@ -176,10 +194,12 @@ export function useCollabSession(documentId: string, enabled: boolean): CollabSt
           name: documentId,
           document: ydoc,
         });
+        providerRef.current = provider;
 
         provider.on('status', ({ status }: { status: WebSocketStatus }) => {
           if (status !== 'connected') {
             syncedRef.current = false;
+            checkAccessRef.current();
           }
           updateSession({ status, synced: syncedRef.current });
         });
@@ -190,10 +210,11 @@ export function useCollabSession(documentId: string, enabled: boolean): CollabSt
         });
         provider.on('awarenessChange', readUsers);
         provider.on('authenticationFailed', () => {
+          checkAccessRef.current();
           setState((current) => ({
             ...current,
             error:
-              'Соединение отклонено. Возможно, документ был восстановлен из версии — перезагрузите страницу.',
+              'Соединение отклонено. Возможно, доступ отозван или документ был восстановлен из версии.',
           }));
         });
         provider.setAwarenessField('user', user);
@@ -211,6 +232,7 @@ export function useCollabSession(documentId: string, enabled: boolean): CollabSt
           loading: false,
           error: null,
           fallbackReason: null,
+          accessRevoked: false,
         });
         readUsers();
       } catch (error) {
@@ -223,6 +245,7 @@ export function useCollabSession(documentId: string, enabled: boolean): CollabSt
               'Не удалось подключиться к совместному редактированию.',
             ),
             fallbackReason: null,
+            accessRevoked: false,
           });
         }
       }
@@ -233,11 +256,55 @@ export function useCollabSession(documentId: string, enabled: boolean): CollabSt
     return () => {
       cancelled = true;
       syncedRef.current = false;
+      providerRef.current = null;
       provider?.destroy();
       persistence?.destroy();
       ydoc.destroy();
     };
   }, [documentId, enabled]);
+
+  const hasSession = state.session !== null;
+  useEffect(() => {
+    if (!enabled || !hasSession || state.accessRevoked) {
+      return;
+    }
+    let cancelled = false;
+
+    const checkAccess = async () => {
+      if (cancelled || accessRevokedRef.current) {
+        return;
+      }
+      try {
+        const { response } = await api.GET('/documents/{documentId}/access', {
+          params: { path: { documentId } },
+        });
+        if (response.status !== 403 && response.status !== 404) {
+          return;
+        }
+        accessRevokedRef.current = true;
+        providerRef.current?.destroy();
+        await clearLocalYjs(documentId);
+        if (!cancelled) {
+          setState((current) => ({
+            ...current,
+            accessRevoked: true,
+            error: null,
+          }));
+        }
+      } catch {
+        // Offline or transient failure: keep editing locally and retry later.
+      }
+    };
+
+    checkAccessRef.current = () => void checkAccess();
+    void checkAccess();
+    const interval = window.setInterval(() => void checkAccess(), 10_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      checkAccessRef.current = () => undefined;
+    };
+  }, [documentId, enabled, hasSession, state.accessRevoked]);
 
   return state;
 }

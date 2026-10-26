@@ -71,6 +71,27 @@ export function SharedDocumentPage() {
     );
   }
 
+  if (collab.accessRevoked) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-paper-50 px-5 py-12">
+        <div className="w-full max-w-lg rounded-xl border border-paper-200 bg-white/70 p-8 text-center">
+          <h1 className="font-serif text-3xl text-ink-900">Доступ отозван</h1>
+          <p className="mt-3 text-sm leading-relaxed text-ink-500">
+            Владелец отозвал доступ к этой главе. Редактирование остановлено,
+            локальная копия удалена.
+          </p>
+          <button
+            type="button"
+            className="mt-6 inline-flex rounded-md bg-ink-900 px-4 py-2 text-sm font-medium text-paper-50 hover:bg-ink-700"
+            onClick={goToProjects}
+          >
+            К проектам
+          </button>
+        </div>
+      </main>
+    );
+  }
+
   if (collab.error) {
     return (
       <main className="min-h-screen bg-paper-50 px-5 py-12">

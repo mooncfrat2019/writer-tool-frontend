@@ -326,6 +326,25 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/documents/{documentId}/access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        /** @description Lightweight access probe used while the collaboration editor is open. */
+        get: operations["getDocumentAccess"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/documents/{documentId}/canonical": {
         parameters: {
             query?: never;
@@ -1360,6 +1379,10 @@ export interface components {
             id: string;
             title: string;
         };
+        DocumentAccessInfo: {
+            role: components["schemas"]["ShareRole"];
+            viaProject: boolean;
+        };
         /** @enum {string} */
         DocumentVersionSource: "client" | "collab" | "manual" | "restore";
         DocumentVersion: {
@@ -2088,6 +2111,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CollabToken"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getDocumentAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current effective document access */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentAccessInfo"];
                 };
             };
             403: components["responses"]["Forbidden"];

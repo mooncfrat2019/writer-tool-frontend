@@ -75,3 +75,37 @@ select {
   padding-left: 1em;
   color: var(--color-ink-700);
 }
+
+.collab-caret {
+  position: relative;
+  display: inline-block;
+  width: 0;
+  margin: 0 -1px;
+  border-left: 2px solid;
+  pointer-events: none;
+}
+
+.collab-caret__avatar {
+  position: absolute;
+  top: -0.95em;
+  left: 1px;
+  display: flex;
+  height: 16px;
+  width: 16px;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--color-paper-50);
+  border-radius: 9999px;
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: 8px;
+  font-weight: 600;
+  line-height: 1;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
+  pointer-events: auto;
+  user-select: none;
+}
+
+.collab-selection {
+  border-radius: 2px;
+}

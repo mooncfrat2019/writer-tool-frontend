@@ -53,9 +53,15 @@ Sharing is available in real mode:
 - chapter: select a node → «Поделиться главой» in the inspector.
 
 The recipient opens the link, signs in or registers, accepts, and lands in the
-project or the shared chapter editor. The editor header also exposes «История
-версий»: snapshots can be created manually and restored; restore disconnects
-other peers and reloads clients with a new document generation.
+project or the shared chapter editor. Revoking a link takes effect for open
+editors too: the client re-checks access, destroys the collaboration provider,
+clears the local IndexedDB copy and shows a blocking «Доступ отозван» screen.
+
+Remote collaborators are shown as a thin caret with a small round initial
+avatar; the author name appears on hover instead of a large name plate over the
+text. The editor header also exposes «История версий»: snapshots can be created
+manually and restored; restore disconnects other peers and reloads clients with
+a new document generation.
 
 ## API contract
 

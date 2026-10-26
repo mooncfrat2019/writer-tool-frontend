@@ -512,6 +512,25 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /documents/{documentId}/access:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+    get:
+      tags: [Documents]
+      operationId: getDocumentAccess
+      description: Lightweight access probe used while the collaboration editor is open.
+      responses:
+        '200':
+          description: Current effective document access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentAccessInfo'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /documents/{documentId}/canonical:
     parameters:
       - $ref: '#/components/parameters/DocumentId'
@@ -2485,6 +2504,15 @@ components:
           format: uuid
         title:
           type: string
+    DocumentAccessInfo:
+      type: object
+      required: [role, viaProject]
+      properties:
+        role:
+          $ref: '#/components/schemas/ShareRole'
+        viaProject:
+          type: boolean
+
     DocumentVersionSource:
       type: string
       enum: [client, collab, manual, restore]

@@ -80,7 +80,9 @@ test('registers, restores the session and writes through the real API', async ({
     { timeout: 10_000 },
   );
   await expect(
-    secondPage.locator('[title*="Интеграционный Автор"]'),
+    secondPage
+      .getByTestId('presence-avatars')
+      .locator('[title*="Интеграционный Автор"]'),
   ).toHaveCount(2, { timeout: 10_000 });
   await secondPage.close();
 
