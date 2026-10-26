@@ -111,7 +111,15 @@ test('registers, restores the session and writes through the real API', async ({
   await characterDialog.getByLabel('Имя', { exact: true }).fill('Интеграционная Мира');
   await characterDialog.getByRole('button', { name: 'Создать персонажа' }).click();
   await expect(characterDialog).toBeHidden();
-  await expect(page.getByText('Интеграционная Мира')).toBeVisible();
+  // Creating a character navigates to its detail page. Return to the list to
+  // verify the card link that the app renders for existing characters.
+  await expect(
+    page.getByRole('heading', { name: 'Интеграционная Мира' }),
+  ).toBeVisible();
+  await page.getByRole('link', { name: 'Все персонажи' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Персонажи', exact: true }),
+  ).toBeVisible();
 
   const characterHref = await page
     .getByTestId('character-card')

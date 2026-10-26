@@ -1,0 +1,64 @@
+{
+  "name": "gregorian",
+  "description": "Proleptic Gregorian calendar with astronomical year numbering",
+  "config": {
+    "epochLabel": "н. э.",
+    "eras": [
+      { "id": "bc", "name": "до н. э.", "startYear": -9999, "endYear": -1 },
+      { "id": "ad", "name": "н. э.", "startYear": 1, "endYear": null }
+    ],
+    "months": [
+      { "name": "Январь", "days": 31 },
+      { "name": "Февраль", "days": 28 },
+      { "name": "Март", "days": 31 },
+      { "name": "Апрель", "days": 30 },
+      { "name": "Май", "days": 31 },
+      { "name": "Июнь", "days": 30 },
+      { "name": "Июль", "days": 31 },
+      { "name": "Август", "days": 31 },
+      { "name": "Сентябрь", "days": 30 },
+      { "name": "Октябрь", "days": 31 },
+      { "name": "Ноябрь", "days": 30 },
+      { "name": "Декабрь", "days": 31 }
+    ],
+    "weekLength": 7,
+    "leapRule": { "type": "gregorian", "monthIndex": 1, "day": 29 }
+  },
+  "vectors": [
+    {
+      "name": "year zero starts at day zero",
+      "date": { "year": 0, "month": 0, "day": 1 },
+      "absolute": 0
+    },
+    {
+      "name": "reign of the first common year after a leap year",
+      "date": { "year": 1, "month": 0, "day": 1 },
+      "absolute": 366,
+      "format": { "year": "1 г. н. э.", "day": "1 Январь, 1 г. н. э." }
+    },
+    {
+      "name": "leap day of year four",
+      "date": { "year": 4, "month": 1, "day": 29 },
+      "absolute": 1520,
+      "format": { "day": "29 Февраль, 4 г. н. э." }
+    },
+    {
+      "name": "leap day of year 2000",
+      "date": { "year": 2000, "month": 1, "day": 29 },
+      "absolute": 730544,
+      "format": { "day": "29 Февраль, 2000 г. н. э." }
+    },
+    {
+      "name": "ordinary date",
+      "date": { "year": 2026, "month": 9, "day": 26 },
+      "absolute": 740280,
+      "format": { "day": "26 Октябрь, 2026 г. н. э.", "month": "Октябрь, 2026 г. н. э.", "era": "н. э." }
+    },
+    {
+      "name": "year before the epoch",
+      "date": { "year": -1, "month": 0, "day": 1 },
+      "absolute": -365,
+      "format": { "year": "1 г. до н. э.", "day": "1 Январь, 1 г. до н. э.", "era": "до н. э." }
+    }
+  ]
+}

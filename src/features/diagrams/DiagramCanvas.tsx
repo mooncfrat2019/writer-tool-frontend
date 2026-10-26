@@ -1,0 +1,756 @@
+import {
+  Background,
+  BackgroundVariant,
+  Controls,
+  Handle,
+  MarkerType,
+  MiniMap,
+  Position,
+  ReactFlow,
+  applyEdgeChanges,
+  applyNodeChanges,
+  type Edge,
+  type EdgeChange,
+  type Node,
+  type NodeChange,
+  type NodeProps,
+  type OnConnect,
+  type Viewport,
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type MutableRefObject,
+} from 'react';
+import { useNavigate } from '@tanstack/react-router';
+import { toast } from 'sonner';
+import * as Y from 'yjs';
+import { isVersionConflict } from '@/shared/api/errors';
+import type { CollabUser } from '@/features/editor/useCollabSession';
+import type { components } from '@/shared/api/schema';
+import {
+  getDiagram,
+  updateDiagram,
+  type Diagram,
+} from './api';
+
+type Character = components['schemas']['Character'];
+
+type EntityNodeData = {
+  label: string;
+  entityType?: string;
+  entityId?: string;
+};
+
+type RFNode = Node<EntityNodeData, 'entity'>;
+
+export type SaveStatus = 'saved' | 'saving' | 'error';
+
+type DiagramCanvasProps = {
+  projectId: string;
+  diagramId: string;
+  ydoc: Y.Doc;
+  ready: boolean;
+  canEdit: boolean;
+  initialCanonical: Record<string, unknown> | null;
+  versionRef: MutableRefObject<number>;
+  characters: Character[];
+  newEdgeLabel: string;
+  users: CollabUser[];
+  onSaved: (diagram: Diagram) => void;
+  onSaveStatus: (status: SaveStatus) => void;
+};
+
+const LOCAL_ORIGIN = Symbol('diagram-local');
+
+function EntityNode({ data, selected }: NodeProps<RFNode>) {
+  return (
+    <div
+      className={
+        selected
+          ? 'min-w-36 rounded-md border-2 border-accent-500 bg-white px-3 py-2 shadow-md'
+          : 'min-w-36 rounded-md border border-paper-300 bg-white px-3 py-2 shadow-sm'
+      }
+    >
+      <Handle
+        className="!h-2 !w-2 !border-paper-400 !bg-paper-200"
+        position={Position.Left}
+        type="target"
+      />
+      <p className="text-[10px] uppercase tracking-[0.08em] text-ink-400">
+        {data.entityType === 'character'
+          ? 'персонаж'
+          : data.entityType === 'note'
+            ? 'заметка'
+            : 'сущность'}
+      </p>
+      <p className="text-sm font-medium text-ink-800">{data.label}</p>
+      <Handle
+        className="!h-2 !w-2 !border-paper-400 !bg-paper-200"
+        position={Position.Right}
+        type="source"
+      />
+    </div>
+  );
+}
+
+const nodeTypes = { entity: EntityNode };
+
+type NodeRecord = Y.Map<unknown>;
+
+function recordNumber(record: NodeRecord, key: string, fallback = 0): number {
+  const value = record.get(key);
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function recordString(record: NodeRecord, key: string): string {
+  const value = record.get(key);
+  return typeof value === 'string' ? value : '';
+}
+
+export function DiagramCanvas({
+  projectId,
+  diagramId,
+  ydoc,
+  ready,
+  canEdit,
+  initialCanonical,
+  versionRef,
+  characters,
+  newEdgeLabel,
+  users,
+  onSaved,
+  onSaveStatus,
+}: DiagramCanvasProps) {
+  const navigate = useNavigate();
+  const nodesMap = useMemo(() => ydoc.getMap<NodeRecord>('nodes'), [ydoc]);
+  const edgesMap = useMemo(() => ydoc.getMap<NodeRecord>('edges'), [ydoc]);
+  const metaMap = useMemo(() => ydoc.getMap<unknown>('meta'), [ydoc]);
+  const [nodes, setNodes] = useState<RFNode[]>([]);
+  const [edges, setEdges] = useState<Edge[]>([]);
+  const nodesRef = useRef<RFNode[]>([]);
+  const edgesRef = useRef<Edge[]>([]);
+  useEffect(() => {
+    nodesRef.current = nodes;
+  }, [nodes]);
+  useEffect(() => {
+    edgesRef.current = edges;
+  }, [edges]);
+  const seededRef = useRef(false);
+  const lastSavedRef = useRef('');
+  const saveTimerRef = useRef<number | null>(null);
+  const undoManagerRef = useRef<Y.UndoManager | null>(null);
+  const defaultViewport = useMemo<Viewport>(() => {
+    const viewport = initialCanonical?.viewport as
+      | { x?: number; y?: number; zoom?: number }
+      | undefined;
+    return {
+      x: Number(viewport?.x ?? 0),
+      y: Number(viewport?.y ?? 0),
+      zoom: Number(viewport?.zoom ?? 1),
+    };
+  }, [initialCanonical]);
+
+  const readNodes = useCallback((): RFNode[] => {
+    const result: RFNode[] = [];
+    nodesMap.forEach((record, id) => {
+      result.push({
+        id,
+        type: 'entity',
+        position: {
+          x: recordNumber(record, 'x'),
+          y: recordNumber(record, 'y'),
+        },
+        data: {
+          label: recordString(record, 'label') || 'Без названия',
+          entityType: recordString(record, 'entityType') || undefined,
+          entityId: recordString(record, 'entityId') || undefined,
+        },
+      });
+    });
+    return result;
+  }, [nodesMap]);
+
+  const readEdges = useCallback((): Edge[] => {
+    const result: Edge[] = [];
+    edgesMap.forEach((record, id) => {
+      result.push({
+        id,
+        source: recordString(record, 'source'),
+        target: recordString(record, 'target'),
+        label: recordString(record, 'label') || undefined,
+        markerEnd: { type: MarkerType.ArrowClosed },
+        type: 'default',
+      });
+    });
+    return result;
+  }, [edgesMap]);
+
+  const buildCanonical = useCallback((): Record<string, unknown> => {
+    const canonicalNodes: Record<string, unknown>[] = [];
+    nodesMap.forEach((record, id) => {
+      canonicalNodes.push({
+        id,
+        type: 'entity',
+        position: {
+          x: recordNumber(record, 'x'),
+          y: recordNumber(record, 'y'),
+        },
+        data: {
+          label: recordString(record, 'label'),
+          entityType: recordString(record, 'entityType') || undefined,
+          entityId: recordString(record, 'entityId') || undefined,
+        },
+      });
+    });
+    const canonicalEdges: Record<string, unknown>[] = [];
+    edgesMap.forEach((record, id) => {
+      canonicalEdges.push({
+        id,
+        source: recordString(record, 'source'),
+        target: recordString(record, 'target'),
+        type: 'relation',
+        label: recordString(record, 'label') || undefined,
+      });
+    });
+    const viewport = metaMap.get('viewport') as Viewport | undefined;
+    return {
+      schemaVersion: 1,
+      nodes: canonicalNodes,
+      edges: canonicalEdges,
+      viewport: viewport ?? { x: 0, y: 0, zoom: 1 },
+    };
+  }, [edgesMap, metaMap, nodesMap]);
+
+  // Seed the Yjs maps from the canonical REST payload exactly once per doc.
+  useEffect(() => {
+    if (!ready || seededRef.current) {
+      return;
+    }
+    seededRef.current = true;
+    if (nodesMap.size === 0 && initialCanonical) {
+      const rawNodes = Array.isArray(initialCanonical.nodes)
+        ? (initialCanonical.nodes as unknown[])
+        : [];
+      const rawEdges = Array.isArray(initialCanonical.edges)
+        ? (initialCanonical.edges as unknown[])
+        : [];
+      ydoc.transact(() => {
+        for (const raw of rawNodes) {
+          if (!raw || typeof raw !== 'object') {
+            continue;
+          }
+          const node = raw as {
+            id?: unknown;
+            position?: { x?: unknown; y?: unknown };
+            data?: {
+              label?: unknown;
+              entityType?: unknown;
+              entityId?: unknown;
+            };
+          };
+          if (typeof node.id !== 'string') {
+            continue;
+          }
+          const record = new Y.Map<unknown>();
+          record.set('x', Number(node.position?.x ?? 0));
+          record.set('y', Number(node.position?.y ?? 0));
+          record.set(
+            'label',
+            typeof node.data?.label === 'string' ? node.data.label : '',
+          );
+          record.set(
+            'entityType',
+            typeof node.data?.entityType === 'string' ? node.data.entityType : '',
+          );
+          record.set(
+            'entityId',
+            typeof node.data?.entityId === 'string' ? node.data.entityId : '',
+          );
+          nodesMap.set(node.id, record);
+        }
+        for (const raw of rawEdges) {
+          if (!raw || typeof raw !== 'object') {
+            continue;
+          }
+          const edge = raw as {
+            id?: unknown;
+            source?: unknown;
+            target?: unknown;
+            label?: unknown;
+          };
+          if (
+            typeof edge.id !== 'string' ||
+            typeof edge.source !== 'string' ||
+            typeof edge.target !== 'string'
+          ) {
+            continue;
+          }
+          const record = new Y.Map<unknown>();
+          record.set('source', edge.source);
+          record.set('target', edge.target);
+          record.set('label', typeof edge.label === 'string' ? edge.label : '');
+          edgesMap.set(edge.id, record);
+        }
+        const viewport = initialCanonical.viewport as Viewport | undefined;
+        if (viewport) {
+          metaMap.set('viewport', viewport);
+        }
+      }, LOCAL_ORIGIN);
+    }
+    setNodes(readNodes());
+    setEdges(readEdges());
+    lastSavedRef.current = JSON.stringify(buildCanonical());
+  }, [
+    buildCanonical,
+    edgesMap,
+    initialCanonical,
+    metaMap,
+    nodesMap,
+    ready,
+    readEdges,
+    readNodes,
+    ydoc,
+  ]);
+
+  // Remote updates rebuild local React Flow state; local writes already did.
+  useEffect(() => {
+    const observer = (_events: unknown, transaction: Y.Transaction) => {
+      if (transaction.origin === LOCAL_ORIGIN) {
+        return;
+      }
+      setNodes(readNodes());
+      setEdges(readEdges());
+    };
+    nodesMap.observeDeep(observer);
+    edgesMap.observeDeep(observer);
+    return () => {
+      nodesMap.unobserveDeep(observer);
+      edgesMap.unobserveDeep(observer);
+    };
+  }, [edgesMap, nodesMap, readEdges, readNodes]);
+
+  // Undo/redo tracks node and edge changes made by this client.
+  useEffect(() => {
+    const manager = new Y.UndoManager([nodesMap, edgesMap], {
+      trackedOrigins: new Set([LOCAL_ORIGIN]),
+      captureTimeout: 400,
+    });
+    undoManagerRef.current = manager;
+    return () => {
+      manager.destroy();
+      undoManagerRef.current = null;
+    };
+  }, [edgesMap, nodesMap]);
+
+  const persist = useCallback(
+    async (canonical: Record<string, unknown>) => {
+      const serialized = JSON.stringify(canonical);
+      if (serialized === lastSavedRef.current) {
+        return;
+      }
+      onSaveStatus('saving');
+      try {
+        const updated = await updateDiagram(diagramId, {
+          canonical,
+          version: versionRef.current,
+        });
+        versionRef.current = updated.version;
+        lastSavedRef.current = serialized;
+        onSaved(updated);
+        onSaveStatus('saved');
+      } catch (error) {
+        if (!isVersionConflict(error)) {
+          onSaveStatus('error');
+          throw error;
+        }
+        // Another session saved first; take its version and write our state
+        // once more so the collaborative document is not lost.
+        const fresh = await getDiagram(diagramId);
+        versionRef.current = fresh.version;
+        const updated = await updateDiagram(diagramId, {
+          canonical,
+          version: fresh.version,
+        });
+        versionRef.current = updated.version;
+        lastSavedRef.current = serialized;
+        onSaved(updated);
+        onSaveStatus('saved');
+      }
+    },
+    [diagramId, onSaveStatus, onSaved, versionRef],
+  );
+
+  useEffect(() => {
+    const schedule = (_events: unknown, transaction: Y.Transaction) => {
+      if (
+        transaction.origin !== LOCAL_ORIGIN &&
+        transaction.origin !== undoManagerRef.current
+      ) {
+        return;
+      }
+      if (saveTimerRef.current) {
+        window.clearTimeout(saveTimerRef.current);
+      }
+      saveTimerRef.current = window.setTimeout(() => {
+        saveTimerRef.current = null;
+        void persist(buildCanonical()).catch((error) => {
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : 'Не удалось сохранить схему',
+          );
+        });
+      }, 1200);
+    };
+    nodesMap.observeDeep(schedule);
+    edgesMap.observeDeep(schedule);
+    metaMap.observeDeep(schedule);
+    return () => {
+      nodesMap.unobserveDeep(schedule);
+      edgesMap.unobserveDeep(schedule);
+      metaMap.unobserveDeep(schedule);
+      if (saveTimerRef.current) {
+        window.clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+    };
+  }, [buildCanonical, edgesMap, metaMap, nodesMap, persist]);
+
+  const writeNode = useCallback(
+    (node: RFNode) => {
+      ydoc.transact(() => {
+        let record = nodesMap.get(node.id);
+        if (!record) {
+          record = new Y.Map<unknown>();
+          nodesMap.set(node.id, record);
+        }
+        record.set('x', node.position.x);
+        record.set('y', node.position.y);
+        record.set('label', node.data.label);
+        record.set('entityType', node.data.entityType ?? '');
+        record.set('entityId', node.data.entityId ?? '');
+      }, LOCAL_ORIGIN);
+    },
+    [nodesMap, ydoc],
+  );
+
+  const onNodesChange = useCallback(
+    (changes: NodeChange<RFNode>[]) => {
+      const next = applyNodeChanges(changes, nodesRef.current);
+      nodesRef.current = next;
+      setNodes(next);
+      const removed = new Set(
+        changes
+          .filter((change) => change.type === 'remove')
+          .map((change) => change.id),
+      );
+      for (const change of changes) {
+        if (change.type === 'position' && change.position) {
+          const node = next.find((item) => item.id === change.id);
+          if (node) {
+            writeNode(node);
+          }
+        }
+        if (change.type === 'remove') {
+          ydoc.transact(() => {
+            nodesMap.delete(change.id);
+          }, LOCAL_ORIGIN);
+        }
+        if (change.type === 'add') {
+          writeNode(change.item);
+        }
+      }
+      if (removed.size > 0) {
+        const removedEdges = edgesRef.current.filter(
+          (edge) => removed.has(edge.source) || removed.has(edge.target),
+        );
+        if (removedEdges.length > 0) {
+          const nextEdges = edgesRef.current.filter(
+            (edge) => !removed.has(edge.source) && !removed.has(edge.target),
+          );
+          edgesRef.current = nextEdges;
+          setEdges(nextEdges);
+          ydoc.transact(() => {
+            for (const edge of removedEdges) {
+              edgesMap.delete(edge.id);
+            }
+          }, LOCAL_ORIGIN);
+        }
+      }
+    },
+    [edgesMap, nodesMap, writeNode, ydoc],
+  );
+
+  const onEdgesChange = useCallback(
+    (changes: EdgeChange<Edge>[]) => {
+      const next = applyEdgeChanges(changes, edgesRef.current);
+      edgesRef.current = next;
+      setEdges(next);
+      for (const change of changes) {
+        if (change.type === 'remove') {
+          ydoc.transact(() => {
+            edgesMap.delete(change.id);
+          }, LOCAL_ORIGIN);
+        }
+      }
+    },
+    [edgesMap, ydoc],
+  );
+
+  const onConnect = useCallback<OnConnect>(
+    (connection) => {
+      if (!canEdit || !connection.source || !connection.target) {
+        return;
+      }
+      const id = crypto.randomUUID();
+      const edge: Edge = {
+        id,
+        source: connection.source,
+        target: connection.target,
+        label: newEdgeLabel || undefined,
+        markerEnd: { type: MarkerType.ArrowClosed },
+      };
+      ydoc.transact(() => {
+        const record = new Y.Map<unknown>();
+        record.set('source', connection.source);
+        record.set('target', connection.target);
+        record.set('label', newEdgeLabel);
+        edgesMap.set(id, record);
+      }, LOCAL_ORIGIN);
+      edgesRef.current = [...edgesRef.current, edge];
+      setEdges(edgesRef.current);
+    },
+    [canEdit, edgesMap, newEdgeLabel, ydoc],
+  );
+
+  const addCharacterNode = (character: Character) => {
+    if (!canEdit) {
+      return;
+    }
+    const index = nodesMap.size;
+    const id = crypto.randomUUID();
+    const node: RFNode = {
+      id,
+      type: 'entity',
+      position: {
+        x: 80 + (index % 4) * 220,
+        y: 80 + Math.floor(index / 4) * 140,
+      },
+      data: {
+        label: character.name,
+        entityType: 'character',
+        entityId: character.id,
+      },
+    };
+    ydoc.transact(() => {
+      const record = new Y.Map<unknown>();
+      record.set('x', node.position.x);
+      record.set('y', node.position.y);
+      record.set('label', node.data.label);
+      record.set('entityType', 'character');
+      record.set('entityId', character.id);
+      nodesMap.set(id, record);
+    }, LOCAL_ORIGIN);
+    setNodes((current) => [...current, node]);
+  };
+
+  const addNoteNode = () => {
+    if (!canEdit) {
+      return;
+    }
+    const index = nodesMap.size;
+    const id = crypto.randomUUID();
+    const node: RFNode = {
+      id,
+      type: 'entity',
+      position: {
+        x: 80 + (index % 4) * 220,
+        y: 80 + Math.floor(index / 4) * 140,
+      },
+      data: { label: 'Новая заметка', entityType: 'note' },
+    };
+    writeNode(node);
+    setNodes((current) => [...current, node]);
+  };
+
+  const arrange = () => {
+    if (!canEdit) {
+      return;
+    }
+    const ids = Array.from(nodesMap.keys());
+    ydoc.transact(() => {
+      ids.forEach((id, index) => {
+        const record = nodesMap.get(id);
+        if (!record) {
+          return;
+        }
+        record.set('x', 80 + (index % 4) * 240);
+        record.set('y', 80 + Math.floor(index / 4) * 150);
+      });
+    }, LOCAL_ORIGIN);
+    setNodes(readNodes());
+  };
+
+  const undo = () => {
+    undoManagerRef.current?.undo();
+    setNodes(readNodes());
+    setEdges(readEdges());
+  };
+  const redo = () => {
+    undoManagerRef.current?.redo();
+    setNodes(readNodes());
+    setEdges(readEdges());
+  };
+
+  const onMoveEnd = useCallback(
+    (_event: unknown, viewport: Viewport) => {
+      ydoc.transact(() => metaMap.set('viewport', viewport), LOCAL_ORIGIN);
+    },
+    [metaMap, ydoc],
+  );
+
+  const onNodeDoubleClick = useCallback(
+    (_event: ReactMouseEvent, node: RFNode) => {
+      if (node.data.entityType === 'character' && node.data.entityId) {
+        void navigate({
+          to: '/projects/$projectId/characters/$characterId',
+          params: { projectId, characterId: node.data.entityId },
+        });
+      }
+    },
+    [navigate, projectId],
+  );
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row">
+      <aside className="w-full shrink-0 space-y-3 rounded-lg border border-paper-200 bg-white/50 p-3 lg:w-64">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-[0.12em] text-ink-500">
+            Палитра
+          </p>
+          <p className="mt-1 text-xs text-ink-500">
+            Нажмите на персонажа, чтобы добавить его на схему.
+          </p>
+        </div>
+        <div className="max-h-64 space-y-1 overflow-y-auto">
+          {characters.map((character) => (
+            <button
+              key={character.id}
+              className="flex w-full items-center justify-between gap-2 rounded border border-transparent px-2 py-1.5 text-left text-xs text-ink-700 hover:border-paper-200 hover:bg-paper-50"
+              disabled={!canEdit}
+              onClick={() => addCharacterNode(character)}
+              type="button"
+            >
+              <span className="truncate">{character.name}</span>
+              <span className="text-[10px] text-ink-400">+</span>
+            </button>
+          ))}
+          {characters.length === 0 ? (
+            <p className="text-xs text-ink-400">В проекте нет персонажей.</p>
+          ) : null}
+        </div>
+        <ButtonRow
+          canEdit={canEdit}
+          onAddNote={addNoteNode}
+          onArrange={arrange}
+          onRedo={redo}
+          onUndo={undo}
+        />
+        <div className="flex items-center gap-1 text-[11px] text-ink-400">
+          {users.map((user) => (
+            <span
+              key={user.clientId}
+              className="flex h-6 w-6 items-center justify-center rounded-full text-[9px] font-semibold text-white"
+              style={{ backgroundColor: user.color }}
+              title={`${user.name}${user.isLocal ? ' (вы)' : ''}`}
+            >
+              {user.name.slice(0, 2).toLocaleUpperCase('ru')}
+            </span>
+          ))}
+          {users.length === 0 ? <span>Нет других участников</span> : null}
+        </div>
+      </aside>
+
+      <div className="h-[68vh] min-h-[420px] flex-1 overflow-hidden rounded-lg border border-paper-200 bg-paper-50">
+        <ReactFlow
+          defaultViewport={defaultViewport}
+          edges={edges}
+          fitView={!initialCanonical?.viewport}
+          minZoom={0.2}
+          nodeTypes={nodeTypes}
+          nodes={nodes}
+          nodesConnectable={canEdit}
+          nodesDraggable={canEdit}
+          onConnect={onConnect}
+          onEdgesChange={onEdgesChange}
+          onMoveEnd={onMoveEnd}
+          onNodeDoubleClick={onNodeDoubleClick}
+          onNodesChange={onNodesChange}
+        >
+          <Background gap={20} variant={BackgroundVariant.Dots} />
+          <Controls showInteractive={false} />
+          <MiniMap pannable zoomable />
+        </ReactFlow>
+      </div>
+    </div>
+  );
+}
+
+function ButtonRow({
+  canEdit,
+  onAddNote,
+  onArrange,
+  onRedo,
+  onUndo,
+}: {
+  canEdit: boolean;
+  onAddNote: () => void;
+  onArrange: () => void;
+  onRedo: () => void;
+  onUndo: () => void;
+}) {
+  return (
+    <div className="space-y-1 border-t border-paper-200 pt-2">
+      <button
+        className="w-full rounded px-2 py-1.5 text-left text-xs text-ink-700 hover:bg-paper-50 disabled:opacity-50"
+        disabled={!canEdit}
+        onClick={onAddNote}
+        type="button"
+      >
+        + Заметка
+      </button>
+      <button
+        className="w-full rounded px-2 py-1.5 text-left text-xs text-ink-700 hover:bg-paper-50 disabled:opacity-50"
+        disabled={!canEdit}
+        onClick={onArrange}
+        type="button"
+      >
+        Выровнять сеткой
+      </button>
+      <div className="flex gap-1">
+        <button
+          className="flex-1 rounded px-2 py-1.5 text-left text-xs text-ink-700 hover:bg-paper-50 disabled:opacity-50"
+          disabled={!canEdit}
+          onClick={onUndo}
+          type="button"
+        >
+          Отменить
+        </button>
+        <button
+          className="flex-1 rounded px-2 py-1.5 text-left text-xs text-ink-700 hover:bg-paper-50 disabled:opacity-50"
+          disabled={!canEdit}
+          onClick={onRedo}
+          type="button"
+        >
+          Повторить
+        </button>
+      </div>
+    </div>
+  );
+}

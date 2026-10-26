@@ -18,6 +18,11 @@ type Location = components['schemas']['Location'];
 type Faction = components['schemas']['Faction'];
 type LoreEntry = components['schemas']['LoreEntry'];
 type CustomFieldDef = components['schemas']['CustomFieldDef'];
+type Calendar = components['schemas']['Calendar'];
+type PlotThread = components['schemas']['PlotThread'];
+type TimelineEvent = components['schemas']['TimelineEvent'];
+type TimelineEventLink = components['schemas']['TimelineEventLink'];
+type Diagram = components['schemas']['Diagram'];
 
 export type MockState = {
   projects: Project[];
@@ -35,6 +40,11 @@ export type MockState = {
   factions: Faction[];
   loreEntries: LoreEntry[];
   customFields: CustomFieldDef[];
+  calendars: Calendar[];
+  plotThreads: PlotThread[];
+  timelineEvents: TimelineEvent[];
+  timelineEventLinks: TimelineEventLink[];
+  diagrams: Diagram[];
 };
 
 type CountFields = { characterCount: number; authorSheets: number };
@@ -763,6 +773,232 @@ export const mockCustomFields: CustomFieldDef[] = [
   },
 ];
 
+
+export const mockCalendars: Calendar[] = [
+  {
+    id: 'dddddddd-0001-4ddd-8ddd-dddddddddddd',
+    projectId: mockProject.id,
+    name: 'Летопись Пепельной Луны',
+    isDefault: true,
+    config: {
+      epochLabel: 'от Основания',
+      eras: [
+        { id: 'before', name: 'До Основания', startYear: -1000, endYear: -1 },
+        { id: 'after', name: 'После Основания', startYear: 1, endYear: null },
+      ],
+      months: [
+        { name: 'Зимородок', days: 30 },
+        { name: 'Ветрень', days: 31 },
+      ],
+      weekLength: 7,
+      leapRule: { type: 'every_n_years', n: 4, monthIndex: 1, day: 30 },
+    },
+    createdAt: earlier,
+    updatedAt: yesterday,
+    version: 1,
+  },
+];
+
+export const mockPlotThreads: PlotThread[] = [
+  {
+    id: 'dddddddd-1001-4ddd-8ddd-dddddddddddd',
+    projectId: mockProject.id,
+    name: 'Основная линия',
+    color: '#8a5a2b',
+    description: 'Возвращение Миры в город и седьмой список.',
+    sortKey: '0000000010',
+    createdAt: earlier,
+    updatedAt: yesterday,
+    version: 1,
+  },
+  {
+    id: 'dddddddd-1002-4ddd-8ddd-dddddddddddd',
+    projectId: mockProject.id,
+    name: 'Пророчества',
+    color: '#6a5a8a',
+    description: 'Сны, предсказания и то, что город забыл.',
+    sortKey: '0000000020',
+    createdAt: earlier,
+    updatedAt: yesterday,
+    version: 1,
+  },
+];
+
+export const mockTimelineEventLinks: TimelineEventLink[] = [
+  {
+    id: 'dddddddd-3001-4ddd-8ddd-dddddddddddd',
+    eventId: 'dddddddd-2001-4ddd-8ddd-dddddddddddd',
+    entityType: 'character',
+    entityId: '99999999-9999-4999-8999-999999999999',
+    role: 'свидетельница',
+  },
+  {
+    id: 'dddddddd-3002-4ddd-8ddd-dddddddddddd',
+    eventId: 'dddddddd-2002-4ddd-8ddd-dddddddddddd',
+    entityType: 'character',
+    entityId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    role: 'смотритель',
+  },
+];
+
+export const mockTimelineEvents: TimelineEvent[] = [
+  {
+    id: 'dddddddd-2001-4ddd-8ddd-dddddddddddd',
+    projectId: mockProject.id,
+    calendarId: 'dddddddd-0001-4ddd-8ddd-dddddddddddd',
+    plotThreadId: 'dddddddd-1001-4ddd-8ddd-dddddddddddd',
+    title: 'Падение Пепельной Луны',
+    description:
+      'Город теряет память в седьмой раз. Мира единственная, кто помнит прошлую жизнь.',
+    startValue: 20887,
+    endValue: 20890,
+    displayStart: '1 Зимородок, 341 г. от Основания',
+    displayEnd: '4 Зимородок, 341 г. от Основания',
+    precision: 'day',
+    dateMode: 'exact',
+    importance: 5,
+    color: '#8a5a2b',
+    tags: ['падение', 'память'],
+    narrativeNodeId: '55555555-5555-4555-8555-555555555551',
+    narrativeNodeTitle: 'Глава 1. Пробуждение',
+    narrativeBookId: mockBook.id,
+    narrativeSortKey: '000000',
+    links: [mockTimelineEventLinks[0]],
+    createdAt: earlier,
+    updatedAt: yesterday,
+    version: 1,
+  },
+  {
+    id: 'dddddddd-2002-4ddd-8ddd-dddddddddddd',
+    projectId: mockProject.id,
+    calendarId: 'dddddddd-0001-4ddd-8ddd-dddddddddddd',
+    plotThreadId: 'dddddddd-1001-4ddd-8ddd-dddddddddddd',
+    title: 'Кай находит седьмой список',
+    description: 'Смотритель архива прячет список имён, в котором есть и его собственное.',
+    startValue: 20948,
+    endValue: null,
+    displayStart: '1 Зимородок, 342 г. от Основания',
+    displayEnd: '',
+    precision: 'day',
+    dateMode: 'exact',
+    importance: 4,
+    color: '#4a6a7a',
+    tags: ['архив', 'список'],
+    narrativeNodeId: '55555555-5555-4555-8555-555555555551',
+    narrativeNodeTitle: 'Глава 1. Пробуждение',
+    narrativeBookId: mockBook.id,
+    narrativeSortKey: '000000',
+    links: [mockTimelineEventLinks[1]],
+    createdAt: earlier,
+    updatedAt: now,
+    version: 2,
+  },
+  {
+    id: 'dddddddd-2003-4ddd-8ddd-dddddddddddd',
+    projectId: mockProject.id,
+    calendarId: null,
+    plotThreadId: 'dddddddd-1002-4ddd-8ddd-dddddddddddd',
+    title: 'Пророчество о семи годах',
+    description:
+      'Старуха на площади говорит, что город забудет себя снова через семь лет. Точной даты нет.',
+    startValue: null,
+    endValue: null,
+    displayStart: 'весна 343 г. от Основания',
+    displayEnd: '',
+    precision: 'year',
+    dateMode: 'unknown',
+    importance: 2,
+    color: '#6a5a8a',
+    tags: ['пророчество'],
+    narrativeNodeId: null,
+    narrativeNodeTitle: null,
+    narrativeBookId: null,
+    narrativeSortKey: '',
+    links: [],
+    createdAt: earlier,
+    updatedAt: yesterday,
+    version: 1,
+  },
+  {
+    id: 'dddddddd-2004-4ddd-8ddd-dddddddddddd',
+    projectId: mockProject.id,
+    calendarId: 'dddddddd-0001-4ddd-8ddd-dddddddddddd',
+    plotThreadId: null,
+    title: 'Пожар в Серебряном порту',
+    description: 'Порт горит, а вместе с ним — архивы памяти.',
+    startValue: 21010,
+    endValue: 21020,
+    displayStart: '2 Зимородок, 343 г. от Основания',
+    displayEnd: '12 Зимородок, 343 г. от Основания',
+    precision: 'day',
+    dateMode: 'exact',
+    importance: 3,
+    color: '',
+    tags: ['порт', 'огонь'],
+    narrativeNodeId: '66666666-6666-4666-8666-666666666661',
+    narrativeNodeTitle: 'Сцена 1. Площадь',
+    narrativeBookId: mockBook.id,
+    narrativeSortKey: '000000',
+    links: [],
+    createdAt: earlier,
+    updatedAt: yesterday,
+    version: 1,
+  },
+];
+
+export const mockDiagrams: Diagram[] = [
+  {
+    id: 'dddddddd-4001-4ddd-8ddd-dddddddddddd',
+    projectId: mockProject.id,
+    title: 'Связи героев',
+    type: 'relationship',
+    canonical: {
+      schemaVersion: 1,
+      nodes: [
+        {
+          id: 'mira',
+          type: 'entity',
+          position: { x: 80, y: 80 },
+          data: {
+            entityType: 'character',
+            entityId: '99999999-9999-4999-8999-999999999999',
+            label: 'Мира Вейн',
+          },
+        },
+        {
+          id: 'kai',
+          type: 'entity',
+          position: { x: 340, y: 100 },
+          data: {
+            entityType: 'character',
+            entityId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+            label: 'Кай Рен',
+          },
+        },
+        {
+          id: 'selina',
+          type: 'entity',
+          position: { x: 200, y: 260 },
+          data: {
+            entityType: 'character',
+            entityId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+            label: 'Селина Мор',
+          },
+        },
+      ],
+      edges: [
+        { id: 'e1', source: 'mira', target: 'kai', type: 'relation', label: 'наставник' },
+        { id: 'e2', source: 'selina', target: 'mira', type: 'relation', label: 'соперница' },
+      ],
+      viewport: { x: 0, y: 0, zoom: 1 },
+    },
+    thumbnailUrl: null,
+    createdAt: earlier,
+    updatedAt: yesterday,
+    version: 1,
+  },
+];
+
 export function createInitialMockState(): MockState {
   return {
     projects: [structuredClone(mockProject), structuredClone(viewerProject)],
@@ -784,5 +1020,10 @@ export function createInitialMockState(): MockState {
     factions: structuredClone(mockFactions),
     loreEntries: structuredClone(mockLoreEntries),
     customFields: structuredClone(mockCustomFields),
+    calendars: structuredClone(mockCalendars),
+    plotThreads: structuredClone(mockPlotThreads),
+    timelineEvents: structuredClone(mockTimelineEvents),
+    timelineEventLinks: structuredClone(mockTimelineEventLinks),
+    diagrams: structuredClone(mockDiagrams),
   };
 }

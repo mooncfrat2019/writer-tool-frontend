@@ -20,7 +20,7 @@ export default defineConfig({
   webServer: {
     command: 'pnpm dev --mode real --port 5174',
     url: 'http://localhost:5174',
-    reuseExistingServer: false,
+    reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
 });

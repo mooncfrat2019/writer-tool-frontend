@@ -20,6 +20,8 @@ const typeOptions: Array<{ value: SearchResultType; label: string }> = [
   { value: 'lore', label: 'Лор' },
   { value: 'book', label: 'Книги' },
   { value: 'node', label: 'Главы и сцены' },
+  { value: 'event', label: 'События' },
+  { value: 'diagram', label: 'Схемы' },
 ];
 
 const typeLabels: Record<SearchResultType, string> = {
@@ -31,6 +33,8 @@ const typeLabels: Record<SearchResultType, string> = {
   lore: 'Лор',
   book: 'Книга',
   node: 'Узел',
+  event: 'Событие',
+  diagram: 'Схема',
 };
 
 const typeTones: Record<
@@ -45,12 +49,16 @@ const typeTones: Record<
   lore: 'neutral',
   book: 'success',
   node: 'accent',
+  event: 'warning',
+  diagram: 'accent',
 };
 
 type ResultLink =
   | { kind: 'character'; characterId: string }
   | { kind: 'world'; worldId: string }
   | { kind: 'editor'; nodeId: string }
+  | { kind: 'diagram'; diagramId: string }
+  | { kind: 'timeline' }
   | { kind: 'structure'; bookId?: string };
 
 function resultLink(result: SearchResult): ResultLink {
@@ -67,6 +75,10 @@ function resultLink(result: SearchResult): ResultLink {
       return { kind: 'structure', bookId: result.id };
     case 'node':
       return { kind: 'editor', nodeId: result.nodeId ?? result.id };
+    case 'event':
+      return { kind: 'timeline' };
+    case 'diagram':
+      return { kind: 'diagram', diagramId: result.id };
     case 'location':
     case 'faction':
     case 'lore':
@@ -273,6 +285,32 @@ export function SearchPage() {
                     <Link
                       to="/projects/$projectId/write/$nodeId"
                       params={{ projectId, nodeId: link.nodeId }}
+                      className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2"
+                    >
+                      {content}
+                    </Link>
+                  </li>
+                );
+              }
+              if (link.kind === 'timeline') {
+                return (
+                  <li key={`${result.type}-${result.id}`}>
+                    <Link
+                      to="/projects/$projectId/timeline"
+                      params={{ projectId }}
+                      className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2"
+                    >
+                      {content}
+                    </Link>
+                  </li>
+                );
+              }
+              if (link.kind === 'diagram') {
+                return (
+                  <li key={`${result.type}-${result.id}`}>
+                    <Link
+                      to="/projects/$projectId/diagrams/$diagramId"
+                      params={{ projectId, diagramId: link.diagramId }}
                       className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2"
                     >
                       {content}

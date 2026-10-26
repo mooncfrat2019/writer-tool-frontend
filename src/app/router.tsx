@@ -11,9 +11,11 @@ import { RegisterPage } from '@/features/auth/RegisterPage';
 import { bootstrapSession, useSession } from '@/features/auth/session';
 import { CharactersPage } from '@/features/characters/CharactersPage';
 import { ExportsPage } from '@/features/exports/ExportsPage';
+import { DiagramsPage } from '@/features/diagrams/DiagramsPage';
 import { ProjectsPage } from '@/features/projects/ProjectsPage';
 import { SearchPage } from '@/features/search/SearchPage';
 import { StructurePage } from '@/features/structure/StructurePage';
+import { TimelinePage } from '@/features/timeline/TimelinePage';
 import { WorldsPage } from '@/features/worlds/WorldsPage';
 import { NotFoundPage } from '@/routes/NotFoundPage';
 import { ProjectLayout } from './ProjectLayout';
@@ -162,6 +164,27 @@ const searchRoute = createRoute({
   component: SearchPage,
 });
 
+const timelineRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: 'timeline',
+  component: TimelinePage,
+});
+
+const diagramsRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: 'diagrams',
+  component: DiagramsPage,
+});
+
+const diagramRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: 'diagrams/$diagramId',
+  component: lazyRouteComponent(
+    () => import('@/features/diagrams/DiagramEditorPage'),
+    'DiagramEditorPage',
+  ),
+});
+
 const editorRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/projects/$projectId/write/$nodeId',
@@ -185,6 +208,9 @@ const routeTree = rootRoute.addChildren([
     characterRoute,
     worldsRoute,
     worldRoute,
+    timelineRoute,
+    diagramsRoute,
+    diagramRoute,
     searchRoute,
     exportsRoute,
   ]),

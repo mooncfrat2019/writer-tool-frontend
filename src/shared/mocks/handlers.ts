@@ -29,6 +29,11 @@ type LoreEntry = components['schemas']['LoreEntry'];
 type CustomFieldDef = components['schemas']['CustomFieldDef'];
 type SearchResult = components['schemas']['SearchResult'];
 type SearchResultType = components['schemas']['SearchResultType'];
+type Calendar = components['schemas']['Calendar'];
+type PlotThread = components['schemas']['PlotThread'];
+type TimelineEvent = components['schemas']['TimelineEvent'];
+type TimelineEventLink = components['schemas']['TimelineEventLink'];
+type Diagram = components['schemas']['Diagram'];
 
 const api = '/api/v1';
 const EXPORT_DURATION_MS = 2_600;
@@ -1972,7 +1977,7 @@ export const handlers = [
 
     if (allowed('document')) {
       for (const document of state.documents.filter(
-        (item) => item.projectId === params.projectId,
+        (item) => item.projectId === params.projectId && item.kind === 'text',
       )) {
         const text = proseText(document.canonical);
         if (!matches(document.title, text)) {
@@ -2177,12 +2182,754 @@ export const handlers = [
       }
     }
 
+    if (allowed('event')) {
+      for (const event of state.timelineEvents.filter(
+        (item) => item.projectId === params.projectId,
+      )) {
+        if (!matches(event.title, event.description, event.tags.join(' '))) {
+          continue;
+        }
+        results.push({
+          type: 'event',
+          id: event.id,
+          projectId: event.projectId,
+          title: event.title,
+          snippet: event.description.slice(0, 180),
+          nodeId: null,
+          worldId: null,
+          updatedAt: event.updatedAt,
+        });
+      }
+    }
+
+    if (allowed('diagram')) {
+      for (const diagram of state.diagrams.filter(
+        (item) => item.projectId === params.projectId,
+      )) {
+        if (!matches(diagram.title)) {
+          continue;
+        }
+        results.push({
+          type: 'diagram',
+          id: diagram.id,
+          projectId: diagram.projectId,
+          title: diagram.title,
+          snippet: '',
+          nodeId: null,
+          worldId: null,
+          updatedAt: diagram.updatedAt,
+        });
+      }
+    }
+
     results.sort(
       (left, right) =>
         new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime(),
     );
     await delay(80);
     return HttpResponse.json({ items: results.slice(0, 50) });
+  }),
+
+  /* ── Phase 4: calendars, timeline, plot threads and diagrams ─────────── */
+
+  http.get(`${api}/projects/:projectId/calendars`, async ({ params }) => {
+    const items = getMockState()
+      .calendars.filter((item) => item.projectId === params.projectId)
+      .sort((left, right) => {
+        if (left.isDefault !== right.isDefault) {
+          return left.isDefault ? -1 : 1;
+        }
+        return left.name.localeCompare(right.name, 'ru');
+      });
+    await delay(60);
+    return HttpResponse.json({ items });
+  }),
+
+  http.post(`${api}/projects/:projectId/calendars`, async ({ params, request }) => {
+    const state = getMockState();
+    const project = state.projects.find((item) => item.id === params.projectId);
+    if (!project) {
+      return problem(404, 'not_found', 'Project not found');
+    }
+    const body = (await request.json()) as Partial<Calendar>;
+    if (!body.name?.trim()) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Name is required');
+    }
+    const months = (body.config as { months?: unknown } | undefined)?.months;
+    if (!Array.isArray(months) || months.length === 0) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Calendar months are required');
+    }
+    if (body.isDefault) {
+      state.calendars = state.calendars.map((item) =>
+        item.projectId === params.projectId ? { ...item, isDefault: false } : item,
+      );
+    }
+    const timestamp = new Date().toISOString();
+    const calendar: Calendar = {
+      id: crypto.randomUUID(),
+      projectId: project.id,
+      name: body.name.trim(),
+      config: body.config ?? {},
+      isDefault: Boolean(body.isDefault),
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      version: 1,
+    };
+    state.calendars = [calendar, ...state.calendars];
+    saveMockState();
+    await delay(90);
+    return HttpResponse.json(calendar, { status: 201 });
+  }),
+
+  http.patch(`${api}/calendars/:calendarId`, async ({ params, request }) => {
+    const state = getMockState();
+    const calendar = state.calendars.find((item) => item.id === params.calendarId);
+    if (!calendar) {
+      return problem(404, 'not_found', 'Calendar not found');
+    }
+    const body = (await request.json()) as Partial<Calendar>;
+    if (body.version !== undefined && body.version !== calendar.version) {
+      return problem(409, 'conflict', 'Conflict', 'Calendar was changed');
+    }
+    if (body.name !== undefined && !body.name.trim()) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Name cannot be empty');
+    }
+    if (body.config) {
+      const months = (body.config as { months?: unknown }).months;
+      if (!Array.isArray(months) || months.length === 0) {
+        return problem(422, 'validation_failed', 'Validation failed', 'Calendar months are required');
+      }
+    }
+    if (body.isDefault) {
+      state.calendars = state.calendars.map((item) =>
+        item.projectId === calendar.projectId && item.id !== calendar.id
+          ? { ...item, isDefault: false, version: item.version + 1 }
+          : item,
+      );
+    }
+    const updated: Calendar = {
+      ...calendar,
+      ...(body.name !== undefined ? { name: body.name.trim() } : {}),
+      ...(body.config !== undefined ? { config: body.config } : {}),
+      ...(body.isDefault !== undefined ? { isDefault: body.isDefault } : {}),
+      updatedAt: new Date().toISOString(),
+      version: calendar.version + 1,
+    };
+    state.calendars = state.calendars.map((item) =>
+      item.id === calendar.id ? updated : item,
+    );
+    saveMockState();
+    await delay(80);
+    return HttpResponse.json(updated);
+  }),
+
+  http.delete(`${api}/calendars/:calendarId`, ({ params }) => {
+    const state = getMockState();
+    if (!state.calendars.some((item) => item.id === params.calendarId)) {
+      return problem(404, 'not_found', 'Calendar not found');
+    }
+    state.calendars = state.calendars.filter((item) => item.id !== params.calendarId);
+    state.timelineEvents = state.timelineEvents.map((event) =>
+      event.calendarId === params.calendarId
+        ? { ...event, calendarId: null, version: event.version + 1 }
+        : event,
+    );
+    saveMockState();
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.get(`${api}/projects/:projectId/plot-threads`, async ({ params }) => {
+    const items = getMockState()
+      .plotThreads.filter((item) => item.projectId === params.projectId)
+      .sort((left, right) => left.sortKey.localeCompare(right.sortKey));
+    await delay(60);
+    return HttpResponse.json({ items });
+  }),
+
+  http.post(`${api}/projects/:projectId/plot-threads`, async ({ params, request }) => {
+    const state = getMockState();
+    const project = state.projects.find((item) => item.id === params.projectId);
+    if (!project) {
+      return problem(404, 'not_found', 'Project not found');
+    }
+    const body = (await request.json()) as Partial<PlotThread>;
+    if (!body.name?.trim()) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Name is required');
+    }
+    const timestamp = new Date().toISOString();
+    const thread: PlotThread = {
+      id: crypto.randomUUID(),
+      projectId: project.id,
+      name: body.name.trim(),
+      color: body.color ?? '',
+      description: body.description ?? '',
+      sortKey: String(state.plotThreads.length + 1).padStart(10, '0') + '0',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      version: 1,
+    };
+    state.plotThreads = [...state.plotThreads, thread];
+    saveMockState();
+    await delay(90);
+    return HttpResponse.json(thread, { status: 201 });
+  }),
+
+  http.patch(`${api}/plot-threads/:threadId`, async ({ params, request }) => {
+    const state = getMockState();
+    const thread = state.plotThreads.find((item) => item.id === params.threadId);
+    if (!thread) {
+      return problem(404, 'not_found', 'Plot thread not found');
+    }
+    const body = (await request.json()) as Partial<PlotThread>;
+    if (body.version !== undefined && body.version !== thread.version) {
+      return problem(409, 'conflict', 'Conflict', 'Plot thread was changed');
+    }
+    if (body.name !== undefined && !body.name.trim()) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Name cannot be empty');
+    }
+    const updated: PlotThread = {
+      ...thread,
+      ...(body.name !== undefined ? { name: body.name.trim() } : {}),
+      ...(body.color !== undefined ? { color: body.color } : {}),
+      ...(body.description !== undefined ? { description: body.description } : {}),
+      updatedAt: new Date().toISOString(),
+      version: thread.version + 1,
+    };
+    state.plotThreads = state.plotThreads.map((item) =>
+      item.id === thread.id ? updated : item,
+    );
+    saveMockState();
+    await delay(80);
+    return HttpResponse.json(updated);
+  }),
+
+  http.delete(`${api}/plot-threads/:threadId`, ({ params }) => {
+    const state = getMockState();
+    if (!state.plotThreads.some((item) => item.id === params.threadId)) {
+      return problem(404, 'not_found', 'Plot thread not found');
+    }
+    state.plotThreads = state.plotThreads.filter(
+      (item) => item.id !== params.threadId,
+    );
+    state.timelineEvents = state.timelineEvents.map((event) =>
+      event.plotThreadId === params.threadId
+        ? { ...event, plotThreadId: null, version: event.version + 1 }
+        : event,
+    );
+    saveMockState();
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.get(`${api}/projects/:projectId/timeline`, async ({ params, request }) => {
+    const url = new URL(request.url);
+    const state = getMockState();
+    const mode = url.searchParams.get('mode') ?? 'world';
+    const threadId = url.searchParams.get('plotThreadId');
+    const characterId = url.searchParams.get('characterId');
+    const locationId = url.searchParams.get('locationId');
+    const factionId = url.searchParams.get('factionId');
+    const bookId = url.searchParams.get('bookId');
+    const query = (url.searchParams.get('q') ?? '').trim().toLocaleLowerCase('ru');
+    const rawFrom = url.searchParams.get('fromValue');
+    const rawTo = url.searchParams.get('toValue');
+    const rawImportance = url.searchParams.get('importanceMin');
+    const fromValue = rawFrom === null ? null : Number(rawFrom);
+    const toValue = rawTo === null ? null : Number(rawTo);
+    const importanceMin = rawImportance === null ? null : Number(rawImportance);
+    const nodes = new Map(state.nodes.map((node) => [node.id, node]));
+    const links = state.timelineEventLinks;
+
+    const items = state.timelineEvents
+      .filter((event) => event.projectId === params.projectId)
+      .filter((event) => (threadId ? event.plotThreadId === threadId : true))
+      .filter((event) =>
+        characterId
+          ? links.some(
+              (link) =>
+                link.eventId === event.id &&
+                link.entityType === 'character' &&
+                link.entityId === characterId,
+            )
+          : true,
+      )
+      .filter((event) =>
+        locationId
+          ? links.some(
+              (link) =>
+                link.eventId === event.id &&
+                link.entityType === 'location' &&
+                link.entityId === locationId,
+            )
+          : true,
+      )
+      .filter((event) =>
+        factionId
+          ? links.some(
+              (link) =>
+                link.eventId === event.id &&
+                link.entityType === 'faction' &&
+                link.entityId === factionId,
+            )
+          : true,
+      )
+      .filter((event) =>
+        bookId
+          ? event.narrativeNodeId
+            ? nodes.get(event.narrativeNodeId)?.bookId === bookId
+            : false
+          : true,
+      )
+      .filter((event) =>
+        query
+          ? [event.title, event.description, event.tags.join(' ')]
+              .join(' ')
+              .toLocaleLowerCase('ru')
+              .includes(query)
+          : true,
+      )
+      .filter((event) =>
+        fromValue !== null && Number.isFinite(fromValue)
+          ? event.startValue != null && event.startValue >= fromValue
+          : true,
+      )
+      .filter((event) =>
+        toValue !== null && Number.isFinite(toValue)
+          ? event.startValue != null && event.startValue <= toValue
+          : true,
+      )
+      .filter((event) =>
+        importanceMin !== null && Number.isFinite(importanceMin)
+          ? event.importance >= importanceMin
+          : true,
+      )
+      .map((event) => {
+        const node = event.narrativeNodeId ? nodes.get(event.narrativeNodeId) : null;
+        return {
+          ...event,
+          narrativeNodeTitle: node?.title ?? null,
+          narrativeBookId: node?.bookId ?? null,
+          links: links.filter((link) => link.eventId === event.id),
+        };
+      });
+
+    items.sort((left, right) => {
+      if (mode === 'narrative') {
+        const leftKey = left.narrativeSortKey || '~';
+        const rightKey = right.narrativeSortKey || '~';
+        if (leftKey !== rightKey) {
+          return leftKey.localeCompare(rightKey);
+        }
+        return left.title.localeCompare(right.title, 'ru');
+      }
+      if (left.startValue == null && right.startValue == null) {
+        return left.title.localeCompare(right.title, 'ru');
+      }
+      if (left.startValue == null) {
+        return 1;
+      }
+      if (right.startValue == null) {
+        return -1;
+      }
+      return left.startValue - right.startValue;
+    });
+
+    await delay(90);
+    return HttpResponse.json({
+      items,
+      plotThreads: state.plotThreads
+        .filter((item) => item.projectId === params.projectId)
+        .sort((left, right) => left.sortKey.localeCompare(right.sortKey)),
+      calendars: state.calendars.filter(
+        (item) => item.projectId === params.projectId,
+      ),
+    });
+  }),
+
+  http.post(`${api}/projects/:projectId/timeline-events`, async ({ params, request }) => {
+    const state = getMockState();
+    const project = state.projects.find((item) => item.id === params.projectId);
+    if (!project) {
+      return problem(404, 'not_found', 'Project not found');
+    }
+    const body = (await request.json()) as Partial<TimelineEvent> & {
+      tags?: string[];
+    };
+    if (!body.title?.trim()) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Title is required');
+    }
+    if (
+      body.startValue != null &&
+      body.endValue != null &&
+      body.endValue < body.startValue
+    ) {
+      return problem(422, 'validation_failed', 'Validation failed', 'End date is before the start date');
+    }
+    const node = body.narrativeNodeId
+      ? state.nodes.find((item) => item.id === body.narrativeNodeId)
+      : null;
+    const timestamp = new Date().toISOString();
+    const event: TimelineEvent = {
+      id: crypto.randomUUID(),
+      projectId: project.id,
+      calendarId: body.calendarId ?? null,
+      plotThreadId: body.plotThreadId ?? null,
+      title: body.title.trim(),
+      description: body.description ?? '',
+      startValue: body.startValue ?? null,
+      endValue: body.endValue ?? null,
+      displayStart: body.displayStart ?? '',
+      displayEnd: body.displayEnd ?? '',
+      precision: body.precision ?? 'day',
+      dateMode: body.dateMode ?? 'exact',
+      importance: body.importance ?? 3,
+      color: body.color ?? '',
+      tags: body.tags ?? [],
+      narrativeNodeId: body.narrativeNodeId ?? null,
+      narrativeNodeTitle: node?.title ?? null,
+      narrativeBookId: node?.bookId ?? null,
+      narrativeSortKey: node?.sortKey ?? '',
+      links: [],
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      version: 1,
+    };
+    state.timelineEvents = [...state.timelineEvents, event];
+    saveMockState();
+    await delay(100);
+    return HttpResponse.json(event, { status: 201 });
+  }),
+
+  http.get(`${api}/timeline-events/:eventId`, async ({ params }) => {
+    const state = getMockState();
+    const event = state.timelineEvents.find((item) => item.id === params.eventId);
+    if (!event) {
+      return problem(404, 'not_found', 'Event not found');
+    }
+    await delay(60);
+    return HttpResponse.json({
+      ...event,
+      links: state.timelineEventLinks.filter((link) => link.eventId === event.id),
+    });
+  }),
+
+  http.patch(`${api}/timeline-events/:eventId`, async ({ params, request }) => {
+    const state = getMockState();
+    const event = state.timelineEvents.find((item) => item.id === params.eventId);
+    if (!event) {
+      return problem(404, 'not_found', 'Event not found');
+    }
+    const body = (await request.json()) as Partial<TimelineEvent> & {
+      clearEnd?: boolean;
+      version?: number;
+    };
+    if (body.version !== undefined && body.version !== event.version) {
+      return problem(409, 'conflict', 'Conflict', 'Event was changed');
+    }
+    if (body.title !== undefined && !body.title.trim()) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Title cannot be empty');
+    }
+    const clear = (value: string | null | undefined) =>
+      value === '00000000-0000-0000-0000-000000000000' ? null : value;
+    const dateMode = body.dateMode ?? event.dateMode;
+    const startValue =
+      dateMode === 'unknown'
+        ? null
+        : body.startValue !== undefined
+          ? body.startValue
+          : event.startValue;
+    const endValue =
+      dateMode === 'unknown' || body.clearEnd
+        ? null
+        : body.endValue !== undefined
+          ? body.endValue
+          : event.endValue;
+    if (startValue != null && endValue != null && endValue < startValue) {
+      return problem(422, 'validation_failed', 'Validation failed', 'End date is before the start date');
+    }
+    const nodeId =
+      body.narrativeNodeId !== undefined
+        ? clear(body.narrativeNodeId)
+        : event.narrativeNodeId;
+    const node = nodeId ? state.nodes.find((item) => item.id === nodeId) : null;
+    const updated: TimelineEvent = {
+      ...event,
+      ...(body.title !== undefined ? { title: body.title.trim() } : {}),
+      ...(body.description !== undefined ? { description: body.description } : {}),
+      ...(body.plotThreadId !== undefined
+        ? { plotThreadId: clear(body.plotThreadId) }
+        : {}),
+      ...(body.calendarId !== undefined
+        ? { calendarId: clear(body.calendarId) }
+        : {}),
+      ...(body.precision !== undefined ? { precision: body.precision } : {}),
+      dateMode,
+      ...(body.importance !== undefined ? { importance: body.importance } : {}),
+      ...(body.color !== undefined ? { color: body.color } : {}),
+      ...(body.tags !== undefined ? { tags: body.tags } : {}),
+      startValue,
+      endValue,
+      displayStart:
+        dateMode === 'unknown'
+          ? body.displayStart ?? event.displayStart
+          : body.displayStart ?? event.displayStart,
+      displayEnd: dateMode === 'unknown' || body.clearEnd
+        ? ''
+        : body.displayEnd ?? event.displayEnd,
+      narrativeNodeId: nodeId,
+      narrativeNodeTitle: node?.title ?? null,
+      narrativeBookId: node?.bookId ?? null,
+      narrativeSortKey: node?.sortKey ?? '',
+      updatedAt: new Date().toISOString(),
+      version: event.version + 1,
+    };
+    state.timelineEvents = state.timelineEvents.map((item) =>
+      item.id === event.id ? updated : item,
+    );
+    saveMockState();
+    await delay(90);
+    return HttpResponse.json({
+      ...updated,
+      links: state.timelineEventLinks.filter((link) => link.eventId === event.id),
+    });
+  }),
+
+  http.delete(`${api}/timeline-events/:eventId`, ({ params }) => {
+    const state = getMockState();
+    if (!state.timelineEvents.some((item) => item.id === params.eventId)) {
+      return problem(404, 'not_found', 'Event not found');
+    }
+    state.timelineEvents = state.timelineEvents.filter(
+      (item) => item.id !== params.eventId,
+    );
+    state.timelineEventLinks = state.timelineEventLinks.filter(
+      (link) => link.eventId !== params.eventId,
+    );
+    saveMockState();
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post(`${api}/timeline-events/:eventId/links`, async ({ params, request }) => {
+    const state = getMockState();
+    const event = state.timelineEvents.find((item) => item.id === params.eventId);
+    if (!event) {
+      return problem(404, 'not_found', 'Event not found');
+    }
+    const body = (await request.json()) as Partial<TimelineEventLink>;
+    if (!body.entityType || !body.entityId) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Entity is required');
+    }
+    if (
+      state.timelineEventLinks.some(
+        (link) =>
+          link.eventId === event.id &&
+          link.entityType === body.entityType &&
+          link.entityId === body.entityId,
+      )
+    ) {
+      return problem(409, 'conflict', 'Conflict', 'Link already exists');
+    }
+    const exists =
+      body.entityType === 'character'
+        ? state.characters.some(
+            (item) => item.id === body.entityId && item.projectId === event.projectId,
+          )
+        : body.entityType === 'location'
+          ? state.locations.some((item) => item.id === body.entityId)
+          : body.entityType === 'faction'
+            ? state.factions.some((item) => item.id === body.entityId)
+            : state.loreEntries.some((item) => item.id === body.entityId);
+    if (!exists) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Linked entity does not belong to the project');
+    }
+    const link: TimelineEventLink = {
+      id: crypto.randomUUID(),
+      eventId: event.id,
+      entityType: body.entityType,
+      entityId: body.entityId,
+      role: body.role ?? '',
+    };
+    state.timelineEventLinks = [...state.timelineEventLinks, link];
+    saveMockState();
+    await delay(70);
+    return HttpResponse.json(link, { status: 201 });
+  }),
+
+  http.delete(`${api}/timeline-events/:eventId/links/:linkId`, ({ params }) => {
+    const state = getMockState();
+    const link = state.timelineEventLinks.find(
+      (item) => item.id === params.linkId && item.eventId === params.eventId,
+    );
+    if (!link) {
+      return problem(404, 'not_found', 'Link not found');
+    }
+    state.timelineEventLinks = state.timelineEventLinks.filter(
+      (item) => item.id !== params.linkId,
+    );
+    saveMockState();
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.get(`${api}/projects/:projectId/diagrams`, async ({ params, request }) => {
+    const url = new URL(request.url);
+    const query = (url.searchParams.get('q') ?? '').trim().toLocaleLowerCase('ru');
+    const items = getMockState()
+      .diagrams.filter((item) => item.projectId === params.projectId)
+      .filter((item) =>
+        query ? item.title.toLocaleLowerCase('ru').includes(query) : true,
+      )
+      .map((item) => ({ ...item, canonical: undefined }));
+    await delay(70);
+    return HttpResponse.json({ items });
+  }),
+
+  http.post(`${api}/projects/:projectId/diagrams`, async ({ params, request }) => {
+    const state = getMockState();
+    const project = state.projects.find((item) => item.id === params.projectId);
+    if (!project) {
+      return problem(404, 'not_found', 'Project not found');
+    }
+    const body = (await request.json()) as Partial<Diagram>;
+    if (!body.title?.trim()) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Title is required');
+    }
+    const timestamp = new Date().toISOString();
+    const diagram: Diagram = {
+      id: crypto.randomUUID(),
+      projectId: project.id,
+      title: body.title.trim(),
+      type: body.type ?? 'freeform',
+      canonical: body.canonical ?? {
+        schemaVersion: 1,
+        nodes: [],
+        edges: [],
+        viewport: { x: 0, y: 0, zoom: 1 },
+      },
+      thumbnailUrl: null,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      version: 1,
+    };
+    state.diagrams = [diagram, ...state.diagrams];
+    saveMockState();
+    await delay(100);
+    return HttpResponse.json(diagram, { status: 201 });
+  }),
+
+  http.get(`${api}/diagrams/:diagramId`, async ({ params }) => {
+    const diagram = getMockState().diagrams.find(
+      (item) => item.id === params.diagramId,
+    );
+    if (!diagram) {
+      return problem(404, 'not_found', 'Diagram not found');
+    }
+    await delay(60);
+    return HttpResponse.json(diagram);
+  }),
+
+  http.patch(`${api}/diagrams/:diagramId`, async ({ params, request }) => {
+    const state = getMockState();
+    const diagram = state.diagrams.find((item) => item.id === params.diagramId);
+    if (!diagram) {
+      return problem(404, 'not_found', 'Diagram not found');
+    }
+    const body = (await request.json()) as Partial<Diagram>;
+    if (body.version !== undefined && body.version !== diagram.version) {
+      return problem(409, 'conflict', 'Conflict', 'Diagram was changed');
+    }
+    if (body.title !== undefined && !body.title.trim()) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Title cannot be empty');
+    }
+    if (body.canonical) {
+      const canonical = body.canonical as {
+        nodes?: unknown;
+        edges?: unknown;
+      };
+      if (!Array.isArray(canonical.nodes) || !Array.isArray(canonical.edges)) {
+        return problem(422, 'validation_failed', 'Validation failed', 'Invalid React Flow data');
+      }
+      const ids = new Set(
+        canonical.nodes
+          .filter((node) => node && typeof node === 'object' && 'id' in node)
+          .map((node) => String((node as { id: unknown }).id)),
+      );
+      const dangling = canonical.edges.some((edge) => {
+        if (!edge || typeof edge !== 'object') {
+          return true;
+        }
+        const value = edge as { source?: unknown; target?: unknown };
+        return !ids.has(String(value.source)) || !ids.has(String(value.target));
+      });
+      if (dangling) {
+        return problem(422, 'validation_failed', 'Validation failed', 'Edge references an unknown node');
+      }
+    }
+    const updated: Diagram = {
+      ...diagram,
+      ...(body.title !== undefined ? { title: body.title.trim() } : {}),
+      ...(body.type !== undefined ? { type: body.type } : {}),
+      ...(body.canonical !== undefined ? { canonical: body.canonical } : {}),
+      updatedAt: new Date().toISOString(),
+      version: diagram.version + 1,
+    };
+    state.diagrams = state.diagrams.map((item) =>
+      item.id === diagram.id ? updated : item,
+    );
+    saveMockState();
+    await delay(80);
+    return HttpResponse.json(updated);
+  }),
+
+  http.delete(`${api}/diagrams/:diagramId`, ({ params }) => {
+    const state = getMockState();
+    if (!state.diagrams.some((item) => item.id === params.diagramId)) {
+      return problem(404, 'not_found', 'Diagram not found');
+    }
+    state.diagrams = state.diagrams.filter(
+      (item) => item.id !== params.diagramId,
+    );
+    saveMockState();
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post(`${api}/diagrams/:diagramId/collab-token`, async ({ params }) => {
+    const diagram = getMockState().diagrams.find(
+      (item) => item.id === params.diagramId,
+    );
+    if (!diagram) {
+      return problem(404, 'not_found', 'Diagram not found');
+    }
+    await delay(50);
+    return HttpResponse.json({
+      token: `mock.${Date.now()}`,
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+      websocketPath: `/collab/${diagram.id}`,
+      collabAvailable: true,
+      generation: 1,
+    });
+  }),
+
+  http.post(`${api}/diagrams/:diagramId/thumbnail`, async ({ params, request }) => {
+    const state = getMockState();
+    const diagram = state.diagrams.find((item) => item.id === params.diagramId);
+    if (!diagram) {
+      return problem(404, 'not_found', 'Diagram not found');
+    }
+    const body = (await request.json()) as { assetId?: string };
+    if (!body.assetId) {
+      return problem(422, 'validation_failed', 'Validation failed', 'assetId is required');
+    }
+    const updated: Diagram = {
+      ...diagram,
+      thumbnailUrl: `/api/v1/dev/files/${body.assetId}`,
+      updatedAt: new Date().toISOString(),
+      version: diagram.version + 1,
+    };
+    state.diagrams = state.diagrams.map((item) =>
+      item.id === diagram.id ? updated : item,
+    );
+    saveMockState();
+    await delay(70);
+    return HttpResponse.json(updated);
   }),
 ];
 

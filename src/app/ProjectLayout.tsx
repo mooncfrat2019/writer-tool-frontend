@@ -4,10 +4,12 @@ import {
   BookOpen,
   ChevronLeft,
   Download,
+  GitCommitHorizontal,
   Globe2,
   Network,
   Search,
   Users,
+  Workflow,
 } from 'lucide-react';
 import { api } from '@/shared/api/client';
 import { getApiErrorMessage } from '@/shared/api/errors';
@@ -23,6 +25,8 @@ const navItems = [
   { to: '/projects/$projectId/structure', label: 'Структура', icon: Network },
   { to: '/projects/$projectId/characters', label: 'Персонажи', icon: Users },
   { to: '/projects/$projectId/worlds', label: 'Миры', icon: Globe2 },
+  { to: '/projects/$projectId/timeline', label: 'Таймлайн', icon: GitCommitHorizontal },
+  { to: '/projects/$projectId/diagrams', label: 'Схемы', icon: Workflow },
   { to: '/projects/$projectId/search', label: 'Поиск', icon: Search },
   { to: '/projects/$projectId/exports', label: 'Экспорт', icon: Download },
 ] as const;
@@ -197,7 +201,7 @@ export function ProjectLayout() {
             </Badge>
           </div>
           <nav
-            className="grid grid-cols-3 border-t border-paper-200"
+            className="grid grid-cols-4 border-t border-paper-200"
             aria-label="Навигация по проекту"
           >
             {navItems.map(({ to, label, icon: Icon }) => (

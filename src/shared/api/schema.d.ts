@@ -1005,6 +1005,241 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{projectId}/calendars": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get: operations["listCalendars"];
+        put?: never;
+        post: operations["createCalendar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calendars/{calendarId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                calendarId: components["parameters"]["CalendarId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["deleteCalendar"];
+        options?: never;
+        head?: never;
+        patch: operations["updateCalendar"];
+        trace?: never;
+    };
+    "/projects/{projectId}/plot-threads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get: operations["listPlotThreads"];
+        put?: never;
+        post: operations["createPlotThread"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plot-threads/{threadId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                threadId: components["parameters"]["ThreadId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["deletePlotThread"];
+        options?: never;
+        head?: never;
+        patch: operations["updatePlotThread"];
+        trace?: never;
+    };
+    "/projects/{projectId}/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get: operations["getTimeline"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectId}/timeline-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["createTimelineEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/timeline-events/{eventId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        get: operations["getTimelineEvent"];
+        put?: never;
+        post?: never;
+        delete: operations["deleteTimelineEvent"];
+        options?: never;
+        head?: never;
+        patch: operations["updateTimelineEvent"];
+        trace?: never;
+    };
+    "/timeline-events/{eventId}/links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["addTimelineEventLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/timeline-events/{eventId}/links/{linkId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+                linkId: components["parameters"]["LinkId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["removeTimelineEventLink"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectId}/diagrams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get: operations["listDiagrams"];
+        put?: never;
+        post: operations["createDiagram"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/diagrams/{diagramId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                diagramId: components["parameters"]["DiagramId"];
+            };
+            cookie?: never;
+        };
+        get: operations["getDiagram"];
+        put?: never;
+        post?: never;
+        delete: operations["deleteDiagram"];
+        options?: never;
+        head?: never;
+        patch: operations["updateDiagram"];
+        trace?: never;
+    };
+    "/diagrams/{diagramId}/collab-token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                diagramId: components["parameters"]["DiagramId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["createDiagramCollabToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/diagrams/{diagramId}/thumbnail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                diagramId: components["parameters"]["DiagramId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["setDiagramThumbnail"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1692,7 +1927,7 @@ export interface components {
             ids: string[];
         };
         /** @enum {string} */
-        SearchResultType: "document" | "character" | "world" | "location" | "faction" | "lore" | "book" | "node";
+        SearchResultType: "document" | "character" | "world" | "location" | "faction" | "lore" | "book" | "node" | "event" | "diagram";
         SearchResult: {
             type: components["schemas"]["SearchResultType"];
             /** Format: uuid */
@@ -1982,6 +2217,235 @@ export interface components {
             role: components["schemas"]["ShareRole"];
             viaProject: boolean;
         };
+        Calendar: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            projectId: string;
+            name: string;
+            /** @description Epochs, month lengths, week length and leap rule */
+            config: {
+                [key: string]: unknown;
+            };
+            isDefault: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: int64 */
+            version: number;
+        };
+        CalendarList: {
+            items: components["schemas"]["Calendar"][];
+        };
+        CalendarCreate: {
+            name: string;
+            config?: {
+                [key: string]: unknown;
+            };
+            isDefault?: boolean;
+        };
+        CalendarUpdate: {
+            name?: string;
+            config?: {
+                [key: string]: unknown;
+            };
+            isDefault?: boolean;
+            /** Format: int64 */
+            version?: number;
+        };
+        PlotThread: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            projectId: string;
+            name: string;
+            color: string;
+            description: string;
+            sortKey: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: int64 */
+            version: number;
+        };
+        PlotThreadList: {
+            items: components["schemas"]["PlotThread"][];
+        };
+        PlotThreadCreate: {
+            name: string;
+            color?: string;
+            description?: string;
+        };
+        PlotThreadUpdate: {
+            name?: string;
+            color?: string;
+            description?: string;
+            /** Format: int64 */
+            version?: number;
+        };
+        /** @enum {string} */
+        TimelinePrecision: "era" | "year" | "month" | "day" | "time";
+        /** @enum {string} */
+        TimelineDateMode: "exact" | "approximate" | "unknown";
+        /** @enum {string} */
+        TimelineMode: "world" | "narrative";
+        /** @enum {string} */
+        TimelineLinkEntityType: "character" | "location" | "faction" | "lore";
+        TimelineEventLink: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            eventId: string;
+            entityType: components["schemas"]["TimelineLinkEntityType"];
+            /** Format: uuid */
+            entityId: string;
+            role: string;
+        };
+        TimelineEventLinkCreate: {
+            entityType: components["schemas"]["TimelineLinkEntityType"];
+            /** Format: uuid */
+            entityId: string;
+            role?: string;
+        };
+        TimelineEvent: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            projectId: string;
+            /** Format: uuid */
+            calendarId?: string | null;
+            /** Format: uuid */
+            plotThreadId?: string | null;
+            title: string;
+            description: string;
+            /**
+             * Format: double
+             * @description Days from the calendar epoch; fractional part is the time of day
+             */
+            startValue?: number | null;
+            /** Format: double */
+            endValue?: number | null;
+            displayStart: string;
+            displayEnd: string;
+            precision: components["schemas"]["TimelinePrecision"];
+            dateMode: components["schemas"]["TimelineDateMode"];
+            importance: number;
+            color: string;
+            tags: string[];
+            /** Format: uuid */
+            narrativeNodeId?: string | null;
+            narrativeNodeTitle?: string | null;
+            /** Format: uuid */
+            narrativeBookId?: string | null;
+            narrativeSortKey: string;
+            links: components["schemas"]["TimelineEventLink"][];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: int64 */
+            version: number;
+        };
+        TimelineEventCreate: {
+            /** Format: uuid */
+            calendarId?: string;
+            /** Format: uuid */
+            plotThreadId?: string;
+            title: string;
+            description?: string;
+            /** Format: double */
+            startValue?: number;
+            /** Format: double */
+            endValue?: number;
+            displayStart?: string;
+            displayEnd?: string;
+            precision?: components["schemas"]["TimelinePrecision"];
+            dateMode?: components["schemas"]["TimelineDateMode"];
+            importance?: number;
+            color?: string;
+            tags?: string[];
+            /** Format: uuid */
+            narrativeNodeId?: string;
+            narrativeSortKey?: string;
+        };
+        TimelineEventUpdate: {
+            /** Format: uuid */
+            calendarId?: string | null;
+            /** Format: uuid */
+            plotThreadId?: string | null;
+            title?: string;
+            description?: string;
+            /** Format: double */
+            startValue?: number | null;
+            /** Format: double */
+            endValue?: number | null;
+            displayStart?: string;
+            displayEnd?: string;
+            precision?: components["schemas"]["TimelinePrecision"];
+            dateMode?: components["schemas"]["TimelineDateMode"];
+            importance?: number;
+            color?: string;
+            tags?: string[];
+            /** Format: uuid */
+            narrativeNodeId?: string | null;
+            narrativeSortKey?: string;
+            /** @description Clears the end date while keeping the start date */
+            clearEnd?: boolean;
+            /** Format: int64 */
+            version?: number;
+        };
+        TimelineView: {
+            items: components["schemas"]["TimelineEvent"][];
+            plotThreads: components["schemas"]["PlotThread"][];
+            calendars: components["schemas"]["Calendar"][];
+        };
+        /** @enum {string} */
+        DiagramType: "relationship" | "plot" | "freeform";
+        Diagram: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            projectId: string;
+            title: string;
+            type: components["schemas"]["DiagramType"];
+            /** @description React Flow JSON (schemaVersion, nodes, edges, viewport) */
+            canonical?: {
+                [key: string]: unknown;
+            } | null;
+            /** Format: uri */
+            thumbnailUrl?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: int64 */
+            version: number;
+        };
+        DiagramList: {
+            items: components["schemas"]["Diagram"][];
+        };
+        DiagramCreate: {
+            title: string;
+            type?: components["schemas"]["DiagramType"];
+            canonical?: {
+                [key: string]: unknown;
+            };
+        };
+        DiagramUpdate: {
+            title?: string;
+            type?: components["schemas"]["DiagramType"];
+            canonical?: {
+                [key: string]: unknown;
+            };
+            /** Format: int64 */
+            version?: number;
+        };
+        DiagramThumbnail: {
+            /** Format: uuid */
+            assetId: string;
+        };
     };
     responses: {
         /** @description Authentication required or token invalid */
@@ -2068,6 +2532,11 @@ export interface components {
         ShareId: string;
         ShareToken: string;
         VersionId: string;
+        CalendarId: string;
+        ThreadId: string;
+        EventId: string;
+        LinkId: string;
+        DiagramId: string;
         Cursor: string;
         Limit: number;
     };
@@ -4278,6 +4747,585 @@ export interface operations {
             };
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    listCalendars: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Calendars of the project */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarList"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createCalendar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarCreate"];
+            };
+        };
+        responses: {
+            /** @description Calendar created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Calendar"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    deleteCalendar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                calendarId: components["parameters"]["CalendarId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Calendar deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateCalendar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                calendarId: components["parameters"]["CalendarId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarUpdate"];
+            };
+        };
+        responses: {
+            /** @description Updated calendar */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Calendar"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    listPlotThreads: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Plot threads of the project */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlotThreadList"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createPlotThread: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlotThreadCreate"];
+            };
+        };
+        responses: {
+            /** @description Plot thread created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlotThread"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    deletePlotThread: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                threadId: components["parameters"]["ThreadId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Plot thread deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updatePlotThread: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                threadId: components["parameters"]["ThreadId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlotThreadUpdate"];
+            };
+        };
+        responses: {
+            /** @description Updated plot thread */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlotThread"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getTimeline: {
+        parameters: {
+            query?: {
+                mode?: "world" | "narrative";
+                plotThreadId?: string;
+                characterId?: string;
+                locationId?: string;
+                factionId?: string;
+                bookId?: string;
+                q?: string;
+                fromValue?: number;
+                toValue?: number;
+                importanceMin?: number;
+            };
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Timeline events with lanes and calendars */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimelineView"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createTimelineEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TimelineEventCreate"];
+            };
+        };
+        responses: {
+            /** @description Event created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimelineEvent"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getTimelineEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Timeline event */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimelineEvent"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteTimelineEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Event deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateTimelineEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TimelineEventUpdate"];
+            };
+        };
+        responses: {
+            /** @description Updated event */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimelineEvent"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    addTimelineEventLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TimelineEventLinkCreate"];
+            };
+        };
+        responses: {
+            /** @description Link created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimelineEventLink"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    removeTimelineEventLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+                linkId: components["parameters"]["LinkId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Link removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listDiagrams: {
+        parameters: {
+            query?: {
+                q?: string;
+            };
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Diagrams of the project */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiagramList"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createDiagram: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DiagramCreate"];
+            };
+        };
+        responses: {
+            /** @description Diagram created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Diagram"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getDiagram: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                diagramId: components["parameters"]["DiagramId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Diagram with canonical React Flow JSON */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Diagram"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteDiagram: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                diagramId: components["parameters"]["DiagramId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Diagram deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateDiagram: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                diagramId: components["parameters"]["DiagramId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DiagramUpdate"];
+            };
+        };
+        responses: {
+            /** @description Updated diagram */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Diagram"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    createDiagramCollabToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                diagramId: components["parameters"]["DiagramId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Short-lived collaboration token for the diagram room */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollabToken"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    setDiagramThumbnail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                diagramId: components["parameters"]["DiagramId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DiagramThumbnail"];
+            };
+        };
+        responses: {
+            /** @description Diagram with the new thumbnail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Diagram"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
         };
     };
 }

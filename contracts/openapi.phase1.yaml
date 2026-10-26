@@ -1,12 +1,12 @@
 openapi: 3.1.0
 info:
   title: Writer Tool API
-  version: 0.1.0-phase1
+  version: 0.1.0-phase4
   description: |
-    Phase 1 contract: auth, projects, book structure, document metadata,
-    characters, worlds, custom fields, search, assets and export jobs.
-    Real-time collaboration, sharing, version history and exports are included;
-    timeline and diagrams are added in later phases.
+    Writer Tool contract: auth, projects, book structure, documents,
+    characters, worlds, custom fields, search, assets and exports.
+    Real-time collaboration, sharing, version history, timelines with
+    calendars, and React Flow diagrams are included.
 servers:
   - url: http://localhost:8080/api/v1
     description: Local development
@@ -1734,6 +1734,478 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /projects/{projectId}/calendars:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [Timeline]
+      operationId: listCalendars
+      responses:
+        '200':
+          description: Calendars of the project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarList'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Timeline]
+      operationId: createCalendar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalendarCreate'
+      responses:
+        '201':
+          description: Calendar created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Calendar'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /calendars/{calendarId}:
+    parameters:
+      - $ref: '#/components/parameters/CalendarId'
+    patch:
+      tags: [Timeline]
+      operationId: updateCalendar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalendarUpdate'
+      responses:
+        '200':
+          description: Updated calendar
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Calendar'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    delete:
+      tags: [Timeline]
+      operationId: deleteCalendar
+      responses:
+        '204':
+          description: Calendar deleted
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{projectId}/plot-threads:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [Timeline]
+      operationId: listPlotThreads
+      responses:
+        '200':
+          description: Plot threads of the project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlotThreadList'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Timeline]
+      operationId: createPlotThread
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlotThreadCreate'
+      responses:
+        '201':
+          description: Plot thread created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlotThread'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /plot-threads/{threadId}:
+    parameters:
+      - $ref: '#/components/parameters/ThreadId'
+    patch:
+      tags: [Timeline]
+      operationId: updatePlotThread
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlotThreadUpdate'
+      responses:
+        '200':
+          description: Updated plot thread
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlotThread'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    delete:
+      tags: [Timeline]
+      operationId: deletePlotThread
+      responses:
+        '204':
+          description: Plot thread deleted
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{projectId}/timeline:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [Timeline]
+      operationId: getTimeline
+      parameters:
+        - name: mode
+          in: query
+          schema:
+            type: string
+            enum: [world, narrative]
+            default: world
+        - name: plotThreadId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: characterId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: locationId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: factionId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: bookId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: fromValue
+          in: query
+          schema:
+            type: number
+            format: double
+        - name: toValue
+          in: query
+          schema:
+            type: number
+            format: double
+        - name: importanceMin
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 5
+      responses:
+        '200':
+          description: Timeline events with lanes and calendars
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimelineView'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /projects/{projectId}/timeline-events:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      tags: [Timeline]
+      operationId: createTimelineEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimelineEventCreate'
+      responses:
+        '201':
+          description: Event created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimelineEvent'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /timeline-events/{eventId}:
+    parameters:
+      - $ref: '#/components/parameters/EventId'
+    get:
+      tags: [Timeline]
+      operationId: getTimelineEvent
+      responses:
+        '200':
+          description: Timeline event
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimelineEvent'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Timeline]
+      operationId: updateTimelineEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimelineEventUpdate'
+      responses:
+        '200':
+          description: Updated event
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimelineEvent'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    delete:
+      tags: [Timeline]
+      operationId: deleteTimelineEvent
+      responses:
+        '204':
+          description: Event deleted
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /timeline-events/{eventId}/links:
+    parameters:
+      - $ref: '#/components/parameters/EventId'
+    post:
+      tags: [Timeline]
+      operationId: addTimelineEventLink
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimelineEventLinkCreate'
+      responses:
+        '201':
+          description: Link created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimelineEventLink'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /timeline-events/{eventId}/links/{linkId}:
+    parameters:
+      - $ref: '#/components/parameters/EventId'
+      - $ref: '#/components/parameters/LinkId'
+    delete:
+      tags: [Timeline]
+      operationId: removeTimelineEventLink
+      responses:
+        '204':
+          description: Link removed
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{projectId}/diagrams:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [Diagrams]
+      operationId: listDiagrams
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Diagrams of the project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagramList'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Diagrams]
+      operationId: createDiagram
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiagramCreate'
+      responses:
+        '201':
+          description: Diagram created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Diagram'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /diagrams/{diagramId}:
+    parameters:
+      - $ref: '#/components/parameters/DiagramId'
+    get:
+      tags: [Diagrams]
+      operationId: getDiagram
+      responses:
+        '200':
+          description: Diagram with canonical React Flow JSON
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Diagram'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Diagrams]
+      operationId: updateDiagram
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiagramUpdate'
+      responses:
+        '200':
+          description: Updated diagram
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Diagram'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    delete:
+      tags: [Diagrams]
+      operationId: deleteDiagram
+      responses:
+        '204':
+          description: Diagram deleted
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /diagrams/{diagramId}/collab-token:
+    parameters:
+      - $ref: '#/components/parameters/DiagramId'
+    post:
+      tags: [Diagrams]
+      operationId: createDiagramCollabToken
+      responses:
+        '200':
+          description: Short-lived collaboration token for the diagram room
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollabToken'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /diagrams/{diagramId}/thumbnail:
+    parameters:
+      - $ref: '#/components/parameters/DiagramId'
+    post:
+      tags: [Diagrams]
+      operationId: setDiagramThumbnail
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiagramThumbnail'
+      responses:
+        '200':
+          description: Diagram with the new thumbnail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Diagram'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1863,6 +2335,41 @@ components:
         minLength: 16
     VersionId:
       name: versionId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CalendarId:
+      name: calendarId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ThreadId:
+      name: threadId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    EventId:
+      name: eventId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    LinkId:
+      name: linkId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    DiagramId:
+      name: diagramId
       in: path
       required: true
       schema:
@@ -3261,7 +3768,7 @@ components:
 
     SearchResultType:
       type: string
-      enum: [document, character, world, location, faction, lore, book, node]
+      enum: [document, character, world, location, faction, lore, book, node, event, diagram]
     SearchResult:
       type: object
       required: [type, id, projectId, title, snippet, updatedAt]
@@ -3797,3 +4304,437 @@ components:
           $ref: '#/components/schemas/ShareRole'
         viaProject:
           type: boolean
+
+    Calendar:
+      type: object
+      required: [id, projectId, name, config, isDefault, createdAt, updatedAt, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        config:
+          type: object
+          additionalProperties: true
+          description: Epochs, month lengths, week length and leap rule
+        isDefault:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+    CalendarList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Calendar'
+    CalendarCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        config:
+          type: object
+          additionalProperties: true
+        isDefault:
+          type: boolean
+    CalendarUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        config:
+          type: object
+          additionalProperties: true
+        isDefault:
+          type: boolean
+        version:
+          type: integer
+          format: int64
+
+    PlotThread:
+      type: object
+      required: [id, projectId, name, color, description, sortKey, createdAt, updatedAt, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        color:
+          type: string
+        description:
+          type: string
+        sortKey:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+    PlotThreadList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlotThread'
+    PlotThreadCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        color:
+          type: string
+          maxLength: 40
+        description:
+          type: string
+    PlotThreadUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        color:
+          type: string
+          maxLength: 40
+        description:
+          type: string
+        version:
+          type: integer
+          format: int64
+
+    TimelinePrecision:
+      type: string
+      enum: [era, year, month, day, time]
+    TimelineDateMode:
+      type: string
+      enum: [exact, approximate, unknown]
+    TimelineMode:
+      type: string
+      enum: [world, narrative]
+    TimelineLinkEntityType:
+      type: string
+      enum: [character, location, faction, lore]
+    TimelineEventLink:
+      type: object
+      required: [id, eventId, entityType, entityId, role]
+      properties:
+        id:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+        entityType:
+          $ref: '#/components/schemas/TimelineLinkEntityType'
+        entityId:
+          type: string
+          format: uuid
+        role:
+          type: string
+    TimelineEventLinkCreate:
+      type: object
+      required: [entityType, entityId]
+      properties:
+        entityType:
+          $ref: '#/components/schemas/TimelineLinkEntityType'
+        entityId:
+          type: string
+          format: uuid
+        role:
+          type: string
+          maxLength: 100
+    TimelineEvent:
+      type: object
+      required: [id, projectId, title, description, displayStart, displayEnd, precision, dateMode, importance, color, tags, narrativeSortKey, links, createdAt, updatedAt, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        calendarId:
+          type: [string, 'null']
+          format: uuid
+        plotThreadId:
+          type: [string, 'null']
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        startValue:
+          type: [number, 'null']
+          format: double
+          description: Days from the calendar epoch; fractional part is the time of day
+        endValue:
+          type: [number, 'null']
+          format: double
+        displayStart:
+          type: string
+        displayEnd:
+          type: string
+        precision:
+          $ref: '#/components/schemas/TimelinePrecision'
+        dateMode:
+          $ref: '#/components/schemas/TimelineDateMode'
+        importance:
+          type: integer
+          minimum: 0
+          maximum: 5
+        color:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        narrativeNodeId:
+          type: [string, 'null']
+          format: uuid
+        narrativeNodeTitle:
+          type: [string, 'null']
+        narrativeBookId:
+          type: [string, 'null']
+          format: uuid
+        narrativeSortKey:
+          type: string
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimelineEventLink'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+    TimelineEventCreate:
+      type: object
+      required: [title]
+      properties:
+        calendarId:
+          type: string
+          format: uuid
+        plotThreadId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 1
+          maxLength: 300
+        description:
+          type: string
+        startValue:
+          type: number
+          format: double
+        endValue:
+          type: number
+          format: double
+        displayStart:
+          type: string
+          maxLength: 200
+        displayEnd:
+          type: string
+          maxLength: 200
+        precision:
+          $ref: '#/components/schemas/TimelinePrecision'
+        dateMode:
+          $ref: '#/components/schemas/TimelineDateMode'
+        importance:
+          type: integer
+          minimum: 0
+          maximum: 5
+        color:
+          type: string
+          maxLength: 40
+        tags:
+          type: array
+          items:
+            type: string
+        narrativeNodeId:
+          type: string
+          format: uuid
+        narrativeSortKey:
+          type: string
+          maxLength: 100
+    TimelineEventUpdate:
+      type: object
+      properties:
+        calendarId:
+          type: [string, 'null']
+          format: uuid
+        plotThreadId:
+          type: [string, 'null']
+          format: uuid
+        title:
+          type: string
+          minLength: 1
+          maxLength: 300
+        description:
+          type: string
+        startValue:
+          type: [number, 'null']
+          format: double
+        endValue:
+          type: [number, 'null']
+          format: double
+        displayStart:
+          type: string
+          maxLength: 200
+        displayEnd:
+          type: string
+          maxLength: 200
+        precision:
+          $ref: '#/components/schemas/TimelinePrecision'
+        dateMode:
+          $ref: '#/components/schemas/TimelineDateMode'
+        importance:
+          type: integer
+          minimum: 0
+          maximum: 5
+        color:
+          type: string
+          maxLength: 40
+        tags:
+          type: array
+          items:
+            type: string
+        narrativeNodeId:
+          type: [string, 'null']
+          format: uuid
+        narrativeSortKey:
+          type: string
+          maxLength: 100
+        clearEnd:
+          type: boolean
+          description: Clears the end date while keeping the start date
+        version:
+          type: integer
+          format: int64
+    TimelineView:
+      type: object
+      required: [items, plotThreads, calendars]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimelineEvent'
+        plotThreads:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlotThread'
+        calendars:
+          type: array
+          items:
+            $ref: '#/components/schemas/Calendar'
+
+    DiagramType:
+      type: string
+      enum: [relationship, plot, freeform]
+    Diagram:
+      type: object
+      required: [id, projectId, title, type, createdAt, updatedAt, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        type:
+          $ref: '#/components/schemas/DiagramType'
+        canonical:
+          type: [object, 'null']
+          additionalProperties: true
+          description: React Flow JSON (schemaVersion, nodes, edges, viewport)
+        thumbnailUrl:
+          type: [string, 'null']
+          format: uri
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+    DiagramList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Diagram'
+    DiagramCreate:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        type:
+          $ref: '#/components/schemas/DiagramType'
+        canonical:
+          type: object
+          additionalProperties: true
+    DiagramUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        type:
+          $ref: '#/components/schemas/DiagramType'
+        canonical:
+          type: object
+          additionalProperties: true
+        version:
+          type: integer
+          format: int64
+    DiagramThumbnail:
+      type: object
+      required: [assetId]
+      properties:
+        assetId:
+          type: string
+          format: uuid

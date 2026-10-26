@@ -1,0 +1,127 @@
+{
+  "name": "fantasy",
+  "description": "Two-month fictional calendar with an every-4-years leap day",
+  "config": {
+    "epochLabel": "от Основания",
+    "eras": [
+      {
+        "id": "before",
+        "name": "До Основания",
+        "startYear": -1000,
+        "endYear": -1
+      },
+      {
+        "id": "after",
+        "name": "После Основания",
+        "startYear": 1,
+        "endYear": null
+      }
+    ],
+    "months": [
+      {
+        "name": "Зимородок",
+        "days": 30
+      },
+      {
+        "name": "Ветрень",
+        "days": 31
+      }
+    ],
+    "weekLength": 7,
+    "leapRule": {
+      "type": "every_n_years",
+      "n": 4,
+      "monthIndex": 1,
+      "day": 30
+    }
+  },
+  "vectors": [
+    {
+      "name": "epoch start",
+      "date": {
+        "year": 0,
+        "month": 0,
+        "day": 1
+      },
+      "absolute": 0
+    },
+    {
+      "name": "last common day of the first month",
+      "date": {
+        "year": 0,
+        "month": 0,
+        "day": 30
+      },
+      "absolute": 29
+    },
+    {
+      "name": "leap year has a 32nd label in the second month",
+      "date": {
+        "year": 0,
+        "month": 1,
+        "day": 32
+      },
+      "absolute": 61
+    },
+    {
+      "name": "year before the epoch",
+      "date": {
+        "year": -1,
+        "month": 0,
+        "day": 1
+      },
+      "absolute": -61
+    },
+    {
+      "name": "first day after a leap year",
+      "date": {
+        "year": 1,
+        "month": 0,
+        "day": 1
+      },
+      "absolute": 62
+    },
+    {
+      "name": "year 342",
+      "date": {
+        "year": 342,
+        "month": 0,
+        "day": 1
+      },
+      "absolute": 20948,
+      "format": {
+        "year": "342 г. от Основания",
+        "month": "Зимородок, 342 г. от Основания",
+        "day": "1 Зимородок, 342 г. от Основания",
+        "era": "После Основания"
+      }
+    },
+    {
+      "name": "year before the epoch formats with the era name",
+      "date": {
+        "year": -342,
+        "month": 0,
+        "day": 1
+      },
+      "absolute": -20947,
+      "format": {
+        "year": "342 г. до Основания",
+        "day": "1 Зимородок, 342 г. до Основания",
+        "era": "До Основания"
+      }
+    },
+    {
+      "name": "time of day",
+      "absolute": 20948.25,
+      "date": {
+        "year": 342,
+        "month": 0,
+        "day": 1
+      },
+      "fraction": 0.25,
+      "format": {
+        "time": "1 Зимородок, 342 г. от Основания, 06:00"
+      }
+    }
+  ]
+}
