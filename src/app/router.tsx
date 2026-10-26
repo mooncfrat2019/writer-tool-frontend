@@ -2,66 +2,101 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  lazyRouteComponent,
   Outlet,
   redirect,
 } from '@tanstack/react-router';
-import { CharactersPage } from '@/routes/CharactersPage';
-import { EditorPage } from '@/routes/EditorPage';
-import { ExportsPage } from '@/routes/ExportsPage';
-import { LoginPage } from '@/routes/LoginPage';
+import { LoginPage } from '@/features/auth/LoginPage';
+import { RegisterPage } from '@/features/auth/RegisterPage';
+import { bootstrapSession, useSession } from '@/features/auth/session';
+import { CharactersPage } from '@/features/characters/CharactersPage';
+import { ExportsPage } from '@/features/exports/ExportsPage';
+import { ProjectsPage } from '@/features/projects/ProjectsPage';
+import { StructurePage } from '@/features/structure/StructurePage';
 import { NotFoundPage } from '@/routes/NotFoundPage';
-import { ProjectsPage } from '@/routes/ProjectsPage';
-import { RegisterPage } from '@/routes/RegisterPage';
-import { StructurePage } from '@/routes/StructurePage';
 import { ProjectLayout } from './ProjectLayout';
+import { SplashScreen } from './SplashScreen';
+
+function RootComponent() {
+  const session = useSession();
+  if (session.status === 'initializing') {
+    return <SplashScreen />;
+  }
+  return <Outlet />;
+}
 
 const rootRoute = createRootRoute({
-  component: () => <Outlet />,
+  beforeLoad: async () => {
+    await bootstrapSession();
+  },
+  component: RootComponent,
   notFoundComponent: NotFoundPage,
 });
 
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  beforeLoad: () => {
-    throw redirect({ to: '/projects' });
+  beforeLoad: async () => {
+    const session = await bootstrapSession();
+    throw redirect({ to: session.status === 'authenticated' ? '/projects' : '/login' });
   },
 });
 
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
+  beforeLoad: async () => {
+    const session = await bootstrapSession();
+    if (session.status === 'authenticated') {
+      throw redirect({ to: '/projects' });
+    }
+  },
   component: LoginPage,
 });
 
 const registerRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/register',
+  beforeLoad: async () => {
+    const session = await bootstrapSession();
+    if (session.status === 'authenticated') {
+      throw redirect({ to: '/projects' });
+    }
+  },
   component: RegisterPage,
 });
+
+async function requireAuth() {
+  const session = await bootstrapSession();
+  if (session.status !== 'authenticated') {
+    throw redirect({ to: '/login' });
+  }
+}
 
 const projectsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/projects',
+  beforeLoad: requireAuth,
   component: ProjectsPage,
 });
 
 const projectRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/projects/$projectId',
+  beforeLoad: requireAuth,
   component: ProjectLayout,
 });
 
 const structureRoute = createRoute({
   getParentRoute: () => projectRoute,
   path: 'structure',
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { bookId?: string } => {
+    const bookId = typeof search.bookId === 'string' ? search.bookId : undefined;
+    return bookId ? { bookId } : {};
+  },
   component: StructurePage,
-});
-
-const editorRoute = createRoute({
-  getParentRoute: () => projectRoute,
-  path: 'write/$nodeId',
-  component: EditorPage,
 });
 
 const charactersRoute = createRoute({
@@ -70,10 +105,29 @@ const charactersRoute = createRoute({
   component: CharactersPage,
 });
 
+const characterRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: 'characters/$characterId',
+  component: lazyRouteComponent(
+    () => import('@/features/characters/CharacterDetailPage'),
+    'CharacterDetailPage',
+  ),
+});
+
 const exportsRoute = createRoute({
   getParentRoute: () => projectRoute,
   path: 'exports',
   component: ExportsPage,
+});
+
+const editorRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/projects/$projectId/write/$nodeId',
+  beforeLoad: requireAuth,
+  component: lazyRouteComponent(
+    () => import('@/features/editor/EditorPage'),
+    'EditorPage',
+  ),
 });
 
 const routeTree = rootRoute.addChildren([
@@ -81,13 +135,16 @@ const routeTree = rootRoute.addChildren([
   loginRoute,
   registerRoute,
   projectsRoute,
-  projectRoute.addChildren([structureRoute, editorRoute, charactersRoute, exportsRoute]),
+  projectRoute.addChildren([structureRoute, charactersRoute, characterRoute, exportsRoute]),
+  editorRoute,
 ]);
 
 export const router = createRouter({
   routeTree,
   defaultPreload: 'intent',
   scrollRestoration: true,
+  defaultPendingComponent: SplashScreen,
+  defaultPendingMs: 200,
 });
 
 declare module '@tanstack/react-router' {
