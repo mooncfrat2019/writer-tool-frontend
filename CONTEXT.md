@@ -15,12 +15,12 @@ collaboration). Phase 4 polish and the remaining Phase 5 export work are next.
 
 Branches:
 
-- backend: `feat/phase-1-api` @ `8b06636` plus uncommitted Phase 4 changes
-- frontend: `feat/real-api-integration` @ `b0605c9` plus uncommitted Phase 4 changes
+- backend: `feat/phase-1-api` @ `bf27319` (Phase 4 included)
+- frontend: `feat/real-api-integration` @ `834dfa6` (Phase 4 included)
 
-Both branches are pushed; the Phase 4 changes are in the working trees. Start
-the backend on `:8080` and the frontend with `pnpm dev:real` on `:5174`; demo
-account: `demo@writer.local` / `password123`.
+Both branches are pushed and the working trees are clean. Start the backend on
+`:8080` and the frontend with `pnpm dev:real` on `:5174`; demo account:
+`demo@writer.local` / `password123`.
 
 Phase 4 touchpoints:
 - timeline: `src/features/timeline/` (calendar converter, canvas, dialogs)
