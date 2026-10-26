@@ -1,0 +1,77 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+
+  --color-paper-50: #faf9f6;
+  --color-paper-100: #f3f0e9;
+  --color-paper-200: #e8e2d6;
+  --color-paper-300: #d7cdbb;
+  --color-ink-950: #171512;
+  --color-ink-900: #1f1d1a;
+  --color-ink-700: #4a463f;
+  --color-ink-500: #777065;
+  --color-accent-700: #6f4622;
+  --color-accent-600: #8a5a2b;
+  --color-accent-500: #a86b32;
+}
+
+:root {
+  color-scheme: light;
+  font-family: var(--font-sans);
+  background: var(--color-paper-50);
+  color: var(--color-ink-900);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--color-paper-50);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.ProseMirror {
+  min-height: 60vh;
+  outline: none;
+  font-family: var(--font-serif);
+  font-size: 1.125rem;
+  line-height: 1.9;
+}
+
+.ProseMirror p {
+  margin: 0 0 1em;
+}
+
+.ProseMirror h1,
+.ProseMirror h2,
+.ProseMirror h3 {
+  font-family: var(--font-sans);
+  line-height: 1.25;
+}
+
+.ProseMirror blockquote {
+  margin: 1.5em 0;
+  border-left: 3px solid var(--color-paper-300);
+  padding-left: 1em;
+  color: var(--color-ink-700);
+}

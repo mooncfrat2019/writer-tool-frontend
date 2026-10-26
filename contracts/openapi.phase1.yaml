@@ -1,0 +1,2046 @@
+openapi: 3.1.0
+info:
+  title: Writer Tool API
+  version: 0.1.0-phase1
+  description: |
+    Phase 1 contract: auth, projects, book structure, document metadata,
+    characters, assets and export jobs. Real-time collaboration, worlds,
+    timeline and diagrams are added in later phases.
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development
+  - url: https://api.writertool.app/api/v1
+    description: Production
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Auth
+  - name: Projects
+  - name: Books
+  - name: Documents
+  - name: Characters
+  - name: Assets
+  - name: Exports
+
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      operationId: register
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Registered and signed in
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: HttpOnly refresh token cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Signed in
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      operationId: refresh
+      security: []
+      responses:
+        '200':
+          description: New access token issued and refresh token rotated
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      responses:
+        '204':
+          description: Signed out
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      operationId: getCurrentUser
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /projects:
+    get:
+      tags: [Projects]
+      operationId: listProjects
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Projects available to the current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Projects]
+      operationId: createProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectCreate'
+      responses:
+        '201':
+          description: Project created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /projects/{projectId}:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [Projects]
+      operationId: getProject
+      responses:
+        '200':
+          description: Project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Projects]
+      operationId: updateProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectUpdate'
+      responses:
+        '200':
+          description: Updated project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    delete:
+      tags: [Projects]
+      operationId: deleteProject
+      responses:
+        '204':
+          description: Project deleted
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{projectId}/members:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [Projects]
+      operationId: listProjectMembers
+      responses:
+        '200':
+          description: Project members
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberList'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /projects/{projectId}/invitations:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      tags: [Projects]
+      operationId: inviteProjectMember
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvitationCreate'
+      responses:
+        '201':
+          description: Invitation created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invitation'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /projects/{projectId}/books:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [Books]
+      operationId: listBooks
+      responses:
+        '200':
+          description: Books in the project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookList'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Books]
+      operationId: createBook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookCreate'
+      responses:
+        '201':
+          description: Book created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /books/{bookId}:
+    parameters:
+      - $ref: '#/components/parameters/BookId'
+    get:
+      tags: [Books]
+      operationId: getBook
+      responses:
+        '200':
+          description: Book
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Books]
+      operationId: updateBook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookUpdate'
+      responses:
+        '200':
+          description: Updated book
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /books/{bookId}/tree:
+    parameters:
+      - $ref: '#/components/parameters/BookId'
+    get:
+      tags: [Books]
+      operationId: getBookTree
+      responses:
+        '200':
+          description: Nested book structure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookTree'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /books/{bookId}/nodes:
+    parameters:
+      - $ref: '#/components/parameters/BookId'
+    post:
+      tags: [Books]
+      operationId: createBookNode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookNodeCreate'
+      responses:
+        '201':
+          description: Node created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookNode'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /nodes/{nodeId}:
+    parameters:
+      - $ref: '#/components/parameters/NodeId'
+    patch:
+      tags: [Books]
+      operationId: updateBookNode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookNodeUpdate'
+      responses:
+        '200':
+          description: Updated node
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookNode'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    delete:
+      tags: [Books]
+      operationId: deleteBookNode
+      parameters:
+        - name: strategy
+          in: query
+          schema:
+            type: string
+            enum: [reject_if_children, cascade]
+            default: reject_if_children
+      responses:
+        '204':
+          description: Node deleted
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /nodes/{nodeId}/move:
+    parameters:
+      - $ref: '#/components/parameters/NodeId'
+    post:
+      tags: [Books]
+      operationId: moveBookNode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookNodeMove'
+      responses:
+        '200':
+          description: Moved node
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookNode'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /documents/{documentId}:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+    get:
+      tags: [Documents]
+      operationId: getDocument
+      responses:
+        '200':
+          description: Document metadata and canonical snapshot metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /documents/{documentId}/content:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+    put:
+      tags: [Documents]
+      operationId: saveDocumentContent
+      description: |
+        Temporary Phase 1 save endpoint. Replaced by the collaborative Yjs
+        protocol in Phase 2. The server validates canonical ProseMirror JSON,
+        computes word count and bumps the document version.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentContentUpdate'
+      responses:
+        '200':
+          description: Saved document
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /projects/{projectId}/characters:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [Characters]
+      operationId: listCharacters
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: role
+          in: query
+          schema:
+            $ref: '#/components/schemas/CharacterRole'
+      responses:
+        '200':
+          description: Characters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CharacterList'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Characters]
+      operationId: createCharacter
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CharacterCreate'
+      responses:
+        '201':
+          description: Character created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Character'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /characters/{characterId}:
+    parameters:
+      - $ref: '#/components/parameters/CharacterId'
+    get:
+      tags: [Characters]
+      operationId: getCharacter
+      responses:
+        '200':
+          description: Character
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Character'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Characters]
+      operationId: updateCharacter
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CharacterUpdate'
+      responses:
+        '200':
+          description: Updated character
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Character'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    delete:
+      tags: [Characters]
+      operationId: deleteCharacter
+      responses:
+        '204':
+          description: Character deleted
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /characters/{characterId}/relations:
+    parameters:
+      - $ref: '#/components/parameters/CharacterId'
+    get:
+      tags: [Characters]
+      operationId: listCharacterRelations
+      responses:
+        '200':
+          description: Relations of the character
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CharacterRelationList'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Characters]
+      operationId: createCharacterRelation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CharacterRelationCreate'
+      responses:
+        '201':
+          description: Relation created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CharacterRelation'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /characters/{characterId}/attachments:
+    parameters:
+      - $ref: '#/components/parameters/CharacterId'
+    get:
+      tags: [Characters]
+      operationId: listCharacterAttachments
+      responses:
+        '200':
+          description: Illustrations attached to the character
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttachmentList'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Characters]
+      operationId: attachCharacterAsset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttachmentCreate'
+      responses:
+        '201':
+          description: Attachment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attachment'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /character-relations/{relationId}:
+    parameters:
+      - $ref: '#/components/parameters/RelationId'
+    patch:
+      tags: [Characters]
+      operationId: updateCharacterRelation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CharacterRelationUpdate'
+      responses:
+        '200':
+          description: Updated relation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CharacterRelation'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    delete:
+      tags: [Characters]
+      operationId: deleteCharacterRelation
+      responses:
+        '204':
+          description: Relation deleted
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /attachments/{attachmentId}:
+    parameters:
+      - $ref: '#/components/parameters/AttachmentId'
+    patch:
+      tags: [Characters]
+      operationId: updateAttachment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttachmentUpdate'
+      responses:
+        '200':
+          description: Updated attachment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attachment'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    delete:
+      tags: [Characters]
+      operationId: deleteAttachment
+      responses:
+        '204':
+          description: Attachment deleted
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{projectId}/assets/uploads:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      tags: [Assets]
+      operationId: createAssetUpload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetUploadRequest'
+      responses:
+        '201':
+          description: Presigned upload created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetUploadResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /assets/{assetId}/complete:
+    parameters:
+      - $ref: '#/components/parameters/AssetId'
+    post:
+      tags: [Assets]
+      operationId: completeAssetUpload
+      responses:
+        '202':
+          description: Upload accepted and queued for processing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /assets/{assetId}:
+    parameters:
+      - $ref: '#/components/parameters/AssetId'
+    get:
+      tags: [Assets]
+      operationId: getAsset
+      responses:
+        '200':
+          description: Asset metadata and temporary URLs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{projectId}/exports:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [Exports]
+      operationId: listExports
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Export history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportJobList'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Exports]
+      operationId: createExport
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Optional idempotency key for safe retries
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportRequest'
+      responses:
+        '202':
+          description: Export queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportJob'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /exports/{exportId}:
+    parameters:
+      - $ref: '#/components/parameters/ExportId'
+    get:
+      tags: [Exports]
+      operationId: getExport
+      responses:
+        '200':
+          description: Export job
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportJob'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Exports]
+      operationId: cancelExport
+      responses:
+        '204':
+          description: Export canceled or deleted
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /exports/{exportId}/download:
+    parameters:
+      - $ref: '#/components/parameters/ExportId'
+    get:
+      tags: [Exports]
+      operationId: downloadExport
+      responses:
+        '302':
+          description: Redirect to a short-lived download URL
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    ProjectId:
+      name: projectId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    BookId:
+      name: bookId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    NodeId:
+      name: nodeId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    DocumentId:
+      name: documentId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CharacterId:
+      name: characterId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    RelationId:
+      name: relationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    AttachmentId:
+      name: attachmentId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    AssetId:
+      name: assetId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ExportId:
+      name: exportId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Cursor:
+      name: cursor
+      in: query
+      schema:
+        type: string
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
+
+  responses:
+    Unauthorized:
+      description: Authentication required or token invalid
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: Resource not found
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Conflict:
+      description: Conflict (duplicate, stale version or invalid state)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    ValidationFailed:
+      description: Validation failed
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    TooManyRequests:
+      description: Rate limit exceeded
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    PayloadTooLarge:
+      description: File or payload is too large
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+        code:
+          type: string
+          examples: [validation_failed]
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationIssue'
+    ValidationIssue:
+      type: object
+      required: [field, code, message]
+      properties:
+        field:
+          type: string
+        code:
+          type: string
+        message:
+          type: string
+
+    RegisterRequest:
+      type: object
+      required: [email, password, displayName]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 100
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+    AuthResponse:
+      type: object
+      required: [user, accessToken, accessTokenExpiresAt]
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        accessToken:
+          type: string
+        accessTokenExpiresAt:
+          type: string
+          format: date-time
+
+    User:
+      type: object
+      required: [id, email, displayName, emailVerified, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+        avatarUrl:
+          type: [string, 'null']
+          format: uri
+        emailVerified:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    ProjectSummary:
+      type: object
+      required: [id, title, role, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        genre:
+          type: string
+        language:
+          type: string
+        role:
+          $ref: '#/components/schemas/ProjectRole'
+        membersCount:
+          type: integer
+        booksCount:
+          type: integer
+        wordCount:
+          type: integer
+        coverUrl:
+          type: [string, 'null']
+          format: uri
+        updatedAt:
+          type: string
+          format: date-time
+    Project:
+      allOf:
+        - $ref: '#/components/schemas/ProjectSummary'
+        - type: object
+          required: [createdAt, version]
+          properties:
+            settings:
+              type: object
+              additionalProperties: true
+            createdAt:
+              type: string
+              format: date-time
+            version:
+              type: integer
+              format: int64
+    ProjectList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectSummary'
+        nextCursor:
+          type: [string, 'null']
+    ProjectCreate:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 5000
+        genre:
+          type: string
+          maxLength: 100
+        language:
+          type: string
+          maxLength: 20
+          default: ru
+    ProjectUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 5000
+        genre:
+          type: string
+          maxLength: 100
+        language:
+          type: string
+          maxLength: 20
+        version:
+          type: integer
+          format: int64
+
+    ProjectRole:
+      type: string
+      enum: [owner, editor, viewer]
+    ProjectMember:
+      type: object
+      required: [userId, displayName, email, role, joinedAt]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        email:
+          type: string
+          format: email
+        avatarUrl:
+          type: [string, 'null']
+          format: uri
+        role:
+          $ref: '#/components/schemas/ProjectRole'
+        joinedAt:
+          type: string
+          format: date-time
+    MemberList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectMember'
+    InvitationCreate:
+      type: object
+      required: [email, role]
+      properties:
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [editor, viewer]
+    Invitation:
+      type: object
+      required: [id, email, role, status, expiresAt, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [editor, viewer]
+        status:
+          type: string
+          enum: [pending, accepted, expired, revoked]
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    Book:
+      type: object
+      required: [id, projectId, title, status, seriesOrder, wordCount, createdAt, updatedAt, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        subtitle:
+          type: string
+        seriesOrder:
+          type: integer
+        status:
+          $ref: '#/components/schemas/BookStatus'
+        synopsis:
+          type: string
+        coverUrl:
+          type: [string, 'null']
+          format: uri
+        targetWordCount:
+          type: integer
+        wordCount:
+          type: integer
+        language:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+    BookList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Book'
+    BookCreate:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        subtitle:
+          type: string
+          maxLength: 200
+        seriesOrder:
+          type: integer
+          minimum: 0
+        synopsis:
+          type: string
+          maxLength: 20000
+        targetWordCount:
+          type: integer
+          minimum: 0
+    BookUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        subtitle:
+          type: string
+          maxLength: 200
+        seriesOrder:
+          type: integer
+          minimum: 0
+        status:
+          $ref: '#/components/schemas/BookStatus'
+        synopsis:
+          type: string
+          maxLength: 20000
+        targetWordCount:
+          type: integer
+          minimum: 0
+        version:
+          type: integer
+          format: int64
+
+    BookStatus:
+      type: string
+      enum: [planning, drafting, revising, final, published]
+    BookNodeType:
+      type: string
+      enum: [part, chapter, scene]
+    BookNodeStatus:
+      type: string
+      enum: [idea, outline, draft, revised, final]
+    BookNode:
+      type: object
+      required: [id, bookId, type, title, status, sortKey, wordCount, createdAt, updatedAt, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        bookId:
+          type: string
+          format: uuid
+        parentId:
+          type: [string, 'null']
+          format: uuid
+        type:
+          $ref: '#/components/schemas/BookNodeType'
+        title:
+          type: string
+        synopsis:
+          type: string
+        notes:
+          type: string
+        status:
+          $ref: '#/components/schemas/BookNodeStatus'
+        sortKey:
+          type: string
+        targetWordCount:
+          type: integer
+        povCharacterId:
+          type: [string, 'null']
+          format: uuid
+        documentId:
+          type: [string, 'null']
+          format: uuid
+        wordCount:
+          type: integer
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/BookNode'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+    BookTree:
+      type: object
+      required: [book, nodes]
+      properties:
+        book:
+          $ref: '#/components/schemas/Book'
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/BookNode'
+    BookNodeCreate:
+      type: object
+      required: [type, title]
+      properties:
+        type:
+          $ref: '#/components/schemas/BookNodeType'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        parentId:
+          type: [string, 'null']
+          format: uuid
+        afterId:
+          type: [string, 'null']
+          format: uuid
+        synopsis:
+          type: string
+          maxLength: 20000
+        notes:
+          type: string
+          maxLength: 50000
+        targetWordCount:
+          type: integer
+          minimum: 0
+        povCharacterId:
+          type: [string, 'null']
+          format: uuid
+    BookNodeUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        synopsis:
+          type: string
+          maxLength: 20000
+        notes:
+          type: string
+          maxLength: 50000
+        status:
+          $ref: '#/components/schemas/BookNodeStatus'
+        targetWordCount:
+          type: integer
+          minimum: 0
+        povCharacterId:
+          type: [string, 'null']
+          format: uuid
+        version:
+          type: integer
+          format: int64
+    BookNodeMove:
+      type: object
+      required: [parentId]
+      properties:
+        parentId:
+          type: [string, 'null']
+          format: uuid
+        beforeId:
+          type: [string, 'null']
+          format: uuid
+        afterId:
+          type: [string, 'null']
+          format: uuid
+        version:
+          type: integer
+          format: int64
+
+    Document:
+      type: object
+      required: [id, projectId, kind, title, wordCount, version, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum: [text, diagram]
+        title:
+          type: string
+        wordCount:
+          type: integer
+        version:
+          type: integer
+          format: int64
+        snapshotAt:
+          type: [string, 'null']
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        canonical:
+          type: [object, 'null']
+          additionalProperties: true
+          description: Latest canonical ProseMirror JSON (text) or React Flow JSON (diagram)
+
+    DocumentContentUpdate:
+      type: object
+      required: [canonical, version]
+      properties:
+        canonical:
+          type: object
+          additionalProperties: true
+          description: ProseMirror JSON document
+        version:
+          type: integer
+          format: int64
+
+    CharacterRole:
+      type: string
+      enum: [protagonist, antagonist, deuteragonist, supporting, minor, other]
+    CharacterStatus:
+      type: string
+      enum: [alive, dead, missing, unknown]
+    Character:
+      type: object
+      required: [id, projectId, name, role, status, tags, customFields, createdAt, updatedAt, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        fullName:
+          type: string
+        aliases:
+          type: array
+          items:
+            type: string
+        role:
+          $ref: '#/components/schemas/CharacterRole'
+        age:
+          type: [string, 'null']
+        birthDate:
+          type: [string, 'null']
+        appearance:
+          type: string
+        personality:
+          type: string
+        motivation:
+          type: string
+        goal:
+          type: string
+        conflict:
+          type: string
+        arc:
+          type: string
+        backstory:
+          type: string
+        voice:
+          type: string
+        secrets:
+          type: string
+        notes:
+          type: string
+        status:
+          $ref: '#/components/schemas/CharacterStatus'
+        tags:
+          type: array
+          items:
+            type: string
+        color:
+          type: string
+          pattern: '^#[0-9a-fA-F]{6}$'
+        avatarUrl:
+          type: [string, 'null']
+          format: uri
+        customFields:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+    CharacterList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Character'
+        nextCursor:
+          type: [string, 'null']
+    CharacterCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        fullName:
+          type: string
+          maxLength: 200
+        aliases:
+          type: array
+          items:
+            type: string
+        role:
+          $ref: '#/components/schemas/CharacterRole'
+        age:
+          type: string
+        birthDate:
+          type: string
+        appearance:
+          type: string
+        personality:
+          type: string
+        motivation:
+          type: string
+        goal:
+          type: string
+        conflict:
+          type: string
+        arc:
+          type: string
+        backstory:
+          type: string
+        voice:
+          type: string
+        secrets:
+          type: string
+        notes:
+          type: string
+        status:
+          $ref: '#/components/schemas/CharacterStatus'
+        tags:
+          type: array
+          items:
+            type: string
+        color:
+          type: string
+          pattern: '^#[0-9a-fA-F]{6}$'
+        customFields:
+          type: object
+          additionalProperties: true
+    CharacterUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        fullName:
+          type: string
+          maxLength: 200
+        aliases:
+          type: array
+          items:
+            type: string
+        role:
+          $ref: '#/components/schemas/CharacterRole'
+        age:
+          type: [string, 'null']
+        birthDate:
+          type: [string, 'null']
+        appearance:
+          type: string
+        personality:
+          type: string
+        motivation:
+          type: string
+        goal:
+          type: string
+        conflict:
+          type: string
+        arc:
+          type: string
+        backstory:
+          type: string
+        voice:
+          type: string
+        secrets:
+          type: string
+        notes:
+          type: string
+        status:
+          $ref: '#/components/schemas/CharacterStatus'
+        tags:
+          type: array
+          items:
+            type: string
+        color:
+          type: string
+          pattern: '^#[0-9a-fA-F]{6}$'
+        customFields:
+          type: object
+          additionalProperties: true
+        version:
+          type: integer
+          format: int64
+
+    RelationType:
+      type: string
+      enum: [family, friend, rival, enemy, mentor, romantic, ally, other]
+    CharacterRelation:
+      type: object
+      required: [id, projectId, fromCharacterId, toCharacterId, type, isMutual, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        fromCharacterId:
+          type: string
+          format: uuid
+        toCharacterId:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/RelationType'
+        label:
+          type: string
+        strength:
+          type: integer
+          minimum: -100
+          maximum: 100
+        isMutual:
+          type: boolean
+        notes:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    CharacterRelationList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CharacterRelation'
+    CharacterRelationCreate:
+      type: object
+      required: [toCharacterId, type]
+      properties:
+        toCharacterId:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/RelationType'
+        label:
+          type: string
+        strength:
+          type: integer
+          minimum: -100
+          maximum: 100
+        isMutual:
+          type: boolean
+        notes:
+          type: string
+
+    CharacterRelationUpdate:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/RelationType'
+        label:
+          type: string
+        strength:
+          type: integer
+          minimum: -100
+          maximum: 100
+        isMutual:
+          type: boolean
+        notes:
+          type: string
+
+    AttachmentRole:
+      type: string
+      enum: [avatar, illustration, cover, map, inline]
+    Attachment:
+      type: object
+      required: [id, assetId, targetType, targetId, role, sortOrder, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        assetId:
+          type: string
+          format: uuid
+        targetType:
+          type: string
+          enum: [character, world, location, faction, timeline_event, document]
+        targetId:
+          type: string
+          format: uuid
+        role:
+          $ref: '#/components/schemas/AttachmentRole'
+        caption:
+          type: string
+        sortOrder:
+          type: integer
+        url:
+          type: [string, 'null']
+          format: uri
+        thumbUrl:
+          type: [string, 'null']
+          format: uri
+        createdAt:
+          type: string
+          format: date-time
+    AttachmentList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attachment'
+    AttachmentCreate:
+      type: object
+      required: [assetId, role]
+      properties:
+        assetId:
+          type: string
+          format: uuid
+        role:
+          $ref: '#/components/schemas/AttachmentRole'
+        caption:
+          type: string
+          maxLength: 500
+        sortOrder:
+          type: integer
+          minimum: 0
+
+    AttachmentUpdate:
+      type: object
+      properties:
+        role:
+          $ref: '#/components/schemas/AttachmentRole'
+        caption:
+          type: string
+          maxLength: 500
+        sortOrder:
+          type: integer
+          minimum: 0
+
+    AssetStatus:
+      type: string
+      enum: [pending, processing, ready, failed]
+    Asset:
+      type: object
+      required: [id, projectId, mime, sizeBytes, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        mime:
+          type: string
+        sizeBytes:
+          type: integer
+          format: int64
+        width:
+          type: [integer, 'null']
+        height:
+          type: [integer, 'null']
+        status:
+          $ref: '#/components/schemas/AssetStatus'
+        url:
+          type: [string, 'null']
+          format: uri
+        thumbUrl:
+          type: [string, 'null']
+          format: uri
+        createdAt:
+          type: string
+          format: date-time
+    AssetUploadRequest:
+      type: object
+      required: [filename, mime, sizeBytes]
+      properties:
+        filename:
+          type: string
+          maxLength: 255
+        mime:
+          type: string
+        sizeBytes:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 20971520
+    AssetUploadResponse:
+      type: object
+      required: [assetId, uploadUrl, method, headers, expiresAt]
+      properties:
+        assetId:
+          type: string
+          format: uuid
+        uploadUrl:
+          type: string
+          format: uri
+        method:
+          type: string
+          enum: [PUT]
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        expiresAt:
+          type: string
+          format: date-time
+
+    ExportFormat:
+      type: string
+      enum: [docx, fb2]
+    ExportStatus:
+      type: string
+      enum: [queued, running, succeeded, failed, canceled]
+    ExportOptions:
+      type: object
+      properties:
+        includeTitlePage:
+          type: boolean
+          default: true
+        includeToc:
+          type: boolean
+          default: true
+        includeSynopsis:
+          type: boolean
+          default: false
+        includeNotes:
+          type: boolean
+          default: false
+        chapterPageBreak:
+          type: boolean
+          default: true
+        fontFamily:
+          type: string
+          default: Times New Roman
+        fontSizePt:
+          type: number
+          minimum: 8
+          maximum: 24
+          default: 12
+        lineSpacing:
+          type: number
+          minimum: 1
+          maximum: 3
+          default: 2
+    ExportRequest:
+      type: object
+      required: [format]
+      properties:
+        format:
+          $ref: '#/components/schemas/ExportFormat'
+        options:
+          $ref: '#/components/schemas/ExportOptions'
+    ExportJob:
+      type: object
+      required: [id, projectId, format, status, progress, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        format:
+          $ref: '#/components/schemas/ExportFormat'
+        status:
+          $ref: '#/components/schemas/ExportStatus'
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+        error:
+          type: [string, 'null']
+        warnings:
+          type: array
+          items:
+            type: string
+        downloadUrl:
+          type: [string, 'null']
+          format: uri
+        createdAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: [string, 'null']
+          format: date-time
+        finishedAt:
+          type: [string, 'null']
+          format: date-time
+    ExportJobList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExportJob'
+        nextCursor:
+          type: [string, 'null']
