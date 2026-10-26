@@ -1135,6 +1135,11 @@ export const handlers = [
     );
   }),
 
+  http.put('/mock-uploads/:assetId', async () => {
+    await delay(80);
+    return new HttpResponse(null, { status: 204 });
+  }),
+
   http.post(`${api}/assets/:assetId/complete`, async ({ params }) => {
     const state = getMockState();
     const asset = state.assets.find((item) => item.id === params.assetId);

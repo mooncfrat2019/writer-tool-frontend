@@ -154,8 +154,17 @@ function UploadIllustrationDialog({
         }),
       );
 
-      // In mock mode the worker finalizes the object when `complete` is called.
-      // Real object storage would receive the binary via uploadRequest.uploadUrl.
+      // Upload the binary to the presigned URL (S3 in production, the dev
+      // adapter or MSW in local development), then finalize the asset.
+      const uploadResponse = await fetch(uploadRequest.uploadUrl, {
+        method: uploadRequest.method,
+        headers: uploadRequest.headers,
+        body: file,
+      });
+      if (!uploadResponse.ok) {
+        throw new Error(`Не удалось загрузить файл (${uploadResponse.status}).`);
+      }
+
       const completed = unwrap(
         await api.POST('/assets/{assetId}/complete', {
           params: { path: { assetId: uploadRequest.assetId } },

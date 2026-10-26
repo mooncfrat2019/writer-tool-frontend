@@ -93,4 +93,32 @@ test('registers, restores the session and writes through the real API', async ({
   await characterDialog.getByRole('button', { name: 'Создать персонажа' }).click();
   await expect(characterDialog).toBeHidden();
   await expect(page.getByText('Интеграционная Мира')).toBeVisible();
+
+  const characterHref = await page
+    .getByTestId('character-card')
+    .filter({ hasText: 'Интеграционная Мира' })
+    .getAttribute('href');
+  expect(characterHref).toBeTruthy();
+  await page.goto(characterHref!);
+  await expect(
+    page.getByRole('heading', { name: 'Интеграционная Мира' }),
+  ).toBeVisible();
+
+  await page.getByRole('tab', { name: 'Иллюстрации' }).click();
+  await page.getByRole('button', { name: 'Загрузить' }).click();
+  const uploadDialog = page.getByRole('dialog');
+  await uploadDialog.locator('#illustration-file').setInputFiles({
+    name: 'portrait.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+      'base64',
+    ),
+  });
+  await uploadDialog.getByLabel('Подпись').fill('Интеграционный портрет');
+  await uploadDialog.getByRole('button', { name: 'Загрузить' }).click();
+  await expect(uploadDialog).toBeHidden();
+  await expect(page.getByText('Интеграционный портрет')).toBeVisible({
+    timeout: 15_000,
+  });
 });
