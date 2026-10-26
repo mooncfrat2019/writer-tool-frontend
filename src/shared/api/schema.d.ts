@@ -869,6 +869,14 @@ export interface components {
             expiresAt: string;
             /** @example /collab/0192... */
             websocketPath: string;
+            /**
+             * @description False for legacy documents that have canonical content but no Yjs
+             *     state yet. Such documents stay on the Phase 1 REST editor until a
+             *     server-side migration seeds their Yjs document.
+             */
+            collabAvailable: boolean;
+            /** @description Machine-readable reason when collabAvailable is false */
+            reason?: string;
         };
         /** @enum {string} */
         CharacterRole: "protagonist" | "antagonist" | "deuteragonist" | "supporting" | "minor" | "other";

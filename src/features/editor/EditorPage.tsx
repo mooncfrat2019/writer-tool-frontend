@@ -386,6 +386,7 @@ function EditorWorkspace({
       document={documentQuery.data}
       canEdit={canEdit}
       collab={collab.session ?? undefined}
+      collabFallbackReason={collab.fallbackReason}
       onBack={onBack}
     />
   );
@@ -399,6 +400,7 @@ type EditorSessionProps = {
   document: Document;
   canEdit: boolean;
   collab?: CollabSession;
+  collabFallbackReason?: string | null;
   onBack: () => void;
 };
 
@@ -410,6 +412,7 @@ function EditorSession({
   document,
   canEdit,
   collab,
+  collabFallbackReason,
   onBack,
 }: EditorSessionProps) {
   const queryClient = useQueryClient();
@@ -747,6 +750,14 @@ function EditorSession({
             </span>
             {collab ? <CollabStatus session={collab} /> : null}
             {collab ? <PresenceAvatars users={collab.users} /> : null}
+            {!collab && collabFallbackReason ? (
+              <span
+                className="hidden text-[11px] text-ink-500 md:inline"
+                title="Документ создан до включения совместного режима. Создайте новую главу, чтобы проверить совместное редактирование."
+              >
+                Без совместного режима
+              </span>
+            ) : null}
             {canEdit ? (
               <SaveIndicator status={saveStatus} />
             ) : (

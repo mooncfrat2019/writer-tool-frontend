@@ -1625,7 +1625,7 @@ components:
 
     CollabToken:
       type: object
-      required: [token, expiresAt, websocketPath]
+      required: [token, expiresAt, websocketPath, collabAvailable]
       properties:
         token:
           type: string
@@ -1635,6 +1635,15 @@ components:
         websocketPath:
           type: string
           examples: ['/collab/0192...']
+        collabAvailable:
+          type: boolean
+          description: |
+            False for legacy documents that have canonical content but no Yjs
+            state yet. Such documents stay on the Phase 1 REST editor until a
+            server-side migration seeds their Yjs document.
+        reason:
+          type: string
+          description: Machine-readable reason when collabAvailable is false
 
     CharacterRole:
       type: string

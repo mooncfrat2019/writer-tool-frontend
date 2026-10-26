@@ -28,6 +28,7 @@ export type CollabState = {
   session: CollabSession | null;
   loading: boolean;
   error: string | null;
+  fallbackReason: string | null;
 };
 
 const USER_COLORS = ['#8a5a2b', '#4a6a7a', '#7a4a5a', '#4a7a5a', '#6a5a8a'];
@@ -47,8 +48,8 @@ export function collabEnabled(): boolean {
 export function useCollabSession(documentId: string, enabled: boolean): CollabState {
   const [state, setState] = useState<CollabState>(() =>
     enabled
-      ? { session: null, loading: true, error: null }
-      : { session: null, loading: false, error: null },
+      ? { session: null, loading: true, error: null, fallbackReason: null }
+      : { session: null, loading: false, error: null, fallbackReason: null },
   );
   const syncedRef = useRef(false);
 
@@ -106,6 +107,15 @@ export function useCollabSession(documentId: string, enabled: boolean): CollabSt
         if (cancelled) {
           return;
         }
+        if (!token.collabAvailable) {
+          setState({
+            session: null,
+            loading: false,
+            error: null,
+            fallbackReason: token.reason ?? 'legacy_document_without_yjs_state',
+          });
+          return;
+        }
 
         const currentUser = getSessionState().user;
         const user = {
@@ -154,6 +164,7 @@ export function useCollabSession(documentId: string, enabled: boolean): CollabSt
           },
           loading: false,
           error: null,
+          fallbackReason: null,
         });
         readUsers();
       } catch (error) {
@@ -165,6 +176,7 @@ export function useCollabSession(documentId: string, enabled: boolean): CollabSt
               error,
               'Не удалось подключиться к совместному редактированию.',
             ),
+            fallbackReason: null,
           });
         }
       }
