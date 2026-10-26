@@ -243,6 +243,7 @@ export function ShareDialog({
                       <Badge tone={link.role === 'editor' ? 'accent' : 'neutral'}>
                         {roleLabels[link.role]}
                       </Badge>
+                      {link.revokedAt ? <Badge tone="danger">Отозвана</Badge> : null}
                       <span className="text-xs text-ink-500">
                         {link.expiresAt ? `до ${formatDate(link.expiresAt)}` : 'бессрочно'}
                       </span>
@@ -257,7 +258,7 @@ export function ShareDialog({
                     size="icon"
                     aria-label="Отозвать ссылку"
                     onClick={() => revokeLink.mutate(link.id)}
-                    disabled={revokeLink.isPending}
+                    disabled={revokeLink.isPending || Boolean(link.revokedAt)}
                   >
                     <Trash2 size={15} />
                   </Button>
