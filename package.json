@@ -5,12 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:real": "vite --mode real",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
+    "e2e:real": "playwright test --config playwright.real.config.ts",
     "api:types": "openapi-typescript contracts/openapi.phase1.yaml -o src/shared/api/schema.d.ts",
     "contract:sync": "node scripts/sync-contract.mjs && pnpm api:types",
     "msw:init": "msw init public --save"

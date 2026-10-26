@@ -17,5 +17,10 @@
     "noUncheckedSideEffectImports": true,
     "types": ["node"]
   },
-  "include": ["vite.config.ts", "playwright.config.ts", "scripts/**/*.mjs"]
+  "include": [
+    "vite.config.ts",
+    "playwright.config.ts",
+    "playwright.real.config.ts",
+    "scripts/**/*.mjs"
+  ]
 }
