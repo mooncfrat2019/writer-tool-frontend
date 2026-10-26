@@ -4,7 +4,8 @@ info:
   version: 0.1.0-phase1
   description: |
     Phase 1 contract: auth, projects, book structure, document metadata,
-    characters, assets and export jobs. Real-time collaboration, worlds,
+    characters, worlds, custom fields, search, assets and export jobs.
+    Real-time collaboration, sharing, version history and exports are included;
     timeline and diagrams are added in later phases.
 servers:
   - url: http://localhost:8080/api/v1
@@ -21,6 +22,9 @@ tags:
   - name: Books
   - name: Documents
   - name: Characters
+  - name: Worlds
+  - name: CustomFields
+  - name: Search
   - name: Assets
   - name: Exports
   - name: Sharing
@@ -888,6 +892,526 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /projects/{projectId}/worlds:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [Worlds]
+      operationId: listWorlds
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Worlds of the project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorldList'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Worlds]
+      operationId: createWorld
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorldCreate'
+      responses:
+        '201':
+          description: World created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/World'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /worlds/{worldId}:
+    parameters:
+      - $ref: '#/components/parameters/WorldId'
+    get:
+      tags: [Worlds]
+      operationId: getWorld
+      responses:
+        '200':
+          description: World
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/World'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Worlds]
+      operationId: updateWorld
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorldUpdate'
+      responses:
+        '200':
+          description: Updated world
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/World'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    delete:
+      tags: [Worlds]
+      operationId: deleteWorld
+      responses:
+        '204':
+          description: World deleted
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /worlds/{worldId}/rules:
+    parameters:
+      - $ref: '#/components/parameters/WorldId'
+    get:
+      tags: [Worlds]
+      operationId: listWorldRules
+      responses:
+        '200':
+          description: Rules of the world
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorldRuleList'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Worlds]
+      operationId: createWorldRule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorldRuleCreate'
+      responses:
+        '201':
+          description: Rule created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorldRule'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /world-rules/{ruleId}:
+    parameters:
+      - $ref: '#/components/parameters/WorldRuleId'
+    patch:
+      tags: [Worlds]
+      operationId: updateWorldRule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorldRuleUpdate'
+      responses:
+        '200':
+          description: Updated rule
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorldRule'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    delete:
+      tags: [Worlds]
+      operationId: deleteWorldRule
+      responses:
+        '204':
+          description: Rule deleted
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /worlds/{worldId}/locations:
+    parameters:
+      - $ref: '#/components/parameters/WorldId'
+    get:
+      tags: [Worlds]
+      operationId: listLocations
+      responses:
+        '200':
+          description: Locations of the world
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationList'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Worlds]
+      operationId: createLocation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationCreate'
+      responses:
+        '201':
+          description: Location created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Location'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /locations/{locationId}:
+    parameters:
+      - $ref: '#/components/parameters/LocationId'
+    patch:
+      tags: [Worlds]
+      operationId: updateLocation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationUpdate'
+      responses:
+        '200':
+          description: Updated location
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Location'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    delete:
+      tags: [Worlds]
+      operationId: deleteLocation
+      responses:
+        '204':
+          description: Location and its subtree deleted
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /worlds/{worldId}/factions:
+    parameters:
+      - $ref: '#/components/parameters/WorldId'
+    get:
+      tags: [Worlds]
+      operationId: listFactions
+      responses:
+        '200':
+          description: Factions of the world
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FactionList'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Worlds]
+      operationId: createFaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FactionCreate'
+      responses:
+        '201':
+          description: Faction created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Faction'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /factions/{factionId}:
+    parameters:
+      - $ref: '#/components/parameters/FactionId'
+    patch:
+      tags: [Worlds]
+      operationId: updateFaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FactionUpdate'
+      responses:
+        '200':
+          description: Updated faction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Faction'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    delete:
+      tags: [Worlds]
+      operationId: deleteFaction
+      responses:
+        '204':
+          description: Faction deleted
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /worlds/{worldId}/lore:
+    parameters:
+      - $ref: '#/components/parameters/WorldId'
+    get:
+      tags: [Worlds]
+      operationId: listLoreEntries
+      responses:
+        '200':
+          description: Lore entries of the world
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoreEntryList'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Worlds]
+      operationId: createLoreEntry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoreEntryCreate'
+      responses:
+        '201':
+          description: Lore entry created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoreEntry'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /lore/{loreId}:
+    parameters:
+      - $ref: '#/components/parameters/LoreEntryId'
+    patch:
+      tags: [Worlds]
+      operationId: updateLoreEntry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoreEntryUpdate'
+      responses:
+        '200':
+          description: Updated lore entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoreEntry'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    delete:
+      tags: [Worlds]
+      operationId: deleteLoreEntry
+      responses:
+        '204':
+          description: Lore entry deleted
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{projectId}/custom-fields:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [CustomFields]
+      operationId: listCustomFields
+      parameters:
+        - name: entityType
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/CustomFieldEntityType'
+      responses:
+        '200':
+          description: Custom field definitions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomFieldDefList'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    post:
+      tags: [CustomFields]
+      operationId: createCustomField
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomFieldDefCreate'
+      responses:
+        '201':
+          description: Custom field created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomFieldDef'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /custom-fields/{fieldId}:
+    parameters:
+      - $ref: '#/components/parameters/CustomFieldId'
+    patch:
+      tags: [CustomFields]
+      operationId: updateCustomField
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomFieldDefUpdate'
+      responses:
+        '200':
+          description: Updated custom field
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomFieldDef'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    delete:
+      tags: [CustomFields]
+      operationId: deleteCustomField
+      responses:
+        '204':
+          description: Custom field deleted (stored values are kept)
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{projectId}/search:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [Search]
+      operationId: searchProject
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+        - name: types
+          in: query
+          description: Comma-separated result types
+          schema:
+            type: string
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResultList'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
   /projects/{projectId}/assets/uploads:
     parameters:
       - $ref: '#/components/parameters/ProjectId'
@@ -1196,6 +1720,48 @@ components:
         format: uuid
     CharacterId:
       name: characterId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    WorldId:
+      name: worldId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    WorldRuleId:
+      name: ruleId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    LocationId:
+      name: locationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    FactionId:
+      name: factionId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    LoreEntryId:
+      name: loreId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CustomFieldId:
+      name: fieldId
       in: path
       required: true
       schema:
@@ -2077,6 +2643,582 @@ components:
         version:
           type: integer
           format: int64
+
+    World:
+      type: object
+      required: [id, projectId, name, type, summary, description, rulesSummary, history, geography, customFields, createdAt, updatedAt, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          type: string
+        summary:
+          type: string
+        description:
+          type: string
+        rulesSummary:
+          type: string
+        history:
+          type: string
+        geography:
+          type: string
+        mapUrl:
+          type: [string, 'null']
+          format: uri
+        customFields:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+    WorldList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/World'
+        nextCursor:
+          type: [string, 'null']
+    WorldCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        type:
+          type: string
+          maxLength: 100
+        summary:
+          type: string
+        description:
+          type: string
+        rulesSummary:
+          type: string
+        history:
+          type: string
+        geography:
+          type: string
+        mapAssetId:
+          type: string
+          format: uuid
+        customFields:
+          type: object
+          additionalProperties: true
+    WorldUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        type:
+          type: string
+          maxLength: 100
+        summary:
+          type: string
+        description:
+          type: string
+        rulesSummary:
+          type: string
+        history:
+          type: string
+        geography:
+          type: string
+        mapAssetId:
+          type: [string, 'null']
+          format: uuid
+        customFields:
+          type: object
+          additionalProperties: true
+        version:
+          type: integer
+          format: int64
+
+    WorldRule:
+      type: object
+      required: [id, worldId, category, title, description, consequences, exceptions, importance, sortKey, createdAt, updatedAt, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        worldId:
+          type: string
+          format: uuid
+        category:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        consequences:
+          type: string
+        exceptions:
+          type: string
+        importance:
+          type: integer
+          minimum: 0
+          maximum: 5
+        sortKey:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+    WorldRuleList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorldRule'
+    WorldRuleCreate:
+      type: object
+      required: [title]
+      properties:
+        category:
+          type: string
+          maxLength: 100
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+        consequences:
+          type: string
+        exceptions:
+          type: string
+        importance:
+          type: integer
+          minimum: 0
+          maximum: 5
+    WorldRuleUpdate:
+      type: object
+      properties:
+        category:
+          type: string
+          maxLength: 100
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+        consequences:
+          type: string
+        exceptions:
+          type: string
+        importance:
+          type: integer
+          minimum: 0
+          maximum: 5
+        version:
+          type: integer
+          format: int64
+
+    Location:
+      type: object
+      required: [id, worldId, name, type, description, sortKey, createdAt, updatedAt, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        worldId:
+          type: string
+          format: uuid
+        parentId:
+          type: [string, 'null']
+          format: uuid
+        name:
+          type: string
+        type:
+          type: string
+        description:
+          type: string
+        sortKey:
+          type: string
+        mapX:
+          type: [number, 'null']
+          format: double
+        mapY:
+          type: [number, 'null']
+          format: double
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+    LocationList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Location'
+    LocationCreate:
+      type: object
+      required: [name]
+      properties:
+        parentId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        type:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+        mapX:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 100
+        mapY:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 100
+    LocationUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        type:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+        mapX:
+          type: [number, 'null']
+          format: double
+          minimum: 0
+          maximum: 100
+        mapY:
+          type: [number, 'null']
+          format: double
+          minimum: 0
+          maximum: 100
+        version:
+          type: integer
+          format: int64
+
+    Faction:
+      type: object
+      required: [id, worldId, name, type, goals, resources, allies, enemies, description, createdAt, updatedAt, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        worldId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          type: string
+        goals:
+          type: string
+        resources:
+          type: string
+        allies:
+          type: string
+        enemies:
+          type: string
+        description:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+    FactionList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Faction'
+    FactionCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        type:
+          type: string
+          maxLength: 100
+        goals:
+          type: string
+        resources:
+          type: string
+        allies:
+          type: string
+        enemies:
+          type: string
+        description:
+          type: string
+    FactionUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        type:
+          type: string
+          maxLength: 100
+        goals:
+          type: string
+        resources:
+          type: string
+        allies:
+          type: string
+        enemies:
+          type: string
+        description:
+          type: string
+        version:
+          type: integer
+          format: int64
+
+    LoreEntry:
+      type: object
+      required: [id, worldId, type, title, content, tags, createdAt, updatedAt, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        worldId:
+          type: string
+          format: uuid
+        type:
+          type: string
+        title:
+          type: string
+        content:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+    LoreEntryList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/LoreEntry'
+    LoreEntryCreate:
+      type: object
+      required: [title]
+      properties:
+        type:
+          type: string
+          maxLength: 100
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        content:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+    LoreEntryUpdate:
+      type: object
+      properties:
+        type:
+          type: string
+          maxLength: 100
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        content:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        version:
+          type: integer
+          format: int64
+
+    CustomFieldEntityType:
+      type: string
+      enum: [character, world]
+    CustomFieldType:
+      type: string
+      enum: [text, longtext, number, date, select, multiselect, url, checkbox]
+    CustomFieldDef:
+      type: object
+      required: [id, projectId, entityType, key, label, type, options, required, sortKey, createdAt, updatedAt, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        entityType:
+          $ref: '#/components/schemas/CustomFieldEntityType'
+        key:
+          type: string
+        label:
+          type: string
+        type:
+          $ref: '#/components/schemas/CustomFieldType'
+        options:
+          type: array
+          items:
+            type: string
+        required:
+          type: boolean
+        sortKey:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+    CustomFieldDefList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomFieldDef'
+    CustomFieldDefCreate:
+      type: object
+      required: [entityType, label, type]
+      properties:
+        entityType:
+          $ref: '#/components/schemas/CustomFieldEntityType'
+        key:
+          type: string
+          pattern: '^[a-z][a-z0-9_]{0,63}$'
+        label:
+          type: string
+          minLength: 1
+          maxLength: 120
+        type:
+          $ref: '#/components/schemas/CustomFieldType'
+        options:
+          type: array
+          items:
+            type: string
+        required:
+          type: boolean
+    CustomFieldDefUpdate:
+      type: object
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 120
+        type:
+          $ref: '#/components/schemas/CustomFieldType'
+        options:
+          type: array
+          items:
+            type: string
+        required:
+          type: boolean
+        version:
+          type: integer
+          format: int64
+
+    SearchResultType:
+      type: string
+      enum: [document, character, world, location, faction, lore]
+    SearchResult:
+      type: object
+      required: [type, id, projectId, title, snippet, updatedAt]
+      properties:
+        type:
+          $ref: '#/components/schemas/SearchResultType'
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        snippet:
+          type: string
+        worldId:
+          type: [string, 'null']
+          format: uuid
+        nodeId:
+          type: [string, 'null']
+          format: uuid
+        updatedAt:
+          type: string
+          format: date-time
+    SearchResultList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchResult'
 
     RelationType:
       type: string

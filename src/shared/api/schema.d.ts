@@ -537,6 +537,240 @@ export interface paths {
         patch: operations["updateAttachment"];
         trace?: never;
     };
+    "/projects/{projectId}/worlds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get: operations["listWorlds"];
+        put?: never;
+        post: operations["createWorld"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/worlds/{worldId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                worldId: components["parameters"]["WorldId"];
+            };
+            cookie?: never;
+        };
+        get: operations["getWorld"];
+        put?: never;
+        post?: never;
+        delete: operations["deleteWorld"];
+        options?: never;
+        head?: never;
+        patch: operations["updateWorld"];
+        trace?: never;
+    };
+    "/worlds/{worldId}/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                worldId: components["parameters"]["WorldId"];
+            };
+            cookie?: never;
+        };
+        get: operations["listWorldRules"];
+        put?: never;
+        post: operations["createWorldRule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/world-rules/{ruleId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ruleId: components["parameters"]["WorldRuleId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["deleteWorldRule"];
+        options?: never;
+        head?: never;
+        patch: operations["updateWorldRule"];
+        trace?: never;
+    };
+    "/worlds/{worldId}/locations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                worldId: components["parameters"]["WorldId"];
+            };
+            cookie?: never;
+        };
+        get: operations["listLocations"];
+        put?: never;
+        post: operations["createLocation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/locations/{locationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                locationId: components["parameters"]["LocationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["deleteLocation"];
+        options?: never;
+        head?: never;
+        patch: operations["updateLocation"];
+        trace?: never;
+    };
+    "/worlds/{worldId}/factions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                worldId: components["parameters"]["WorldId"];
+            };
+            cookie?: never;
+        };
+        get: operations["listFactions"];
+        put?: never;
+        post: operations["createFaction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/factions/{factionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                factionId: components["parameters"]["FactionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["deleteFaction"];
+        options?: never;
+        head?: never;
+        patch: operations["updateFaction"];
+        trace?: never;
+    };
+    "/worlds/{worldId}/lore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                worldId: components["parameters"]["WorldId"];
+            };
+            cookie?: never;
+        };
+        get: operations["listLoreEntries"];
+        put?: never;
+        post: operations["createLoreEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/lore/{loreId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                loreId: components["parameters"]["LoreEntryId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["deleteLoreEntry"];
+        options?: never;
+        head?: never;
+        patch: operations["updateLoreEntry"];
+        trace?: never;
+    };
+    "/projects/{projectId}/custom-fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get: operations["listCustomFields"];
+        put?: never;
+        post: operations["createCustomField"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/custom-fields/{fieldId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fieldId: components["parameters"]["CustomFieldId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["deleteCustomField"];
+        options?: never;
+        head?: never;
+        patch: operations["updateCustomField"];
+        trace?: never;
+    };
+    "/projects/{projectId}/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get: operations["searchProject"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{projectId}/assets/uploads": {
         parameters: {
             query?: never;
@@ -1147,6 +1381,288 @@ export interface components {
             /** Format: int64 */
             version?: number;
         };
+        World: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            projectId: string;
+            name: string;
+            type: string;
+            summary: string;
+            description: string;
+            rulesSummary: string;
+            history: string;
+            geography: string;
+            /** Format: uri */
+            mapUrl?: string | null;
+            customFields: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: int64 */
+            version: number;
+        };
+        WorldList: {
+            items: components["schemas"]["World"][];
+            nextCursor?: string | null;
+        };
+        WorldCreate: {
+            name: string;
+            type?: string;
+            summary?: string;
+            description?: string;
+            rulesSummary?: string;
+            history?: string;
+            geography?: string;
+            /** Format: uuid */
+            mapAssetId?: string;
+            customFields?: {
+                [key: string]: unknown;
+            };
+        };
+        WorldUpdate: {
+            name?: string;
+            type?: string;
+            summary?: string;
+            description?: string;
+            rulesSummary?: string;
+            history?: string;
+            geography?: string;
+            /** Format: uuid */
+            mapAssetId?: string | null;
+            customFields?: {
+                [key: string]: unknown;
+            };
+            /** Format: int64 */
+            version?: number;
+        };
+        WorldRule: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            worldId: string;
+            category: string;
+            title: string;
+            description: string;
+            consequences: string;
+            exceptions: string;
+            importance: number;
+            sortKey: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: int64 */
+            version: number;
+        };
+        WorldRuleList: {
+            items: components["schemas"]["WorldRule"][];
+        };
+        WorldRuleCreate: {
+            category?: string;
+            title: string;
+            description?: string;
+            consequences?: string;
+            exceptions?: string;
+            importance?: number;
+        };
+        WorldRuleUpdate: {
+            category?: string;
+            title?: string;
+            description?: string;
+            consequences?: string;
+            exceptions?: string;
+            importance?: number;
+            /** Format: int64 */
+            version?: number;
+        };
+        Location: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            worldId: string;
+            /** Format: uuid */
+            parentId?: string | null;
+            name: string;
+            type: string;
+            description: string;
+            sortKey: string;
+            /** Format: double */
+            mapX?: number | null;
+            /** Format: double */
+            mapY?: number | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: int64 */
+            version: number;
+        };
+        LocationList: {
+            items: components["schemas"]["Location"][];
+        };
+        LocationCreate: {
+            /** Format: uuid */
+            parentId?: string;
+            name: string;
+            type?: string;
+            description?: string;
+            /** Format: double */
+            mapX?: number;
+            /** Format: double */
+            mapY?: number;
+        };
+        LocationUpdate: {
+            name?: string;
+            type?: string;
+            description?: string;
+            /** Format: double */
+            mapX?: number | null;
+            /** Format: double */
+            mapY?: number | null;
+            /** Format: int64 */
+            version?: number;
+        };
+        Faction: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            worldId: string;
+            name: string;
+            type: string;
+            goals: string;
+            resources: string;
+            allies: string;
+            enemies: string;
+            description: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: int64 */
+            version: number;
+        };
+        FactionList: {
+            items: components["schemas"]["Faction"][];
+        };
+        FactionCreate: {
+            name: string;
+            type?: string;
+            goals?: string;
+            resources?: string;
+            allies?: string;
+            enemies?: string;
+            description?: string;
+        };
+        FactionUpdate: {
+            name?: string;
+            type?: string;
+            goals?: string;
+            resources?: string;
+            allies?: string;
+            enemies?: string;
+            description?: string;
+            /** Format: int64 */
+            version?: number;
+        };
+        LoreEntry: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            worldId: string;
+            type: string;
+            title: string;
+            content: string;
+            tags: string[];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: int64 */
+            version: number;
+        };
+        LoreEntryList: {
+            items: components["schemas"]["LoreEntry"][];
+        };
+        LoreEntryCreate: {
+            type?: string;
+            title: string;
+            content?: string;
+            tags?: string[];
+        };
+        LoreEntryUpdate: {
+            type?: string;
+            title?: string;
+            content?: string;
+            tags?: string[];
+            /** Format: int64 */
+            version?: number;
+        };
+        /** @enum {string} */
+        CustomFieldEntityType: "character" | "world";
+        /** @enum {string} */
+        CustomFieldType: "text" | "longtext" | "number" | "date" | "select" | "multiselect" | "url" | "checkbox";
+        CustomFieldDef: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            projectId: string;
+            entityType: components["schemas"]["CustomFieldEntityType"];
+            key: string;
+            label: string;
+            type: components["schemas"]["CustomFieldType"];
+            options: string[];
+            required: boolean;
+            sortKey: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: int64 */
+            version: number;
+        };
+        CustomFieldDefList: {
+            items: components["schemas"]["CustomFieldDef"][];
+        };
+        CustomFieldDefCreate: {
+            entityType: components["schemas"]["CustomFieldEntityType"];
+            key?: string;
+            label: string;
+            type: components["schemas"]["CustomFieldType"];
+            options?: string[];
+            required?: boolean;
+        };
+        CustomFieldDefUpdate: {
+            label?: string;
+            type?: components["schemas"]["CustomFieldType"];
+            options?: string[];
+            required?: boolean;
+            /** Format: int64 */
+            version?: number;
+        };
+        /** @enum {string} */
+        SearchResultType: "document" | "character" | "world" | "location" | "faction" | "lore";
+        SearchResult: {
+            type: components["schemas"]["SearchResultType"];
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            projectId: string;
+            title: string;
+            snippet: string;
+            /** Format: uuid */
+            worldId?: string | null;
+            /** Format: uuid */
+            nodeId?: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        SearchResultList: {
+            items: components["schemas"]["SearchResult"][];
+        };
         /** @enum {string} */
         RelationType: "family" | "friend" | "rival" | "enemy" | "mentor" | "romantic" | "ally" | "other";
         CharacterRelation: {
@@ -1491,6 +2007,12 @@ export interface components {
         NodeId: string;
         DocumentId: string;
         CharacterId: string;
+        WorldId: string;
+        WorldRuleId: string;
+        LocationId: string;
+        FactionId: string;
+        LoreEntryId: string;
+        CustomFieldId: string;
         RelationId: string;
         AttachmentId: string;
         AssetId: string;
@@ -2604,6 +3126,692 @@ export interface operations {
             };
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    listWorlds: {
+        parameters: {
+            query?: {
+                q?: string;
+                cursor?: components["parameters"]["Cursor"];
+                limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Worlds of the project */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorldList"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createWorld: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorldCreate"];
+            };
+        };
+        responses: {
+            /** @description World created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["World"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getWorld: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                worldId: components["parameters"]["WorldId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description World */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["World"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteWorld: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                worldId: components["parameters"]["WorldId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description World deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateWorld: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                worldId: components["parameters"]["WorldId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorldUpdate"];
+            };
+        };
+        responses: {
+            /** @description Updated world */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["World"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    listWorldRules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                worldId: components["parameters"]["WorldId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Rules of the world */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorldRuleList"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createWorldRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                worldId: components["parameters"]["WorldId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorldRuleCreate"];
+            };
+        };
+        responses: {
+            /** @description Rule created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorldRule"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    deleteWorldRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ruleId: components["parameters"]["WorldRuleId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Rule deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateWorldRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ruleId: components["parameters"]["WorldRuleId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorldRuleUpdate"];
+            };
+        };
+        responses: {
+            /** @description Updated rule */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorldRule"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    listLocations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                worldId: components["parameters"]["WorldId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Locations of the world */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocationList"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                worldId: components["parameters"]["WorldId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocationCreate"];
+            };
+        };
+        responses: {
+            /** @description Location created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Location"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    deleteLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                locationId: components["parameters"]["LocationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Location and its subtree deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                locationId: components["parameters"]["LocationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocationUpdate"];
+            };
+        };
+        responses: {
+            /** @description Updated location */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Location"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    listFactions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                worldId: components["parameters"]["WorldId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Factions of the world */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FactionList"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createFaction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                worldId: components["parameters"]["WorldId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FactionCreate"];
+            };
+        };
+        responses: {
+            /** @description Faction created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Faction"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    deleteFaction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                factionId: components["parameters"]["FactionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Faction deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateFaction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                factionId: components["parameters"]["FactionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FactionUpdate"];
+            };
+        };
+        responses: {
+            /** @description Updated faction */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Faction"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    listLoreEntries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                worldId: components["parameters"]["WorldId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Lore entries of the world */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoreEntryList"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createLoreEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                worldId: components["parameters"]["WorldId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoreEntryCreate"];
+            };
+        };
+        responses: {
+            /** @description Lore entry created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoreEntry"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    deleteLoreEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                loreId: components["parameters"]["LoreEntryId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Lore entry deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateLoreEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                loreId: components["parameters"]["LoreEntryId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoreEntryUpdate"];
+            };
+        };
+        responses: {
+            /** @description Updated lore entry */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoreEntry"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    listCustomFields: {
+        parameters: {
+            query: {
+                entityType: components["schemas"]["CustomFieldEntityType"];
+            };
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Custom field definitions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomFieldDefList"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    createCustomField: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomFieldDefCreate"];
+            };
+        };
+        responses: {
+            /** @description Custom field created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomFieldDef"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    deleteCustomField: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fieldId: components["parameters"]["CustomFieldId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Custom field deleted (stored values are kept) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateCustomField: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fieldId: components["parameters"]["CustomFieldId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomFieldDefUpdate"];
+            };
+        };
+        responses: {
+            /** @description Updated custom field */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomFieldDef"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    searchProject: {
+        parameters: {
+            query: {
+                q: string;
+                /** @description Comma-separated result types */
+                types?: string;
+                limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Search results */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchResultList"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
             422: components["responses"]["ValidationFailed"];
         };
     };

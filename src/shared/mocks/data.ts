@@ -12,6 +12,12 @@ type CharacterRelation = components['schemas']['CharacterRelation'];
 type Attachment = components['schemas']['Attachment'];
 type Asset = components['schemas']['Asset'];
 type ExportJob = components['schemas']['ExportJob'];
+type World = components['schemas']['World'];
+type WorldRule = components['schemas']['WorldRule'];
+type Location = components['schemas']['Location'];
+type Faction = components['schemas']['Faction'];
+type LoreEntry = components['schemas']['LoreEntry'];
+type CustomFieldDef = components['schemas']['CustomFieldDef'];
 
 export type MockState = {
   projects: Project[];
@@ -23,6 +29,12 @@ export type MockState = {
   attachments: Attachment[];
   assets: Asset[];
   exports: ExportJob[];
+  worlds: World[];
+  worldRules: WorldRule[];
+  locations: Location[];
+  factions: Faction[];
+  loreEntries: LoreEntry[];
+  customFields: CustomFieldDef[];
 };
 
 type CountFields = { characterCount: number; authorSheets: number };
@@ -604,6 +616,153 @@ export const mockExports: ExportJob[] = [
   },
 ];
 
+export const mockWorlds: World[] = [
+  {
+    id: 'bbbbbbbb-1111-4bbb-8bbb-bbbbbbbbbbbb',
+    projectId: mockProject.id,
+    name: 'Астрал',
+    type: 'fantasy',
+    summary: 'Мир, где сны становятся дорогами, а память — валютой.',
+    description:
+      'Астрал держится на снах спящих. Каждую ночь граница между явью и сном истончается, и по ней ходят сновидцы.',
+    rulesSummary: 'Магия требует сна: каждое заклинание сжигает часть памяти.',
+    history: 'После Падения Луны сновидцы закрыли северные врата и разделили город на две части.',
+    geography: 'Серебряный порт стоит на берегу Млечного залива; дальше к северу — Стеклянные пустоши.',
+    mapUrl: null,
+    customFields: {},
+    createdAt: earlier,
+    updatedAt: yesterday,
+    version: 2,
+  },
+  {
+    id: 'bbbbbbbb-7777-4bbb-8bbb-bbbbbbbbbbbb',
+    projectId: '22222222-2222-4222-8222-222222222223',
+    name: 'Сад дверей',
+    type: 'magical',
+    summary: 'Дом, где двери открываются в чужие воспоминания.',
+    description: '',
+    rulesSummary: '',
+    history: '',
+    geography: '',
+    mapUrl: null,
+    customFields: {},
+    createdAt: earlier,
+    updatedAt: yesterday,
+    version: 1,
+  },
+];
+
+export const mockLocations: Location[] = [
+  {
+    id: 'bbbbbbbb-2222-4bbb-8bbb-bbbbbbbbbbbb',
+    worldId: mockWorlds[0].id,
+    parentId: null,
+    name: 'Серебряный порт',
+    type: 'city',
+    description: 'Главный город на берегу Млечного залива.',
+    sortKey: '0000000010',
+    mapX: 42,
+    mapY: 35,
+    createdAt: earlier,
+    updatedAt: yesterday,
+    version: 1,
+  },
+  {
+    id: 'bbbbbbbb-3333-4bbb-8bbb-bbbbbbbbbbbb',
+    worldId: mockWorlds[0].id,
+    parentId: 'bbbbbbbb-2222-4bbb-8bbb-bbbbbbbbbbbb',
+    name: 'Цитадель сна',
+    type: 'building',
+    description: 'Крепость на скале, где хранят спящих.',
+    sortKey: '0000000010',
+    mapX: 44,
+    mapY: 33,
+    createdAt: earlier,
+    updatedAt: yesterday,
+    version: 1,
+  },
+];
+
+export const mockWorldRules: WorldRule[] = [
+  {
+    id: 'bbbbbbbb-4444-4bbb-8bbb-bbbbbbbbbbbb',
+    worldId: mockWorlds[0].id,
+    category: 'magic',
+    title: 'Магия требует сна',
+    description: 'Каждое заклинание сжигает часть памяти. Забытое нельзя вернуть.',
+    consequences: 'Сновидец теряет воспоминания о том, что было для него важнее всего.',
+    exceptions: 'Дети до семи лет не теряют память, но и не могут колдовать.',
+    importance: 5,
+    sortKey: '0000000010',
+    createdAt: earlier,
+    updatedAt: yesterday,
+    version: 1,
+  },
+];
+
+export const mockFactions: Faction[] = [
+  {
+    id: 'bbbbbbbb-5555-4bbb-8bbb-bbbbbbbbbbbb',
+    worldId: mockWorlds[0].id,
+    name: 'Сновидцы',
+    type: 'order',
+    goals: 'Охранять границу сна и не давать Пожирателям проникнуть в явь.',
+    resources: 'Цитадель сна, архивы памяти, шесть действующих сновидцев.',
+    allies: 'Городская стража Серебряного порта',
+    enemies: 'Пожиратели',
+    description: 'Древний орден, который помнит то, что остальные предпочли забыть.',
+    createdAt: earlier,
+    updatedAt: yesterday,
+    version: 1,
+  },
+];
+
+export const mockLoreEntries: LoreEntry[] = [
+  {
+    id: 'bbbbbbbb-6666-4bbb-8bbb-bbbbbbbbbbbb',
+    worldId: mockWorlds[0].id,
+    type: 'legend',
+    title: 'Сон о городе',
+    content:
+      'Говорят, однажды весь Серебряный порт уснул одновременно — и увидел один и тот же сон. Наутро никто не смог вспомнить его, но все знали: город изменился.',
+    tags: ['сон', 'город', 'пророчество'],
+    createdAt: earlier,
+    updatedAt: yesterday,
+    version: 1,
+  },
+];
+
+export const mockCustomFields: CustomFieldDef[] = [
+  {
+    id: 'cccccccc-1111-4ccc-8ccc-cccccccccccc',
+    projectId: mockProject.id,
+    entityType: 'character',
+    key: 'height',
+    label: 'Рост',
+    type: 'number',
+    options: [],
+    required: false,
+    sortKey: '0000000010',
+    createdAt: earlier,
+    updatedAt: earlier,
+    version: 1,
+  },
+  {
+    id: 'cccccccc-2222-4ccc-8ccc-cccccccccccc',
+    projectId: mockProject.id,
+    entityType: 'world',
+    key: 'magic_level',
+    label: 'Уровень магии',
+    type: 'select',
+    options: ['низкий', 'средний', 'высокий'],
+    required: false,
+    sortKey: '0000000010',
+    createdAt: earlier,
+    updatedAt: earlier,
+    version: 1,
+  },
+];
+
 export function createInitialMockState(): MockState {
   return {
     projects: [structuredClone(mockProject), structuredClone(viewerProject)],
@@ -619,5 +778,11 @@ export function createInitialMockState(): MockState {
     attachments: structuredClone(mockAttachments),
     assets: structuredClone(mockAssets),
     exports: structuredClone(mockExports),
+    worlds: structuredClone(mockWorlds),
+    worldRules: structuredClone(mockWorldRules),
+    locations: structuredClone(mockLocations),
+    factions: structuredClone(mockFactions),
+    loreEntries: structuredClone(mockLoreEntries),
+    customFields: structuredClone(mockCustomFields),
   };
 }

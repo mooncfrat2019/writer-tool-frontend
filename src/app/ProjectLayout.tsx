@@ -4,7 +4,9 @@ import {
   BookOpen,
   ChevronLeft,
   Download,
+  Globe2,
   Network,
+  Search,
   Users,
 } from 'lucide-react';
 import { api } from '@/shared/api/client';
@@ -20,6 +22,8 @@ import { projectRoleLabels } from '@/features/projects/constants';
 const navItems = [
   { to: '/projects/$projectId/structure', label: 'Структура', icon: Network },
   { to: '/projects/$projectId/characters', label: 'Персонажи', icon: Users },
+  { to: '/projects/$projectId/worlds', label: 'Миры', icon: Globe2 },
+  { to: '/projects/$projectId/search', label: 'Поиск', icon: Search },
   { to: '/projects/$projectId/exports', label: 'Экспорт', icon: Download },
 ] as const;
 
@@ -38,6 +42,8 @@ function ProjectShellSkeleton() {
           <Skeleton className="mt-3 h-5 w-20 rounded-full" />
         </div>
         <div className="mt-6 space-y-2">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />

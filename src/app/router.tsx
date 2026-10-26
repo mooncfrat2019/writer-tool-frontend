@@ -12,7 +12,9 @@ import { bootstrapSession, useSession } from '@/features/auth/session';
 import { CharactersPage } from '@/features/characters/CharactersPage';
 import { ExportsPage } from '@/features/exports/ExportsPage';
 import { ProjectsPage } from '@/features/projects/ProjectsPage';
+import { SearchPage } from '@/features/search/SearchPage';
 import { StructurePage } from '@/features/structure/StructurePage';
+import { WorldsPage } from '@/features/worlds/WorldsPage';
 import { NotFoundPage } from '@/routes/NotFoundPage';
 import { ProjectLayout } from './ProjectLayout';
 import { SplashScreen } from './SplashScreen';
@@ -139,6 +141,27 @@ const exportsRoute = createRoute({
   component: ExportsPage,
 });
 
+const worldsRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: 'worlds',
+  component: WorldsPage,
+});
+
+const worldRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: 'worlds/$worldId',
+  component: lazyRouteComponent(
+    () => import('@/features/worlds/WorldDetailPage'),
+    'WorldDetailPage',
+  ),
+});
+
+const searchRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: 'search',
+  component: SearchPage,
+});
+
 const editorRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/projects/$projectId/write/$nodeId',
@@ -156,7 +179,15 @@ const routeTree = rootRoute.addChildren([
   shareRoute,
   sharedDocumentRoute,
   projectsRoute,
-  projectRoute.addChildren([structureRoute, charactersRoute, characterRoute, exportsRoute]),
+  projectRoute.addChildren([
+    structureRoute,
+    charactersRoute,
+    characterRoute,
+    worldsRoute,
+    worldRoute,
+    searchRoute,
+    exportsRoute,
+  ]),
   editorRoute,
 ]);
 

@@ -21,6 +21,14 @@ type Asset = components['schemas']['Asset'];
 type ExportJob = components['schemas']['ExportJob'];
 type Project = components['schemas']['Project'];
 type ProjectSummary = components['schemas']['ProjectSummary'];
+type World = components['schemas']['World'];
+type WorldRule = components['schemas']['WorldRule'];
+type Location = components['schemas']['Location'];
+type Faction = components['schemas']['Faction'];
+type LoreEntry = components['schemas']['LoreEntry'];
+type CustomFieldDef = components['schemas']['CustomFieldDef'];
+type SearchResult = components['schemas']['SearchResult'];
+type SearchResultType = components['schemas']['SearchResultType'];
 
 const api = '/api/v1';
 const EXPORT_DURATION_MS = 2_600;
@@ -1243,4 +1251,795 @@ export const handlers = [
       headers: { Location: job.downloadUrl },
     });
   }),
+
+  http.get(`${api}/projects/:projectId/worlds`, async ({ params, request }) => {
+    const url = new URL(request.url);
+    const query = (url.searchParams.get('q') ?? '').trim().toLocaleLowerCase('ru');
+    const items = getMockState()
+      .worlds.filter((world) => world.projectId === params.projectId)
+      .filter((world) =>
+        query
+          ? [world.name, world.type, world.summary, world.description]
+              .join(' ')
+              .toLocaleLowerCase('ru')
+              .includes(query)
+          : true,
+      )
+      .sort((left, right) => left.name.localeCompare(right.name, 'ru'));
+    await delay(70);
+    return HttpResponse.json({ items, nextCursor: null });
+  }),
+
+  http.post(`${api}/projects/:projectId/worlds`, async ({ params, request }) => {
+    const state = getMockState();
+    const project = state.projects.find((item) => item.id === params.projectId);
+    if (!project) {
+      return problem(404, 'not_found', 'Project not found');
+    }
+    const body = (await request.json()) as Partial<World>;
+    if (!body.name?.trim()) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Name is required');
+    }
+    const timestamp = new Date().toISOString();
+    const world: World = {
+      id: crypto.randomUUID(),
+      projectId: project.id,
+      name: body.name.trim(),
+      type: body.type ?? '',
+      summary: body.summary ?? '',
+      description: body.description ?? '',
+      rulesSummary: body.rulesSummary ?? '',
+      history: body.history ?? '',
+      geography: body.geography ?? '',
+      mapUrl: null,
+      customFields: body.customFields ?? {},
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      version: 1,
+    };
+    state.worlds = [world, ...state.worlds];
+    touchProject(project.id);
+    saveMockState();
+    await delay(110);
+    return HttpResponse.json(world, { status: 201 });
+  }),
+
+  http.get(`${api}/worlds/:worldId`, async ({ params }) => {
+    const world = getMockState().worlds.find((item) => item.id === params.worldId);
+    if (!world) {
+      return problem(404, 'not_found', 'World not found');
+    }
+    await delay(60);
+    return HttpResponse.json(world);
+  }),
+
+  http.patch(`${api}/worlds/:worldId`, async ({ params, request }) => {
+    const state = getMockState();
+    const world = state.worlds.find((item) => item.id === params.worldId);
+    if (!world) {
+      return problem(404, 'not_found', 'World not found');
+    }
+    const body = (await request.json()) as Partial<World>;
+    if (!validateVersion(world.version, body.version)) {
+      return conflictVersion();
+    }
+    if (body.name !== undefined && !body.name.trim()) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Name is required');
+    }
+    const fields: (keyof World)[] = [
+      'name',
+      'type',
+      'summary',
+      'description',
+      'rulesSummary',
+      'history',
+      'geography',
+      'customFields',
+    ];
+    for (const field of fields) {
+      const value = body[field];
+      if (value !== undefined) {
+        Object.assign(world, { [field]: value });
+      }
+    }
+    world.version += 1;
+    world.updatedAt = new Date().toISOString();
+    touchProject(world.projectId);
+    saveMockState();
+    return HttpResponse.json(world);
+  }),
+
+  http.delete(`${api}/worlds/:worldId`, ({ params }) => {
+    const state = getMockState();
+    const world = state.worlds.find((item) => item.id === params.worldId);
+    if (!world) {
+      return problem(404, 'not_found', 'World not found');
+    }
+    state.worlds = state.worlds.filter((item) => item.id !== params.worldId);
+    state.worldRules = state.worldRules.filter((item) => item.worldId !== params.worldId);
+    state.locations = state.locations.filter((item) => item.worldId !== params.worldId);
+    state.factions = state.factions.filter((item) => item.worldId !== params.worldId);
+    state.loreEntries = state.loreEntries.filter((item) => item.worldId !== params.worldId);
+    touchProject(world.projectId);
+    saveMockState();
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.get(`${api}/worlds/:worldId/rules`, async ({ params }) => {
+    const world = getMockState().worlds.find((item) => item.id === params.worldId);
+    if (!world) {
+      return problem(404, 'not_found', 'World not found');
+    }
+    const items = getMockState()
+      .worldRules.filter((rule) => rule.worldId === params.worldId)
+      .sort((left, right) => left.sortKey.localeCompare(right.sortKey));
+    await delay(60);
+    return HttpResponse.json({ items });
+  }),
+
+  http.post(`${api}/worlds/:worldId/rules`, async ({ params, request }) => {
+    const state = getMockState();
+    const world = state.worlds.find((item) => item.id === params.worldId);
+    if (!world) {
+      return problem(404, 'not_found', 'World not found');
+    }
+    const body = (await request.json()) as Partial<WorldRule>;
+    if (!body.title?.trim()) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Title is required');
+    }
+    if (body.importance !== undefined && (body.importance < 0 || body.importance > 5)) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Invalid importance');
+    }
+    const timestamp = new Date().toISOString();
+    const existing = state.worldRules.filter((rule) => rule.worldId === world.id);
+    const rule: WorldRule = {
+      id: crypto.randomUUID(),
+      worldId: world.id,
+      category: body.category ?? '',
+      title: body.title.trim(),
+      description: body.description ?? '',
+      consequences: body.consequences ?? '',
+      exceptions: body.exceptions ?? '',
+      importance: body.importance ?? 3,
+      sortKey: String((existing.length + 1) * 10).padStart(10, '0'),
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      version: 1,
+    };
+    state.worldRules = [...state.worldRules, rule];
+    touchProject(world.projectId);
+    saveMockState();
+    await delay(90);
+    return HttpResponse.json(rule, { status: 201 });
+  }),
+
+  http.patch(`${api}/world-rules/:ruleId`, async ({ params, request }) => {
+    const state = getMockState();
+    const rule = state.worldRules.find((item) => item.id === params.ruleId);
+    if (!rule) {
+      return problem(404, 'not_found', 'Rule not found');
+    }
+    const body = (await request.json()) as Partial<WorldRule>;
+    if (!validateVersion(rule.version, body.version)) {
+      return conflictVersion();
+    }
+    if (body.title !== undefined && !body.title.trim()) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Title is required');
+    }
+    if (body.importance !== undefined && (body.importance < 0 || body.importance > 5)) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Invalid importance');
+    }
+    for (const field of [
+      'category',
+      'title',
+      'description',
+      'consequences',
+      'exceptions',
+      'importance',
+    ] as const) {
+      if (body[field] !== undefined) {
+        Object.assign(rule, { [field]: body[field] });
+      }
+    }
+    rule.version += 1;
+    rule.updatedAt = new Date().toISOString();
+    saveMockState();
+    return HttpResponse.json(rule);
+  }),
+
+  http.delete(`${api}/world-rules/:ruleId`, ({ params }) => {
+    const state = getMockState();
+    const rule = state.worldRules.find((item) => item.id === params.ruleId);
+    if (!rule) {
+      return problem(404, 'not_found', 'Rule not found');
+    }
+    state.worldRules = state.worldRules.filter((item) => item.id !== params.ruleId);
+    saveMockState();
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.get(`${api}/worlds/:worldId/locations`, async ({ params }) => {
+    const world = getMockState().worlds.find((item) => item.id === params.worldId);
+    if (!world) {
+      return problem(404, 'not_found', 'World not found');
+    }
+    const items = getMockState()
+      .locations.filter((location) => location.worldId === params.worldId)
+      .sort((left, right) => left.sortKey.localeCompare(right.sortKey));
+    await delay(60);
+    return HttpResponse.json({ items });
+  }),
+
+  http.post(`${api}/worlds/:worldId/locations`, async ({ params, request }) => {
+    const state = getMockState();
+    const world = state.worlds.find((item) => item.id === params.worldId);
+    if (!world) {
+      return problem(404, 'not_found', 'World not found');
+    }
+    const body = (await request.json()) as Partial<Location>;
+    if (!body.name?.trim()) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Name is required');
+    }
+    if (body.parentId) {
+      const parent = state.locations.find((item) => item.id === body.parentId);
+      if (!parent || parent.worldId !== world.id) {
+        return problem(422, 'validation_failed', 'Validation failed', 'Invalid parent');
+      }
+    }
+    const timestamp = new Date().toISOString();
+    const siblings = state.locations.filter(
+      (location) =>
+        location.worldId === world.id &&
+        (location.parentId ?? null) === (body.parentId ?? null),
+    );
+    const location: Location = {
+      id: crypto.randomUUID(),
+      worldId: world.id,
+      parentId: body.parentId ?? null,
+      name: body.name.trim(),
+      type: body.type ?? '',
+      description: body.description ?? '',
+      sortKey: String((siblings.length + 1) * 10).padStart(10, '0'),
+      mapX: body.mapX ?? null,
+      mapY: body.mapY ?? null,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      version: 1,
+    };
+    state.locations = [...state.locations, location];
+    touchProject(world.projectId);
+    saveMockState();
+    await delay(90);
+    return HttpResponse.json(location, { status: 201 });
+  }),
+
+  http.patch(`${api}/locations/:locationId`, async ({ params, request }) => {
+    const state = getMockState();
+    const location = state.locations.find((item) => item.id === params.locationId);
+    if (!location) {
+      return problem(404, 'not_found', 'Location not found');
+    }
+    const body = (await request.json()) as Partial<Location>;
+    if (!validateVersion(location.version, body.version)) {
+      return conflictVersion();
+    }
+    if (body.name !== undefined && !body.name.trim()) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Name is required');
+    }
+    for (const field of [
+      'name',
+      'type',
+      'description',
+      'mapX',
+      'mapY',
+    ] as const) {
+      if (body[field] !== undefined) {
+        Object.assign(location, { [field]: body[field] });
+      }
+    }
+    location.version += 1;
+    location.updatedAt = new Date().toISOString();
+    saveMockState();
+    return HttpResponse.json(location);
+  }),
+
+  http.delete(`${api}/locations/:locationId`, ({ params }) => {
+    const state = getMockState();
+    const location = state.locations.find((item) => item.id === params.locationId);
+    if (!location) {
+      return problem(404, 'not_found', 'Location not found');
+    }
+    const removed = new Set<string>([location.id]);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const item of state.locations) {
+        if (item.parentId && removed.has(item.parentId) && !removed.has(item.id)) {
+          removed.add(item.id);
+          changed = true;
+        }
+      }
+    }
+    state.locations = state.locations.filter((item) => !removed.has(item.id));
+    saveMockState();
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.get(`${api}/worlds/:worldId/factions`, async ({ params }) => {
+    const world = getMockState().worlds.find((item) => item.id === params.worldId);
+    if (!world) {
+      return problem(404, 'not_found', 'World not found');
+    }
+    const items = getMockState()
+      .factions.filter((faction) => faction.worldId === params.worldId)
+      .sort((left, right) => left.name.localeCompare(right.name, 'ru'));
+    await delay(60);
+    return HttpResponse.json({ items });
+  }),
+
+  http.post(`${api}/worlds/:worldId/factions`, async ({ params, request }) => {
+    const state = getMockState();
+    const world = state.worlds.find((item) => item.id === params.worldId);
+    if (!world) {
+      return problem(404, 'not_found', 'World not found');
+    }
+    const body = (await request.json()) as Partial<Faction>;
+    if (!body.name?.trim()) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Name is required');
+    }
+    const timestamp = new Date().toISOString();
+    const faction: Faction = {
+      id: crypto.randomUUID(),
+      worldId: world.id,
+      name: body.name.trim(),
+      type: body.type ?? '',
+      goals: body.goals ?? '',
+      resources: body.resources ?? '',
+      allies: body.allies ?? '',
+      enemies: body.enemies ?? '',
+      description: body.description ?? '',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      version: 1,
+    };
+    state.factions = [...state.factions, faction];
+    touchProject(world.projectId);
+    saveMockState();
+    await delay(90);
+    return HttpResponse.json(faction, { status: 201 });
+  }),
+
+  http.patch(`${api}/factions/:factionId`, async ({ params, request }) => {
+    const state = getMockState();
+    const faction = state.factions.find((item) => item.id === params.factionId);
+    if (!faction) {
+      return problem(404, 'not_found', 'Faction not found');
+    }
+    const body = (await request.json()) as Partial<Faction>;
+    if (!validateVersion(faction.version, body.version)) {
+      return conflictVersion();
+    }
+    if (body.name !== undefined && !body.name.trim()) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Name is required');
+    }
+    for (const field of [
+      'name',
+      'type',
+      'goals',
+      'resources',
+      'allies',
+      'enemies',
+      'description',
+    ] as const) {
+      if (body[field] !== undefined) {
+        Object.assign(faction, { [field]: body[field] });
+      }
+    }
+    faction.version += 1;
+    faction.updatedAt = new Date().toISOString();
+    saveMockState();
+    return HttpResponse.json(faction);
+  }),
+
+  http.delete(`${api}/factions/:factionId`, ({ params }) => {
+    const state = getMockState();
+    const faction = state.factions.find((item) => item.id === params.factionId);
+    if (!faction) {
+      return problem(404, 'not_found', 'Faction not found');
+    }
+    state.factions = state.factions.filter((item) => item.id !== params.factionId);
+    saveMockState();
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.get(`${api}/worlds/:worldId/lore`, async ({ params }) => {
+    const world = getMockState().worlds.find((item) => item.id === params.worldId);
+    if (!world) {
+      return problem(404, 'not_found', 'World not found');
+    }
+    const items = getMockState()
+      .loreEntries.filter((entry) => entry.worldId === params.worldId)
+      .sort((left, right) => left.title.localeCompare(right.title, 'ru'));
+    await delay(60);
+    return HttpResponse.json({ items });
+  }),
+
+  http.post(`${api}/worlds/:worldId/lore`, async ({ params, request }) => {
+    const state = getMockState();
+    const world = state.worlds.find((item) => item.id === params.worldId);
+    if (!world) {
+      return problem(404, 'not_found', 'World not found');
+    }
+    const body = (await request.json()) as Partial<LoreEntry>;
+    if (!body.title?.trim()) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Title is required');
+    }
+    const timestamp = new Date().toISOString();
+    const entry: LoreEntry = {
+      id: crypto.randomUUID(),
+      worldId: world.id,
+      type: body.type ?? '',
+      title: body.title.trim(),
+      content: body.content ?? '',
+      tags: body.tags ?? [],
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      version: 1,
+    };
+    state.loreEntries = [...state.loreEntries, entry];
+    touchProject(world.projectId);
+    saveMockState();
+    await delay(90);
+    return HttpResponse.json(entry, { status: 201 });
+  }),
+
+  http.patch(`${api}/lore/:loreId`, async ({ params, request }) => {
+    const state = getMockState();
+    const entry = state.loreEntries.find((item) => item.id === params.loreId);
+    if (!entry) {
+      return problem(404, 'not_found', 'Lore entry not found');
+    }
+    const body = (await request.json()) as Partial<LoreEntry>;
+    if (!validateVersion(entry.version, body.version)) {
+      return conflictVersion();
+    }
+    if (body.title !== undefined && !body.title.trim()) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Title is required');
+    }
+    for (const field of ['type', 'title', 'content', 'tags'] as const) {
+      if (body[field] !== undefined) {
+        Object.assign(entry, { [field]: body[field] });
+      }
+    }
+    entry.version += 1;
+    entry.updatedAt = new Date().toISOString();
+    saveMockState();
+    return HttpResponse.json(entry);
+  }),
+
+  http.delete(`${api}/lore/:loreId`, ({ params }) => {
+    const state = getMockState();
+    const entry = state.loreEntries.find((item) => item.id === params.loreId);
+    if (!entry) {
+      return problem(404, 'not_found', 'Lore entry not found');
+    }
+    state.loreEntries = state.loreEntries.filter((item) => item.id !== params.loreId);
+    saveMockState();
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.get(`${api}/projects/:projectId/custom-fields`, async ({ params, request }) => {
+    const url = new URL(request.url);
+    const entityType = url.searchParams.get('entityType');
+    if (entityType !== 'character' && entityType !== 'world') {
+      return problem(422, 'validation_failed', 'Validation failed', 'Invalid entity type');
+    }
+    const items = getMockState()
+      .customFields.filter(
+        (field) =>
+          field.projectId === params.projectId && field.entityType === entityType,
+      )
+      .sort((left, right) => left.sortKey.localeCompare(right.sortKey));
+    await delay(60);
+    return HttpResponse.json({ items });
+  }),
+
+  http.post(`${api}/projects/:projectId/custom-fields`, async ({ params, request }) => {
+    const state = getMockState();
+    const project = state.projects.find((item) => item.id === params.projectId);
+    if (!project) {
+      return problem(404, 'not_found', 'Project not found');
+    }
+    const body = (await request.json()) as Partial<CustomFieldDef>;
+    if (body.entityType !== 'character' && body.entityType !== 'world') {
+      return problem(422, 'validation_failed', 'Validation failed', 'Invalid entity type');
+    }
+    if (!body.label?.trim()) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Label is required');
+    }
+    if (!body.type) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Type is required');
+    }
+    const options = body.options ?? [];
+    if ((body.type === 'select' || body.type === 'multiselect') && options.length === 0) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Options are required');
+    }
+    const key =
+      body.key ??
+      `field_${crypto.randomUUID().replace(/-/g, '').slice(0, 10)}`;
+    if (
+      state.customFields.some(
+        (field) =>
+          field.projectId === project.id &&
+          field.entityType === body.entityType &&
+          field.key === key,
+      )
+    ) {
+      return problem(409, 'conflict', 'Conflict', 'Key is already used');
+    }
+    const timestamp = new Date().toISOString();
+    const siblings = state.customFields.filter(
+      (field) =>
+        field.projectId === project.id && field.entityType === body.entityType,
+    );
+    const definition: CustomFieldDef = {
+      id: crypto.randomUUID(),
+      projectId: project.id,
+      entityType: body.entityType,
+      key,
+      label: body.label.trim(),
+      type: body.type,
+      options,
+      required: body.required ?? false,
+      sortKey: String((siblings.length + 1) * 10).padStart(10, '0'),
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      version: 1,
+    };
+    state.customFields = [...state.customFields, definition];
+    saveMockState();
+    return HttpResponse.json(definition, { status: 201 });
+  }),
+
+  http.patch(`${api}/custom-fields/:fieldId`, async ({ params, request }) => {
+    const state = getMockState();
+    const definition = state.customFields.find((item) => item.id === params.fieldId);
+    if (!definition) {
+      return problem(404, 'not_found', 'Custom field not found');
+    }
+    const body = (await request.json()) as Partial<CustomFieldDef>;
+    if (!validateVersion(definition.version, body.version)) {
+      return conflictVersion();
+    }
+    if (body.label !== undefined && !body.label.trim()) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Label is required');
+    }
+    for (const field of ['label', 'type', 'options', 'required'] as const) {
+      if (body[field] !== undefined) {
+        Object.assign(definition, { [field]: body[field] });
+      }
+    }
+    if (
+      (definition.type === 'select' || definition.type === 'multiselect') &&
+      definition.options.length === 0
+    ) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Options are required');
+    }
+    definition.version += 1;
+    definition.updatedAt = new Date().toISOString();
+    saveMockState();
+    return HttpResponse.json(definition);
+  }),
+
+  http.delete(`${api}/custom-fields/:fieldId`, ({ params }) => {
+    const state = getMockState();
+    if (!state.customFields.some((item) => item.id === params.fieldId)) {
+      return problem(404, 'not_found', 'Custom field not found');
+    }
+    state.customFields = state.customFields.filter(
+      (item) => item.id !== params.fieldId,
+    );
+    saveMockState();
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.get(`${api}/projects/:projectId/search`, async ({ params, request }) => {
+    const url = new URL(request.url);
+    const query = (url.searchParams.get('q') ?? '').trim().toLocaleLowerCase('ru');
+    if (!query) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Query is required');
+    }
+    const requested = (url.searchParams.get('types') ?? '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean) as SearchResultType[];
+    const allowed = (type: SearchResultType) =>
+      requested.length === 0 || requested.includes(type);
+    const matches = (...values: unknown[]) =>
+      values.join(' ').toLocaleLowerCase('ru').includes(query);
+    const state = getMockState();
+    const results: SearchResult[] = [];
+
+    if (allowed('document')) {
+      for (const document of state.documents.filter(
+        (item) => item.projectId === params.projectId,
+      )) {
+        const text = proseText(document.canonical);
+        if (!matches(document.title, text)) {
+          continue;
+        }
+        const node = state.nodes.find((item) => item.documentId === document.id);
+        results.push({
+          type: 'document',
+          id: document.id,
+          projectId: document.projectId,
+          title: document.title,
+          snippet: text.slice(0, 180),
+          nodeId: node?.id ?? null,
+          worldId: null,
+          updatedAt: document.updatedAt,
+        });
+      }
+    }
+
+    if (allowed('character')) {
+      for (const character of state.characters.filter(
+        (item) => item.projectId === params.projectId,
+      )) {
+        if (
+          !matches(
+            character.name,
+            character.fullName,
+            character.goal,
+            character.motivation,
+            character.personality,
+          )
+        ) {
+          continue;
+        }
+        results.push({
+          type: 'character',
+          id: character.id,
+          projectId: character.projectId,
+          title: character.name,
+          snippet:
+            character.goal ||
+            character.motivation ||
+            character.personality ||
+            '',
+          nodeId: null,
+          worldId: null,
+          updatedAt: character.updatedAt,
+        });
+      }
+    }
+
+    if (allowed('world')) {
+      for (const world of state.worlds.filter(
+        (item) => item.projectId === params.projectId,
+      )) {
+        if (
+          !matches(
+            world.name,
+            world.summary,
+            world.description,
+            world.history,
+            world.geography,
+            world.rulesSummary,
+          )
+        ) {
+          continue;
+        }
+        results.push({
+          type: 'world',
+          id: world.id,
+          projectId: world.projectId,
+          title: world.name,
+          snippet: world.summary || world.description,
+          nodeId: null,
+          worldId: null,
+          updatedAt: world.updatedAt,
+        });
+      }
+    }
+
+    const worldById = (worldId: string) =>
+      state.worlds.find((item) => item.id === worldId);
+
+    if (allowed('location')) {
+      for (const location of state.locations) {
+        const world = worldById(location.worldId);
+        if (
+          !world ||
+          world.projectId !== params.projectId ||
+          !matches(location.name, location.description)
+        ) {
+          continue;
+        }
+        results.push({
+          type: 'location',
+          id: location.id,
+          projectId: world.projectId,
+          title: location.name,
+          snippet: location.description,
+          nodeId: null,
+          worldId: world.id,
+          updatedAt: location.updatedAt,
+        });
+      }
+    }
+
+    if (allowed('faction')) {
+      for (const faction of state.factions) {
+        const world = worldById(faction.worldId);
+        if (
+          !world ||
+          world.projectId !== params.projectId ||
+          !matches(
+            faction.name,
+            faction.goals,
+            faction.resources,
+            faction.allies,
+            faction.enemies,
+            faction.description,
+          )
+        ) {
+          continue;
+        }
+        results.push({
+          type: 'faction',
+          id: faction.id,
+          projectId: world.projectId,
+          title: faction.name,
+          snippet: faction.goals || faction.description,
+          nodeId: null,
+          worldId: world.id,
+          updatedAt: faction.updatedAt,
+        });
+      }
+    }
+
+    if (allowed('lore')) {
+      for (const entry of state.loreEntries) {
+        const world = worldById(entry.worldId);
+        if (
+          !world ||
+          world.projectId !== params.projectId ||
+          !matches(entry.title, entry.content, entry.tags.join(' '))
+        ) {
+          continue;
+        }
+        results.push({
+          type: 'lore',
+          id: entry.id,
+          projectId: world.projectId,
+          title: entry.title,
+          snippet: entry.content,
+          nodeId: null,
+          worldId: world.id,
+          updatedAt: entry.updatedAt,
+        });
+      }
+    }
+
+    results.sort(
+      (left, right) =>
+        new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime(),
+    );
+    await delay(80);
+    return HttpResponse.json({ items: results.slice(0, 50) });
+  }),
 ];
+
+function proseText(value: unknown): string {
+  if (!value || typeof value !== 'object') {
+    return '';
+  }
+  const node = value as { text?: string; content?: unknown[] };
+  return [
+    node.text ?? '',
+    ...(node.content ?? []).map((child) => proseText(child)),
+  ]
+    .filter(Boolean)
+    .join(' ');
+}

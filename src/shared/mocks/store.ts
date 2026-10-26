@@ -7,7 +7,7 @@ import { createInitialMockState, type MockState } from './data';
 
 export const MOCK_STORAGE_KEY = 'writer-tool.mock.v1';
 export const MOCK_SESSION_KEY = 'writer-tool.mock.session.v1';
-const STORAGE_VERSION = 2;
+const STORAGE_VERSION = 4;
 
 type PersistedMockState = {
   version: number;
@@ -55,7 +55,13 @@ function isMockState(value: unknown): value is MockState {
     Array.isArray(candidate.relations) &&
     Array.isArray(candidate.attachments) &&
     Array.isArray(candidate.assets) &&
-    Array.isArray(candidate.exports)
+    Array.isArray(candidate.exports) &&
+    Array.isArray(candidate.worlds) &&
+    Array.isArray(candidate.worldRules) &&
+    Array.isArray(candidate.locations) &&
+    Array.isArray(candidate.factions) &&
+    Array.isArray(candidate.loreEntries) &&
+    Array.isArray(candidate.customFields)
   );
 }
 

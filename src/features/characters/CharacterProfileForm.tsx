@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Save, Trash2 } from 'lucide-react';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useMemo, type ReactNode } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { api } from '@/shared/api/client';
@@ -19,6 +19,11 @@ import {
   SelectValue,
 } from '@/shared/ui/select';
 import { Textarea } from '@/shared/ui/textarea';
+import {
+  CustomFieldsInputs,
+  customFieldValueToString,
+} from '@/features/customFields/CustomFieldsInputs';
+import { useCustomFields } from '@/features/customFields/queries';
 import {
   characterColorPalette,
   characterRoleOptions,
@@ -82,6 +87,33 @@ export function CharacterProfileForm({
   const role = watch('role');
   const status = watch('status');
   const color = watch('color');
+
+  const { data: customFieldsData } = useCustomFields(character.projectId, 'character');
+  const customDefinitions = useMemo(
+    () => customFieldsData?.items ?? [],
+    [customFieldsData],
+  );
+  const definedKeys = useMemo(
+    () => new Set(customDefinitions.map((definition) => definition.key)),
+    [customDefinitions],
+  );
+  const customPairs = watch('customFields');
+  const customValues = useMemo(
+    () => Object.fromEntries(customPairs.map((pair) => [pair.key, pair.value])),
+    [customPairs],
+  );
+  const setCustomFieldValue = (key: string, value: unknown) => {
+    const index = customPairs.findIndex((pair) => pair.key === key);
+    const text = customFieldValueToString(value);
+    if (index >= 0) {
+      setValue(`customFields.${index}.value`, text, { shouldDirty: true });
+    } else {
+      append({ key, value: text });
+    }
+  };
+  const freeFormFields = fields
+    .map((field, index) => ({ field, index }))
+    .filter(({ field }) => !definedKeys.has(field.key));
 
   useEffect(() => {
     reset(characterToProfileValues(character));
@@ -314,11 +346,20 @@ export function CharacterProfileForm({
 
         <Section
           title="Дополнительные поля"
-          description="Свободные пары «ключ — значение» для того, что не попало в основные разделы."
+          description="Поля проекта с типами и свободные пары «ключ — значение» для всего остального."
         >
-          {fields.length ? (
+          {customDefinitions.length ? (
+            <CustomFieldsInputs
+              definitions={customDefinitions}
+              values={customValues}
+              onChange={setCustomFieldValue}
+              canEdit={canEdit}
+              idPrefix={`profile-${character.id}`}
+            />
+          ) : null}
+          {freeFormFields.length ? (
             <div className="space-y-2">
-              {fields.map((field, index) => (
+              {freeFormFields.map(({ field, index }) => (
                 <div key={field.id} className="flex flex-col gap-2 sm:flex-row">
                   <Input
                     className="sm:w-48"
@@ -344,9 +385,10 @@ export function CharacterProfileForm({
                 </div>
               ))}
             </div>
-          ) : (
+          ) : null}
+          {!customDefinitions.length && !freeFormFields.length ? (
             <p className="text-xs text-ink-500">Дополнительных полей пока нет.</p>
-          )}
+          ) : null}
           <Button
             type="button"
             variant="outline"
@@ -354,7 +396,7 @@ export function CharacterProfileForm({
             onClick={() => append({ key: '', value: '' })}
           >
             <Plus size={14} />
-            Добавить поле
+            Добавить свободное поле
           </Button>
         </Section>
       </fieldset>

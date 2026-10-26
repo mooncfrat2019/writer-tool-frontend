@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '@/shared/ui/select';
 import { Skeleton } from '@/shared/ui/skeleton';
+import { CustomFieldsManager } from '@/features/customFields/CustomFieldsManager';
 import { CharacterAvatar } from './CharacterAvatar';
 import { CharacterCreateDialog } from './CharacterCreateDialog';
 import {
@@ -65,6 +66,7 @@ export function CharactersPage() {
   const [roleFilter, setRoleFilter] = useState<CharacterRole | typeof ALL>(ALL);
   const [statusFilter, setStatusFilter] = useState<CharacterStatus | typeof ALL>(ALL);
   const [createOpen, setCreateOpen] = useState(false);
+  const [fieldsOpen, setFieldsOpen] = useState(false);
 
   const projectQuery = useQuery({
     queryKey: ['project', projectId],
@@ -135,10 +137,15 @@ export function CharactersPage() {
           </p>
         </div>
         {canEdit ? (
-          <Button variant="accent" onClick={() => setCreateOpen(true)}>
-            <Plus size={16} />
-            Новый персонаж
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setFieldsOpen(true)}>
+              Поля профиля
+            </Button>
+            <Button variant="accent" onClick={() => setCreateOpen(true)}>
+              <Plus size={16} />
+              Новый персонаж
+            </Button>
+          </div>
         ) : (
           <Badge className="h-8 px-3" tone="neutral">
             Только чтение
@@ -350,6 +357,12 @@ export function CharactersPage() {
             params: { projectId, characterId: character.id },
           });
         }}
+      />
+      <CustomFieldsManager
+        projectId={projectId}
+        entityType="character"
+        open={fieldsOpen}
+        onOpenChange={setFieldsOpen}
       />
     </main>
   );

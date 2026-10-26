@@ -36,7 +36,7 @@ export async function openProject(
 
 export async function openProjectSection(
   page: Page,
-  section: 'Структура' | 'Персонажи' | 'Экспорт',
+  section: 'Структура' | 'Персонажи' | 'Миры' | 'Поиск' | 'Экспорт',
   title = OWNER_PROJECT,
 ): Promise<void> {
   await openProject(page, title);
