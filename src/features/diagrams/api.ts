@@ -67,3 +67,52 @@ export async function setDiagramThumbnail(diagramId: string, assetId: string) {
     }),
   );
 }
+
+/**
+ * Uploads a generated PNG through the shared asset pipeline (presigned URL in
+ * production, dev adapter or MSW locally) and attaches it to the diagram.
+ */
+export async function uploadDiagramThumbnail(
+  projectId: string,
+  diagramId: string,
+  blob: Blob,
+) {
+  const uploadRequest = unwrap(
+    await api.POST('/projects/{projectId}/assets/uploads', {
+      params: { path: { projectId } },
+      body: {
+        filename: `diagram-${diagramId}.png`,
+        mime: blob.type || 'image/png',
+        sizeBytes: blob.size,
+      },
+    }),
+  );
+  const uploadResponse = await fetch(uploadRequest.uploadUrl, {
+    method: uploadRequest.method,
+    headers: uploadRequest.headers,
+    body: blob,
+  });
+  if (!uploadResponse.ok) {
+    throw new Error(`Не удалось загрузить миниатюру (${uploadResponse.status}).`);
+  }
+  let asset = unwrap(
+    await api.POST('/assets/{assetId}/complete', {
+      params: { path: { assetId: uploadRequest.assetId } },
+    }),
+  );
+  for (let attempt = 0; attempt < 12 && asset.status !== 'ready'; attempt += 1) {
+    if (asset.status === 'failed') {
+      throw new Error('Обработка миниатюры не удалась.');
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, 400));
+    asset = unwrap(
+      await api.GET('/assets/{assetId}', {
+        params: { path: { assetId: uploadRequest.assetId } },
+      }),
+    );
+  }
+  if (asset.status !== 'ready') {
+    throw new Error('Миниатюра не была обработана вовремя.');
+  }
+  return setDiagramThumbnail(diagramId, asset.id);
+}

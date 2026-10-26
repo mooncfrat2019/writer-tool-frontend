@@ -8,6 +8,7 @@ import {
   MiniMap,
   Position,
   ReactFlow,
+  ViewportPortal,
   applyEdgeChanges,
   applyNodeChanges,
   type Edge,
@@ -30,6 +31,7 @@ import {
   type MutableRefObject,
 } from 'react';
 import { useNavigate } from '@tanstack/react-router';
+import type { HocuspocusProvider } from '@hocuspocus/provider';
 import { toast } from 'sonner';
 import * as Y from 'yjs';
 import { isVersionConflict } from '@/shared/api/errors';
@@ -40,6 +42,7 @@ import {
   updateDiagram,
   type Diagram,
 } from './api';
+import { renderDiagramThumbnail } from './thumbnail';
 
 type Character = components['schemas']['Character'];
 
@@ -64,8 +67,10 @@ type DiagramCanvasProps = {
   characters: Character[];
   newEdgeLabel: string;
   users: CollabUser[];
+  provider: HocuspocusProvider | null;
   onSaved: (diagram: Diagram) => void;
   onSaveStatus: (status: SaveStatus) => void;
+  onUploadThumbnail: (blob: Blob) => Promise<void>;
 };
 
 const LOCAL_ORIGIN = Symbol('diagram-local');
@@ -105,6 +110,109 @@ function EntityNode({ data, selected }: NodeProps<RFNode>) {
 
 const nodeTypes = { entity: EntityNode };
 
+type RemoteCursor = {
+  clientId: number;
+  name: string;
+  color: string;
+  x: number;
+  y: number;
+};
+
+function DiagramCursors({ provider }: { provider: HocuspocusProvider | null }) {
+  const [cursors, setCursors] = useState<RemoteCursor[]>([]);
+
+  useEffect(() => {
+    const awareness = provider?.awareness;
+    if (!awareness) {
+      return;
+    }
+    const update = () => {
+      const next: RemoteCursor[] = [];
+      awareness.getStates().forEach((state, clientId) => {
+        if (clientId === awareness.clientID) {
+          return;
+        }
+        const user = state.user as
+          | { name?: unknown; color?: unknown }
+          | undefined;
+        const cursor = state.cursor as
+          | { x?: unknown; y?: unknown }
+          | undefined;
+        if (typeof user?.name !== 'string') {
+          return;
+        }
+        if (typeof cursor?.x !== 'number' || typeof cursor?.y !== 'number') {
+          return;
+        }
+        next.push({
+          clientId,
+          name: user.name,
+          color: typeof user.color === 'string' ? user.color : '#8a5a2b',
+          x: cursor.x,
+          y: cursor.y,
+        });
+      });
+      setCursors((current) =>
+        current.length === next.length &&
+        current.every(
+          (cursor, index) =>
+            cursor.clientId === next[index].clientId &&
+            cursor.x === next[index].x &&
+            cursor.y === next[index].y &&
+            cursor.name === next[index].name &&
+            cursor.color === next[index].color,
+        )
+          ? current
+          : next,
+      );
+    };
+    awareness.on('change', update);
+    update();
+    return () => {
+      awareness.off('change', update);
+    };
+  }, [provider]);
+
+  if (!provider?.awareness) {
+    return null;
+  }
+
+  return (
+    <>
+      {cursors.map((cursor) => (
+        <ViewportPortal key={cursor.clientId}>
+          <div
+            className="pointer-events-none absolute z-50"
+            data-diagram-cursor={cursor.clientId}
+            style={{ transform: `translate(${cursor.x}px, ${cursor.y}px)` }}
+          >
+            <svg
+              aria-hidden
+              className="absolute drop-shadow-sm"
+              height="18"
+              viewBox="0 0 18 18"
+              width="18"
+            >
+              <path
+                d="M2 1 L16 8 L9 9.5 L6.5 16 Z"
+                fill={cursor.color}
+                stroke="#ffffff"
+                strokeWidth="1"
+              />
+            </svg>
+            <span
+              className="ml-4 mt-3 inline-block whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-medium text-white shadow-sm"
+              style={{ backgroundColor: cursor.color }}
+            >
+              {cursor.name}
+            </span>
+          </div>
+        </ViewportPortal>
+      ))}
+    </>
+  );
+}
+
 type NodeRecord = Y.Map<unknown>;
 
 function recordNumber(record: NodeRecord, key: string, fallback = 0): number {
@@ -128,8 +236,10 @@ export function DiagramCanvas({
   characters,
   newEdgeLabel,
   users,
+  provider,
   onSaved,
   onSaveStatus,
+  onUploadThumbnail,
 }: DiagramCanvasProps) {
   const navigate = useNavigate();
   const nodesMap = useMemo(() => ydoc.getMap<NodeRecord>('nodes'), [ydoc]);
@@ -142,6 +252,7 @@ export function DiagramCanvas({
     edgeIds: string[];
   }>({ nodeIds: [], edgeIds: [] });
   const [linkTargetId, setLinkTargetId] = useState('');
+  const [thumbnailBusy, setThumbnailBusy] = useState(false);
   const nodesRef = useRef<RFNode[]>([]);
   const edgesRef = useRef<Edge[]>([]);
   useEffect(() => {
@@ -164,6 +275,38 @@ export function DiagramCanvas({
       zoom: Number(viewport?.zoom ?? 1),
     };
   }, [initialCanonical]);
+  const viewportRef = useRef<Viewport>(defaultViewport);
+  const cursorSentAtRef = useRef(0);
+
+  // Drop the local cursor as soon as the canvas is left or unmounted.
+  useEffect(
+    () => () => {
+      provider?.awareness?.setLocalStateField('cursor', null);
+    },
+    [provider],
+  );
+
+  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const awareness = provider?.awareness;
+    if (!awareness) {
+      return;
+    }
+    const now = performance.now();
+    if (now - cursorSentAtRef.current < 50) {
+      return;
+    }
+    cursorSentAtRef.current = now;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const viewport = viewportRef.current;
+    awareness.setLocalStateField('cursor', {
+      x: (event.clientX - rect.left - viewport.x) / viewport.zoom,
+      y: (event.clientY - rect.top - viewport.y) / viewport.zoom,
+    });
+  };
+
+  const onPointerLeave = () => {
+    provider?.awareness?.setLocalStateField('cursor', null);
+  };
 
   const readNodes = useCallback((): RFNode[] => {
     const result: RFNode[] = [];
@@ -678,18 +821,117 @@ export function DiagramCanvas({
     if (!canEdit) {
       return;
     }
-    const ids = Array.from(nodesMap.keys());
-    ydoc.transact(() => {
-      ids.forEach((id, index) => {
-        const record = nodesMap.get(id);
-        if (!record) {
-          return;
+    const currentNodes = readNodes();
+    const currentEdges = readEdges();
+    const ids = currentNodes.map((node) => node.id);
+    const incoming = new Map<string, number>(ids.map((id) => [id, 0]));
+    const outgoing = new Map<string, string[]>();
+    for (const edge of currentEdges) {
+      if (!incoming.has(edge.source) || !incoming.has(edge.target)) {
+        continue;
+      }
+      incoming.set(edge.target, (incoming.get(edge.target) ?? 0) + 1);
+      outgoing.set(edge.source, [
+        ...(outgoing.get(edge.source) ?? []),
+        edge.target,
+      ]);
+    }
+
+    // Layered layout: roots (no incoming edges) stay in the first column and
+    // each following column holds the targets of the previous one. Links that
+    // are part of a cycle or an unreachable component fall into the last one.
+    const level = new Map<string, number>();
+    const queue: Array<{ id: string; depth: number }> = [];
+    const roots = ids.filter((id) => (incoming.get(id) ?? 0) === 0);
+    if (roots.length > 0) {
+      for (const id of roots) {
+        level.set(id, 0);
+        queue.push({ id, depth: 0 });
+      }
+    } else {
+      for (const id of ids) {
+        level.set(id, 0);
+        queue.push({ id, depth: 0 });
+      }
+    }
+    while (queue.length > 0) {
+      const { id, depth } = queue.shift() as { id: string; depth: number };
+      for (const target of outgoing.get(id) ?? []) {
+        if (level.has(target)) {
+          continue;
         }
-        record.set('x', 80 + (index % 4) * 240);
-        record.set('y', 80 + Math.floor(index / 4) * 150);
-      });
+        level.set(target, depth + 1);
+        queue.push({ id: target, depth: depth + 1 });
+      }
+    }
+    const maxLevel = Math.max(0, ...level.values());
+    for (const id of ids) {
+      if (!level.has(id)) {
+        level.set(id, maxLevel + 1);
+      }
+    }
+
+    const columns = new Map<number, RFNode[]>();
+    for (const node of currentNodes) {
+      const depth = level.get(node.id) ?? 0;
+      columns.set(depth, [...(columns.get(depth) ?? []), node]);
+    }
+
+    const positions = new Map<string, { x: number; y: number }>();
+    let x = 80;
+    for (const depth of Array.from(columns.keys()).sort((a, b) => a - b)) {
+      const column = (columns.get(depth) ?? []).sort(
+        (left, right) =>
+          left.position.y - right.position.y ||
+          left.position.x - right.position.x,
+      );
+      let y = 80;
+      let columnWidth = 180;
+      for (const node of column) {
+        const width = node.measured?.width ?? node.width ?? 180;
+        const height = node.measured?.height ?? node.height ?? 60;
+        positions.set(node.id, { x, y });
+        columnWidth = Math.max(columnWidth, width);
+        y += height + 40;
+      }
+      x += columnWidth + 90;
+    }
+
+    ydoc.transact(() => {
+      for (const [id, position] of positions) {
+        const record = nodesMap.get(id);
+        if (record) {
+          record.set('x', position.x);
+          record.set('y', position.y);
+        }
+      }
     }, LOCAL_ORIGIN);
-    setNodes(readNodes());
+    const next = readNodes();
+    nodesRef.current = next;
+    setNodes(next);
+  };
+
+  const makeThumbnail = async () => {
+    if (!canEdit || thumbnailBusy) {
+      return;
+    }
+    setThumbnailBusy(true);
+    try {
+      const blob = await renderDiagramThumbnail(
+        nodesRef.current,
+        edgesRef.current,
+      );
+      await onUploadThumbnail(blob);
+      toast.success('Миниатюра схемы обновлена');
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Не удалось обновить миниатюру',
+      );
+    } finally {
+      setThumbnailBusy(false);
+    }
   };
 
   const undo = () => {
@@ -703,8 +945,13 @@ export function DiagramCanvas({
     setEdges(readEdges());
   };
 
+  const onMove = useCallback((_event: unknown, viewport: Viewport) => {
+    viewportRef.current = viewport;
+  }, []);
+
   const onMoveEnd = useCallback(
     (_event: unknown, viewport: Viewport) => {
+      viewportRef.current = viewport;
       ydoc.transact(() => metaMap.set('viewport', viewport), LOCAL_ORIGIN);
     },
     [metaMap, ydoc],
@@ -756,7 +1003,9 @@ export function DiagramCanvas({
           onAddNote={addNoteNode}
           onArrange={arrange}
           onRedo={redo}
+          onThumbnail={() => void makeThumbnail()}
           onUndo={undo}
+          thumbnailBusy={thumbnailBusy}
         />
         <div className="space-y-2 border-t border-paper-200 pt-2">
           <p className="text-xs font-medium uppercase tracking-[0.12em] text-ink-500">
@@ -831,7 +1080,11 @@ export function DiagramCanvas({
         </div>
       </aside>
 
-      <div className="h-[68vh] min-h-[420px] flex-1 overflow-hidden rounded-lg border border-paper-200 bg-paper-50">
+      <div
+        className="h-[68vh] min-h-[420px] flex-1 overflow-hidden rounded-lg border border-paper-200 bg-paper-50"
+        onPointerLeave={onPointerLeave}
+        onPointerMove={onPointerMove}
+      >
         <ReactFlow
           connectionMode={ConnectionMode.Loose}
           defaultViewport={defaultViewport}
@@ -845,6 +1098,7 @@ export function DiagramCanvas({
           nodesDraggable={canEdit}
           onConnect={onConnect}
           onEdgesChange={onEdgesChange}
+          onMove={onMove}
           onMoveEnd={onMoveEnd}
           onNodeDoubleClick={onNodeDoubleClick}
           onNodesChange={onNodesChange}
@@ -853,6 +1107,7 @@ export function DiagramCanvas({
           <Background gap={20} variant={BackgroundVariant.Dots} />
           <Controls showInteractive={false} />
           <MiniMap pannable zoomable />
+          <DiagramCursors provider={provider} />
         </ReactFlow>
       </div>
     </div>
@@ -864,13 +1119,17 @@ function ButtonRow({
   onAddNote,
   onArrange,
   onRedo,
+  onThumbnail,
   onUndo,
+  thumbnailBusy,
 }: {
   canEdit: boolean;
   onAddNote: () => void;
   onArrange: () => void;
   onRedo: () => void;
+  onThumbnail: () => void;
   onUndo: () => void;
+  thumbnailBusy: boolean;
 }) {
   return (
     <div className="space-y-1 border-t border-paper-200 pt-2">
@@ -888,7 +1147,15 @@ function ButtonRow({
         onClick={onArrange}
         type="button"
       >
-        Выровнять сеткой
+        Упорядочить по связям
+      </button>
+      <button
+        className="w-full rounded px-2 py-1.5 text-left text-xs text-ink-700 hover:bg-paper-50 disabled:opacity-50"
+        disabled={!canEdit || thumbnailBusy}
+        onClick={onThumbnail}
+        type="button"
+      >
+        {thumbnailBusy ? 'Готовим миниатюру…' : 'Обновить миниатюру'}
       </button>
       <div className="flex gap-1">
         <button

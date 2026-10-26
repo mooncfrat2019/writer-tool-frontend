@@ -81,6 +81,63 @@ test('links several cards to one and deletes with key or button', async ({
   await expect(canvas.locator('.react-flow__edge')).toHaveCount(0);
 });
 
+test('arranges cards by relationships and uploads a thumbnail', async ({
+  page,
+}) => {
+  await login(page);
+  await openProjectSection(page, 'Схемы');
+
+  await page.getByRole('button', { name: 'Новая схема' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Название').fill('Схема миниатюр');
+  await dialog.getByRole('button', { name: 'Создать' }).click();
+  await expect(page).toHaveURL(/\/diagrams\/[^/]+$/);
+
+  const canvas = page.locator('.react-flow');
+  await page.getByRole('button', { name: 'Мира Вейн +' }).click();
+  await page.getByRole('button', { name: 'Кай Рен +' }).click();
+  await page.getByRole('button', { name: 'Селина Мор +' }).click();
+  await expect(canvas.locator('.react-flow__node')).toHaveCount(3);
+
+  const link = async (source: string, target: string) => {
+    await canvas.locator('.react-flow__node').filter({ hasText: source }).click();
+    await page.locator('#diagram-link-target').selectOption({ label: target });
+    await page.getByRole('button', { name: '+ Создать связь' }).click();
+  };
+  await link('Мира Вейн', 'Селина Мор');
+  await link('Кай Рен', 'Селина Мор');
+  await expect(canvas.locator('.react-flow__edge')).toHaveCount(2);
+
+  await page.getByRole('button', { name: 'Упорядочить по связям' }).click();
+  await page.waitForTimeout(300);
+  const box = async (name: string) => {
+    const value = await canvas
+      .locator('.react-flow__node')
+      .filter({ hasText: name })
+      .boundingBox();
+    expect(value).not.toBeNull();
+    return value as { x: number; y: number };
+  };
+  const mira = await box('Мира Вейн');
+  const kay = await box('Кай Рен');
+  const selina = await box('Селина Мор');
+  expect(Math.abs(mira.x - kay.x)).toBeLessThan(2);
+  expect(selina.x).toBeGreaterThan(mira.x + 100);
+
+  const thumbnail = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      /\/api\/v1\/diagrams\/[^/]+\/thumbnail$/.test(response.url()),
+  );
+  await page.getByRole('button', { name: 'Обновить миниатюру' }).click();
+  await thumbnail;
+  await expect(page.getByText('Миниатюра схемы обновлена')).toBeVisible();
+
+  await page.getByRole('link', { name: /Все схемы/ }).click();
+  const card = page.getByRole('link').filter({ hasText: 'Схема миниатюр' });
+  await expect(card.locator('img')).toBeVisible();
+});
+
 test('creates and deletes a diagram', async ({ page }) => {
   await login(page);
   await openProjectSection(page, 'Схемы');

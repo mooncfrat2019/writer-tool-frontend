@@ -2918,9 +2918,13 @@ export const handlers = [
     if (!body.assetId) {
       return problem(422, 'validation_failed', 'Validation failed', 'assetId is required');
     }
+    const asset = state.assets.find((item) => item.id === body.assetId);
     const updated: Diagram = {
       ...diagram,
-      thumbnailUrl: `/api/v1/dev/files/${body.assetId}`,
+      thumbnailUrl:
+        asset?.thumbUrl ??
+        asset?.url ??
+        `/api/v1/dev/files/${body.assetId}`,
       updatedAt: new Date().toISOString(),
       version: diagram.version + 1,
     };

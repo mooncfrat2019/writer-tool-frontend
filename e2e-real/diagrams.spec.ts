@@ -41,6 +41,34 @@ test('edits a diagram with live collaboration and persists it', async ({
     timeout: 20_000,
   });
 
+  // Presence cursors are exchanged through the Yjs awareness channel. A
+  // second browser context keeps the first session's refresh cookie intact.
+  const secondContext = await page.context().browser()!.newContext();
+  const secondPage = await secondContext.newPage();
+  const origin = new URL(page.url()).origin;
+  await secondPage.goto(`${origin}/login`);
+  await secondPage.getByLabel('Email').fill(`diagrams+${stamp}@example.com`);
+  await secondPage.getByLabel('Пароль').fill('password123');
+  await secondPage.getByRole('button', { name: 'Войти' }).click();
+  await expect(secondPage).toHaveURL(/\/projects$/);
+  await secondPage.goto(page.url());
+  await expect(
+    secondPage.getByRole('heading', { name: 'Схема тестов' }),
+  ).toBeVisible();
+  await expect(
+    secondPage.getByText('live', { exact: true }),
+  ).toBeVisible({ timeout: 20_000 });
+  const canvasBox = await canvas.boundingBox();
+  if (!canvasBox) {
+    throw new Error('Canvas has no bounding box');
+  }
+  await page.mouse.move(canvasBox.x + 220, canvasBox.y + 160);
+  await page.mouse.move(canvasBox.x + 270, canvasBox.y + 190, { steps: 6 });
+  await expect(
+    secondPage.locator('[data-diagram-cursor]').first(),
+  ).toBeVisible({ timeout: 15_000 });
+  await secondContext.close();
+
   const save = page.waitForResponse(
     (response) =>
       response.request().method() === 'PATCH' &&
@@ -51,6 +79,22 @@ test('edits a diagram with live collaboration and persists it', async ({
   await page.getByRole('button', { name: '+ Заметка' }).click();
   await expect(canvas.getByText('Новая заметка')).toBeVisible();
   await save;
+
+  // The thumbnail is rendered on the client and uploaded through the asset
+  // pipeline before being attached to the diagram.
+  const thumbnail = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      /\/api\/v1\/diagrams\/[^/]+\/thumbnail$/.test(response.url()),
+  );
+  await page.getByRole('button', { name: 'Обновить миниатюру' }).click();
+  const thumbnailResponse = await thumbnail;
+  expect(thumbnailResponse.status()).toBe(200);
+  const thumbnailBody = (await thumbnailResponse.json()) as {
+    thumbnailUrl?: string | null;
+  };
+  expect(thumbnailBody.thumbnailUrl).toContain('/api/v1/dev/files/');
+  await expect(page.getByText('Миниатюра схемы обновлена')).toBeVisible();
 
   // Canonical React Flow JSON is stored in PostgreSQL and the Yjs room.
   await page.reload();

@@ -47,12 +47,14 @@ export function useDiagramSession(
     error: null,
   });
   const syncedRef = useRef(false);
+  const usersKeyRef = useRef('');
 
   useEffect(() => {
     if (!enabled || !diagramId) {
       return;
     }
     let cancelled = false;
+    usersKeyRef.current = '\0';
     let provider: HocuspocusProvider | null = null;
     let persistence: IndexeddbPersistence | null = null;
     const ydoc = new Y.Doc();
@@ -87,6 +89,15 @@ export function useDiagramSession(
           isLocal: clientId === localClientId,
         });
       });
+      // Cursor updates arrive many times per second; only re-render when the
+      // participant list itself changed.
+      const key = users
+        .map((item) => `${item.clientId}:${item.name}:${item.color}`)
+        .join('|');
+      if (key === usersKeyRef.current) {
+        return;
+      }
+      usersKeyRef.current = key;
       update({ users });
     };
 

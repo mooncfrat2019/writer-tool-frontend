@@ -213,10 +213,19 @@ export function TimelineCanvas({
       patch.startValue = Math.round(state.event.startValue + delta);
     }
     if (Math.abs(dy) > 20) {
-      const target = document
-        .elementFromPoint(pointer.clientX, pointer.clientY)
-        ?.closest<HTMLElement>('[data-lane-id]');
-      const targetLaneId = target?.dataset.laneId;
+      // The dragged card follows the pointer, so elementFromPoint would always
+      // hit the card itself. Find the lane area geometrically instead.
+      const targetLaneId = Array.from(
+        document.querySelectorAll<HTMLElement>('[data-lane-id]'),
+      ).find((area) => {
+        const rect = area.getBoundingClientRect();
+        return (
+          pointer.clientX >= rect.left &&
+          pointer.clientX <= rect.right &&
+          pointer.clientY >= rect.top &&
+          pointer.clientY <= rect.bottom
+        );
+      })?.dataset.laneId;
       if (targetLaneId === 'none') {
         if (state.event.plotThreadId) {
           patch.plotThreadId = null;

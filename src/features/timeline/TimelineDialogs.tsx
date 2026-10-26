@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { toast } from 'sonner';
-import { Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { getApiErrorMessage } from '@/shared/api/errors';
 import { Badge } from '@/shared/ui/badge';
 import { Button } from '@/shared/ui/button';
@@ -41,9 +41,15 @@ import {
   type TimelineDateMode,
   type TimelineEvent,
   type TimelineEventCreate,
+  type TimelineEventLink,
   type TimelineEventUpdate,
+  type TimelineLinkEntityType,
   type TimelinePrecision,
 } from './api';
+import {
+  useTimelineLinkOptions,
+  type TimelineLinkOption,
+} from './useTimelineLinkOptions';
 import {
   formatAbsolute,
   fromAbsoluteDay,
@@ -154,8 +160,25 @@ export function CalendarDialog({
   const [presetId, setPresetId] = useState<string>('gregorian');
   const [customConfig, setCustomConfig] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [editingCalendar, setEditingCalendar] = useState<Calendar | null>(null);
 
-  const createMutation = useMutation({
+  const resetForm = () => {
+    setEditingCalendar(null);
+    setName('Календарь мира');
+    setPresetId('gregorian');
+    setCustomConfig('');
+    setError(null);
+  };
+
+  const startEdit = (calendar: Calendar) => {
+    setEditingCalendar(calendar);
+    setName(calendar.name);
+    setPresetId('custom');
+    setCustomConfig(JSON.stringify(calendar.config ?? {}, null, 2));
+    setError(null);
+  };
+
+  const saveMutation = useMutation({
     mutationFn: async () => {
       let config: CalendarConfig;
       if (presetId === 'custom') {
@@ -178,6 +201,13 @@ export function CalendarDialog({
           calendarPresets.find((preset) => preset.id === presetId)?.config ??
           gregorianCalendar;
       }
+      if (editingCalendar) {
+        return updateCalendar(editingCalendar.id, {
+          name: name.trim(),
+          config: config as unknown as Record<string, unknown>,
+          version: editingCalendar.version,
+        });
+      }
       return createCalendar(projectId, {
         name: name.trim(),
         config: config as unknown as Record<string, unknown>,
@@ -186,11 +216,21 @@ export function CalendarDialog({
     },
     onSuccess: () => {
       void invalidateTimeline(queryClient, projectId);
-      toast.success('Календарь создан');
+      toast.success(
+        editingCalendar ? 'Календарь обновлён' : 'Календарь создан',
+      );
+      resetForm();
       onOpenChange(false);
     },
     onError: (mutationError) => {
-      setError(getApiErrorMessage(mutationError, 'Не удалось создать календарь'));
+      setError(
+        getApiErrorMessage(
+          mutationError,
+          editingCalendar
+            ? 'Не удалось сохранить календарь'
+            : 'Не удалось создать календарь',
+        ),
+      );
     },
   });
 
@@ -224,9 +264,9 @@ export function CalendarDialog({
       onOpenChange={onOpenChange}
       title="Календари проекта"
       description="Эпохи, месяцы и високосные дни. По календарю считаются позиции событий на оси времени."
-      pending={createMutation.isPending || !canEdit}
-      submitLabel="Добавить календарь"
-      onSubmit={() => createMutation.mutate()}
+      pending={saveMutation.isPending || !canEdit}
+      submitLabel={editingCalendar ? 'Сохранить календарь' : 'Добавить календарь'}
+      onSubmit={() => saveMutation.mutate()}
     >
       <div className="space-y-3">
         {calendars.length === 0 ? (
@@ -263,6 +303,18 @@ export function CalendarDialog({
                 ) : null}
                 {canEdit ? (
                   <Button
+                    aria-label="Редактировать календарь"
+                    size="sm"
+                    type="button"
+                    variant="ghost"
+                    disabled={saveMutation.isPending}
+                    onClick={() => startEdit(calendar)}
+                  >
+                    <Pencil size={14} />
+                  </Button>
+                ) : null}
+                {canEdit ? (
+                  <Button
                     aria-label="Удалить календарь"
                     size="sm"
                     type="button"
@@ -280,6 +332,18 @@ export function CalendarDialog({
       </div>
 
       <div className="grid gap-3 rounded-md border border-paper-200 bg-paper-50/60 p-3 sm:grid-cols-2">
+        {editingCalendar ? (
+          <div className="flex items-center justify-between gap-2 rounded-md border border-accent-500 bg-paper-100 px-3 py-2 text-xs text-accent-700 sm:col-span-2">
+            <span>Редактирование: {editingCalendar.name}</span>
+            <button
+              className="font-medium underline"
+              onClick={resetForm}
+              type="button"
+            >
+              Новый календарь
+            </button>
+          </div>
+        ) : null}
         <label className="block">
           <Label htmlFor="calendar-name">Название</Label>
           <Input
@@ -582,8 +646,25 @@ export function TimelineEventDialog({
   const [displayEnd, setDisplayEnd] = useState(
     event?.displayEnd && event.displayEnd !== generatedInitialEnd ? event.displayEnd : '',
   );
-  const [linkCharacterId, setLinkCharacterId] = useState('');
+  const [linkEntityType, setLinkEntityType] =
+    useState<TimelineLinkEntityType>('character');
+  const [linkEntityId, setLinkEntityId] = useState('');
   const [linkRole, setLinkRole] = useState('');
+
+  const linkOptionsQuery = useTimelineLinkOptions(projectId, Boolean(event));
+  const linkOptions: Record<TimelineLinkEntityType, TimelineLinkOption[]> = {
+    character: characters.map((character) => ({
+      id: character.id,
+      name: character.name,
+    })),
+    location: linkOptionsQuery.data?.location ?? [],
+    faction: linkOptionsQuery.data?.faction ?? [],
+    lore: linkOptionsQuery.data?.lore ?? [],
+  };
+  const linkEntities = linkOptions[linkEntityType];
+  const linkLabel = (link: TimelineEventLink) =>
+    linkOptions[link.entityType]?.find((option) => option.id === link.entityId)
+      ?.name ?? linkTypeLabels[link.entityType];
 
   const selectedCalendar = calendars.find((calendar) => calendar.id === calendarId);
   const config = configForCalendar(selectedCalendar);
@@ -695,13 +776,13 @@ export function TimelineEventDialog({
   const addLinkMutation = useMutation({
     mutationFn: () =>
       addTimelineEventLink(event?.id ?? '', {
-        entityType: 'character',
-        entityId: linkCharacterId,
+        entityType: linkEntityType,
+        entityId: linkEntityId,
         role: linkRole.trim() || undefined,
       }),
     onSuccess: () => {
       void invalidateTimeline(queryClient, projectId);
-      setLinkCharacterId('');
+      setLinkEntityId('');
       setLinkRole('');
       toast.success('Связь добавлена');
     },
@@ -1022,58 +1103,83 @@ export function TimelineEventDialog({
             <p className="text-xs text-ink-500">Связей пока нет.</p>
           ) : (
             <ul className="space-y-1">
-              {event.links.map((link) => {
-                const character = characters.find(
-                  (item) => item.id === link.entityId,
-                );
-                const label =
-                  link.entityType === 'character'
-                    ? character?.name ?? 'Персонаж'
-                    : linkTypeLabels[link.entityType] ?? link.entityType;
-                return (
-                  <li
-                    key={link.id}
-                    className="flex items-center justify-between gap-2 text-xs text-ink-700"
-                  >
-                    <span>
-                      {label}
-                      {link.role ? ` — ${link.role}` : ''}
+              {event.links.map((link) => (
+                <li
+                  key={link.id}
+                  className="flex items-center justify-between gap-2 text-xs text-ink-700"
+                >
+                  <span>
+                    <span className="text-ink-400">
+                      {linkTypeLabels[link.entityType]}:{' '}
                     </span>
-                    {canEdit ? (
-                      <Button
-                        aria-label="Удалить связь"
-                        size="sm"
-                        type="button"
-                        variant="ghost"
-                        disabled={removeLinkMutation.isPending}
-                        onClick={() => removeLinkMutation.mutate(link.id)}
-                      >
-                        <Trash2 size={12} />
-                      </Button>
-                    ) : null}
-                  </li>
-                );
-              })}
+                    {linkLabel(link)}
+                    {link.role ? ` — ${link.role}` : ''}
+                  </span>
+                  {canEdit ? (
+                    <Button
+                      aria-label="Удалить связь"
+                      size="sm"
+                      type="button"
+                      variant="ghost"
+                      disabled={removeLinkMutation.isPending}
+                      onClick={() => removeLinkMutation.mutate(link.id)}
+                    >
+                      <Trash2 size={12} />
+                    </Button>
+                  ) : null}
+                </li>
+              ))}
             </ul>
           )}
           {canEdit ? (
             <div className="flex flex-wrap items-end gap-2">
-              <label className="block min-w-48 flex-1">
-                <Label htmlFor="event-link-character">Персонаж</Label>
+              <label className="block">
+                <Label htmlFor="event-link-type">Тип связи</Label>
                 <Select
-                  value={linkCharacterId || NONE}
-                  onValueChange={(value) =>
-                    setLinkCharacterId(value === NONE ? '' : value)
-                  }
+                  value={linkEntityType}
+                  onValueChange={(value) => {
+                    setLinkEntityType(value as TimelineLinkEntityType);
+                    setLinkEntityId('');
+                  }}
                 >
-                  <SelectTrigger id="event-link-character">
-                    <SelectValue placeholder="Выберите персонажа" />
+                  <SelectTrigger id="event-link-type" className="w-40">
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={NONE}>Не выбран</SelectItem>
-                    {characters.map((character) => (
-                      <SelectItem key={character.id} value={character.id}>
-                        {character.name}
+                    {(
+                      Object.keys(linkTypeLabels) as TimelineLinkEntityType[]
+                    ).map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {linkTypeLabels[type]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </label>
+              <label className="block min-w-48 flex-1">
+                <Label htmlFor="event-link-entity">Сущность</Label>
+                <Select
+                  value={linkEntityId || NONE}
+                  onValueChange={(value) =>
+                    setLinkEntityId(value === NONE ? '' : value)
+                  }
+                >
+                  <SelectTrigger id="event-link-entity">
+                    <SelectValue
+                      placeholder={
+                        linkOptionsQuery.isLoading && linkEntityType !== 'character'
+                          ? 'Загружаем…'
+                          : 'Выберите сущность'
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>Не выбрана</SelectItem>
+                    {linkEntities.map((option) => (
+                      <SelectItem key={option.id} value={option.id}>
+                        {option.worldName
+                          ? `${option.name} · ${option.worldName}`
+                          : option.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1092,11 +1198,26 @@ export function TimelineEventDialog({
               <Button
                 type="button"
                 variant="outline"
-                disabled={!linkCharacterId || addLinkMutation.isPending}
+                disabled={!linkEntityId || addLinkMutation.isPending}
                 onClick={() => addLinkMutation.mutate()}
               >
                 Добавить связь
               </Button>
+              {linkOptionsQuery.isError ? (
+                <p className="w-full text-xs text-red-700">
+                  {getApiErrorMessage(
+                    linkOptionsQuery.error,
+                    'Не удалось загрузить локации, фракции и лор.',
+                  )}
+                </p>
+              ) : null}
+              {!linkOptionsQuery.isLoading &&
+              linkEntityType !== 'character' &&
+              linkEntities.length === 0 ? (
+                <p className="w-full text-xs text-ink-500">
+                  В проекте нет сущностей этого типа.
+                </p>
+              ) : null}
             </div>
           ) : null}
         </div>
