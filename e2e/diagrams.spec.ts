@@ -27,6 +27,60 @@ test('edits a collaborative diagram and persists nodes', async ({ page }) => {
   await expect(page.locator('.react-flow').getByText('Новая заметка')).toBeVisible();
 });
 
+test('links several cards to one and deletes with key or button', async ({
+  page,
+}) => {
+  await login(page);
+  await openProjectSection(page, 'Схемы');
+
+  await page.getByRole('button', { name: 'Новая схема' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Название').fill('Схема связей');
+  await dialog.getByRole('button', { name: 'Создать' }).click();
+  await expect(page).toHaveURL(/\/diagrams\/[^/]+$/);
+
+  const canvas = page.locator('.react-flow');
+  await page.getByRole('button', { name: 'Мира Вейн +' }).click();
+  await page.getByRole('button', { name: 'Кай Рен +' }).click();
+  await page.getByRole('button', { name: 'Селина Мор +' }).click();
+  await expect(canvas.locator('.react-flow__node')).toHaveCount(3);
+
+  const link = async (source: string, target: string) => {
+    await canvas.locator('.react-flow__node').filter({ hasText: source }).click();
+    await page.locator('#diagram-link-target').selectOption({ label: target });
+    await page.getByRole('button', { name: '+ Создать связь' }).click();
+  };
+  await link('Мира Вейн', 'Селина Мор');
+  await link('Кай Рен', 'Селина Мор');
+  await expect(canvas.locator('.react-flow__edge')).toHaveCount(2);
+
+  // Delete key works alongside Backspace.
+  await canvas
+    .locator('.react-flow__edge')
+    .first()
+    .locator('.react-flow__edge-interaction')
+    .dispatchEvent('click');
+  await page.keyboard.press('Delete');
+  await expect(canvas.locator('.react-flow__edge')).toHaveCount(1);
+
+  // The sidebar button deletes the current selection too.
+  await canvas
+    .locator('.react-flow__edge')
+    .first()
+    .locator('.react-flow__edge-interaction')
+    .dispatchEvent('click');
+  await page.getByRole('button', { name: 'Удалить выбранное' }).click();
+  await expect(canvas.locator('.react-flow__edge')).toHaveCount(0);
+
+  // Backspace still removes cards; attached edges go with them.
+  await link('Мира Вейн', 'Селина Мор');
+  await expect(canvas.locator('.react-flow__edge')).toHaveCount(1);
+  await canvas.locator('.react-flow__node').filter({ hasText: 'Селина Мор' }).click();
+  await page.keyboard.press('Backspace');
+  await expect(canvas.locator('.react-flow__node')).toHaveCount(2);
+  await expect(canvas.locator('.react-flow__edge')).toHaveCount(0);
+});
+
 test('creates and deletes a diagram', async ({ page }) => {
   await login(page);
   await openProjectSection(page, 'Схемы');

@@ -1,6 +1,7 @@
 import {
   Background,
   BackgroundVariant,
+  ConnectionMode,
   Controls,
   Handle,
   MarkerType,
@@ -15,6 +16,7 @@ import {
   type NodeChange,
   type NodeProps,
   type OnConnect,
+  type OnSelectionChangeParams,
   type Viewport,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -78,8 +80,9 @@ function EntityNode({ data, selected }: NodeProps<RFNode>) {
       }
     >
       <Handle
-        className="!h-2 !w-2 !border-paper-400 !bg-paper-200"
+        className="!h-3 !w-3 !border-2 !border-white !bg-accent-600 hover:!bg-accent-700"
         position={Position.Left}
+        title="Перетащите, чтобы связать с другой карточкой"
         type="target"
       />
       <p className="text-[10px] uppercase tracking-[0.08em] text-ink-400">
@@ -91,8 +94,9 @@ function EntityNode({ data, selected }: NodeProps<RFNode>) {
       </p>
       <p className="text-sm font-medium text-ink-800">{data.label}</p>
       <Handle
-        className="!h-2 !w-2 !border-paper-400 !bg-paper-200"
+        className="!h-3 !w-3 !border-2 !border-white !bg-accent-600 hover:!bg-accent-700"
         position={Position.Right}
+        title="Перетащите, чтобы связать с другой карточкой"
         type="source"
       />
     </div>
@@ -133,6 +137,11 @@ export function DiagramCanvas({
   const metaMap = useMemo(() => ydoc.getMap<unknown>('meta'), [ydoc]);
   const [nodes, setNodes] = useState<RFNode[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
+  const [selection, setSelection] = useState<{
+    nodeIds: string[];
+    edgeIds: string[];
+  }>({ nodeIds: [], edgeIds: [] });
+  const [linkTargetId, setLinkTargetId] = useState('');
   const nodesRef = useRef<RFNode[]>([]);
   const edgesRef = useRef<Edge[]>([]);
   useEffect(() => {
@@ -190,6 +199,25 @@ export function DiagramCanvas({
     });
     return result;
   }, [edgesMap]);
+
+  const selectedNode = useMemo(() => {
+    if (selection.nodeIds.length !== 1) {
+      return null;
+    }
+    return nodes.find((node) => node.id === selection.nodeIds[0]) ?? null;
+  }, [nodes, selection.nodeIds]);
+
+  const linkTargets = useMemo(
+    () => nodes.filter((node) => node.id !== selectedNode?.id),
+    [nodes, selectedNode?.id],
+  );
+
+  // Keep the previous target when switching cards, so several cards can be
+  // linked to the same one with a single click. It stops applying when the
+  // target is no longer a valid node (for example, it was deleted).
+  const validLinkTargetId = linkTargets.some((node) => node.id === linkTargetId)
+    ? linkTargetId
+    : '';
 
   const buildCanonical = useCallback((): Record<string, unknown> => {
     const canonicalNodes: Record<string, unknown>[] = [];
@@ -503,31 +531,98 @@ export function DiagramCanvas({
     [edgesMap, ydoc],
   );
 
-  const onConnect = useCallback<OnConnect>(
-    (connection) => {
-      if (!canEdit || !connection.source || !connection.target) {
+  const createEdge = useCallback(
+    (source: string, target: string, label: string) => {
+      if (!canEdit) {
         return;
       }
       const id = crypto.randomUUID();
       const edge: Edge = {
         id,
-        source: connection.source,
-        target: connection.target,
-        label: newEdgeLabel || undefined,
+        source,
+        target,
+        label: label || undefined,
         markerEnd: { type: MarkerType.ArrowClosed },
       };
       ydoc.transact(() => {
         const record = new Y.Map<unknown>();
-        record.set('source', connection.source);
-        record.set('target', connection.target);
-        record.set('label', newEdgeLabel);
+        record.set('source', source);
+        record.set('target', target);
+        record.set('label', label);
         edgesMap.set(id, record);
       }, LOCAL_ORIGIN);
       edgesRef.current = [...edgesRef.current, edge];
       setEdges(edgesRef.current);
     },
-    [canEdit, edgesMap, newEdgeLabel, ydoc],
+    [canEdit, edgesMap, ydoc],
   );
+
+  const onConnect = useCallback<OnConnect>(
+    (connection) => {
+      if (!connection.source || !connection.target) {
+        return;
+      }
+      createEdge(connection.source, connection.target, newEdgeLabel);
+    },
+    [createEdge, newEdgeLabel],
+  );
+
+  const onSelectionChange = useCallback(
+    (params: OnSelectionChangeParams<RFNode, Edge>) => {
+      setSelection({
+        nodeIds: params.nodes.map((node) => node.id),
+        edgeIds: params.edges.map((edge) => edge.id),
+      });
+    },
+    [],
+  );
+
+  const deleteSelection = useCallback(() => {
+    if (!canEdit) {
+      return;
+    }
+    const nodeIds = new Set(selection.nodeIds);
+    const edgeIds = new Set(selection.edgeIds);
+    for (const edge of edgesRef.current) {
+      if (nodeIds.has(edge.source) || nodeIds.has(edge.target)) {
+        edgeIds.add(edge.id);
+      }
+    }
+    if (nodeIds.size === 0 && edgeIds.size === 0) {
+      return;
+    }
+    ydoc.transact(() => {
+      for (const id of nodeIds) {
+        nodesMap.delete(id);
+      }
+      for (const id of edgeIds) {
+        edgesMap.delete(id);
+      }
+    }, LOCAL_ORIGIN);
+    const nextNodes = readNodes();
+    const nextEdges = readEdges();
+    setSelection({ nodeIds: [], edgeIds: [] });
+    nodesRef.current = nextNodes;
+    edgesRef.current = nextEdges;
+    setNodes(nextNodes);
+    setEdges(nextEdges);
+  }, [
+    canEdit,
+    edgesMap,
+    nodesMap,
+    readEdges,
+    readNodes,
+    selection.edgeIds,
+    selection.nodeIds,
+    ydoc,
+  ]);
+
+  const linkSelected = () => {
+    if (!selectedNode || !validLinkTargetId) {
+      return;
+    }
+    createEdge(selectedNode.id, validLinkTargetId, newEdgeLabel);
+  };
 
   const addCharacterNode = (character: Character) => {
     if (!canEdit) {
@@ -635,7 +730,8 @@ export function DiagramCanvas({
             Палитра
           </p>
           <p className="mt-1 text-xs text-ink-500">
-            Нажмите на персонажа, чтобы добавить его на схему.
+            Нажмите на персонажа, чтобы добавить его на схему. Чтобы связать
+            карточки, перетащите точку на краю одной карточки к другой.
           </p>
         </div>
         <div className="max-h-64 space-y-1 overflow-y-auto">
@@ -662,6 +758,64 @@ export function DiagramCanvas({
           onRedo={redo}
           onUndo={undo}
         />
+        <div className="space-y-2 border-t border-paper-200 pt-2">
+          <p className="text-xs font-medium uppercase tracking-[0.12em] text-ink-500">
+            Выбрано
+          </p>
+          <p className="text-xs text-ink-500">
+            {selection.nodeIds.length + selection.edgeIds.length === 0
+              ? 'Кликните карточку или связь, чтобы выбрать. Удаление — Delete, Backspace или кнопка ниже.'
+              : `Карточек: ${selection.nodeIds.length}, связей: ${selection.edgeIds.length}`}
+          </p>
+          <button
+            className="w-full rounded px-2 py-1.5 text-left text-xs text-red-700 hover:bg-red-50 disabled:opacity-50"
+            disabled={
+              !canEdit ||
+              selection.nodeIds.length + selection.edgeIds.length === 0
+            }
+            onClick={deleteSelection}
+            type="button"
+          >
+            Удалить выбранное
+          </button>
+          {selectedNode ? (
+            <div className="space-y-1 border-t border-paper-200 pt-2">
+              <label
+                className="block text-[11px] text-ink-500"
+                htmlFor="diagram-link-target"
+              >
+                Связать «{selectedNode.data.label}» с
+              </label>
+              <select
+                className="w-full rounded border border-paper-300 bg-white px-2 py-1.5 text-xs text-ink-700 disabled:opacity-50"
+                disabled={!canEdit}
+                id="diagram-link-target"
+                onChange={(event) => setLinkTargetId(event.target.value)}
+                value={validLinkTargetId}
+              >
+                <option value="">— выберите карточку —</option>
+                {linkTargets.map((node) => (
+                  <option key={node.id} value={node.id}>
+                    {node.data.label}
+                    {node.data.entityType === 'note' ? ' (заметка)' : ''}
+                  </option>
+                ))}
+              </select>
+              <button
+                className="w-full rounded px-2 py-1.5 text-left text-xs text-ink-700 hover:bg-paper-50 disabled:opacity-50"
+                disabled={!canEdit || !validLinkTargetId}
+                onClick={linkSelected}
+                type="button"
+              >
+                + Создать связь
+              </button>
+              <p className="text-[10px] leading-snug text-ink-400">
+                Стрелка идёт от выбранной карточки к указанной. Несколько
+                карточек можно связать с одной, выбирая их по очереди.
+              </p>
+            </div>
+          ) : null}
+        </div>
         <div className="flex items-center gap-1 text-[11px] text-ink-400">
           {users.map((user) => (
             <span
@@ -679,7 +833,9 @@ export function DiagramCanvas({
 
       <div className="h-[68vh] min-h-[420px] flex-1 overflow-hidden rounded-lg border border-paper-200 bg-paper-50">
         <ReactFlow
+          connectionMode={ConnectionMode.Loose}
           defaultViewport={defaultViewport}
+          deleteKeyCode={['Backspace', 'Delete']}
           edges={edges}
           fitView={!initialCanonical?.viewport}
           minZoom={0.2}
@@ -692,6 +848,7 @@ export function DiagramCanvas({
           onMoveEnd={onMoveEnd}
           onNodeDoubleClick={onNodeDoubleClick}
           onNodesChange={onNodesChange}
+          onSelectionChange={onSelectionChange}
         >
           <Background gap={20} variant={BackgroundVariant.Dots} />
           <Controls showInteractive={false} />
