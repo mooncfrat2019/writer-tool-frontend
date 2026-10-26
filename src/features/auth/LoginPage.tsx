@@ -1,0 +1,126 @@
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Link, useNavigate } from '@tanstack/react-router';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
+import { api } from '@/shared/api/client';
+import { getApiErrorMessage } from '@/shared/api/errors';
+import { unwrap } from '@/shared/api/request';
+import { Button } from '@/shared/ui/button';
+import { Input } from '@/shared/ui/input';
+import { Label } from '@/shared/ui/label';
+import { AuthLayout } from './AuthLayout';
+import { loginSchema, type LoginValues } from './schemas';
+import { setSessionFromAuth } from './session';
+
+const isMockMode =
+  import.meta.env.DEV && (import.meta.env.VITE_API_MODE ?? 'mock') === 'mock';
+
+export function LoginPage() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [formError, setFormError] = useState<string | null>(null);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: isMockMode
+      ? { email: 'author@example.com', password: 'password123' }
+      : { email: '', password: '' },
+  });
+
+  const login = useMutation({
+    mutationFn: async (values: LoginValues) =>
+      unwrap(
+        await api.POST('/auth/login', {
+          body: values,
+        }),
+      ),
+    onMutate: () => setFormError(null),
+    onSuccess: (data) => {
+      setSessionFromAuth(data);
+      queryClient.clear();
+      toast.success('С возвращением. Продолжим книгу.');
+      void navigate({ to: '/projects' });
+    },
+    onError: (error) => {
+      setFormError(getApiErrorMessage(error, 'Не удалось войти. Проверьте почту и пароль.'));
+    },
+  });
+
+  return (
+    <AuthLayout
+      eyebrow="Ваша мастерская"
+      title="Войти в книгу"
+      description="Продолжите с того места, где остановилась рукопись."
+      footer={
+        <p>
+          Нет аккаунта?{' '}
+          <Link className="font-medium text-accent-700 underline-offset-4 hover:underline" to="/register">
+            Создать аккаунт
+          </Link>
+        </p>
+      }
+    >
+      <form
+        className="space-y-5"
+        noValidate
+        onSubmit={handleSubmit((values) => login.mutate(values))}
+      >
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            autoComplete="email"
+            aria-invalid={Boolean(errors.email)}
+            aria-describedby={errors.email ? 'email-error' : undefined}
+            {...register('email')}
+          />
+          {errors.email ? (
+            <p id="email-error" className="text-xs text-red-700">
+              {errors.email.message}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="password">Пароль</Label>
+          <Input
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            aria-invalid={Boolean(errors.password)}
+            aria-describedby={errors.password ? 'password-error' : undefined}
+            {...register('password')}
+          />
+          {errors.password ? (
+            <p id="password-error" className="text-xs text-red-700">
+              {errors.password.message}
+            </p>
+          ) : null}
+        </div>
+
+        {formError ? (
+          <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+            {formError}
+          </p>
+        ) : null}
+
+        <Button className="w-full" type="submit" disabled={login.isPending}>
+          {login.isPending ? 'Входим…' : 'Войти'}
+        </Button>
+
+        {isMockMode ? (
+          <p className="rounded-md border border-paper-200 bg-paper-100/70 px-3 py-2 text-xs leading-relaxed text-ink-500">
+            Демо-доступ уже подставлен: author@example.com / password123. Данные
+            сохраняются только в вашем браузере.
+          </p>
+        ) : null}
+      </form>
+    </AuthLayout>
+  );
+}
