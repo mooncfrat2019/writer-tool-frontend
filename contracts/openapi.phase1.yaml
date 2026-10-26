@@ -1141,6 +1141,34 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /locations/{locationId}/move:
+    parameters:
+      - $ref: '#/components/parameters/LocationId'
+    post:
+      tags: [Worlds]
+      operationId: moveLocation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationMove'
+      responses:
+        '200':
+          description: Moved location
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Location'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
   /worlds/{worldId}/factions:
     parameters:
       - $ref: '#/components/parameters/WorldId'
@@ -1340,6 +1368,30 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '409':
           $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /projects/{projectId}/custom-fields/reorder:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      tags: [CustomFields]
+      operationId: reorderCustomFields
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomFieldReorder'
+      responses:
+        '200':
+          description: Custom fields in the new order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomFieldDefList'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '422':
           $ref: '#/components/responses/ValidationFailed'
 
@@ -2933,6 +2985,19 @@ components:
         version:
           type: integer
           format: int64
+    LocationMove:
+      type: object
+      required: [parentId]
+      properties:
+        parentId:
+          type: [string, 'null']
+          format: uuid
+        beforeId:
+          type: string
+          format: uuid
+        afterId:
+          type: string
+          format: uuid
 
     Faction:
       type: object
@@ -3182,10 +3247,21 @@ components:
         version:
           type: integer
           format: int64
+    CustomFieldReorder:
+      type: object
+      required: [entityType, ids]
+      properties:
+        entityType:
+          $ref: '#/components/schemas/CustomFieldEntityType'
+        ids:
+          type: array
+          items:
+            type: string
+            format: uuid
 
     SearchResultType:
       type: string
-      enum: [document, character, world, location, faction, lore]
+      enum: [document, character, world, location, faction, lore, book, node]
     SearchResult:
       type: object
       required: [type, id, projectId, title, snippet, updatedAt]

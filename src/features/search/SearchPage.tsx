@@ -18,6 +18,8 @@ const typeOptions: Array<{ value: SearchResultType; label: string }> = [
   { value: 'location', label: 'Локации' },
   { value: 'faction', label: 'Фракции' },
   { value: 'lore', label: 'Лор' },
+  { value: 'book', label: 'Книги' },
+  { value: 'node', label: 'Главы и сцены' },
 ];
 
 const typeLabels: Record<SearchResultType, string> = {
@@ -27,6 +29,8 @@ const typeLabels: Record<SearchResultType, string> = {
   location: 'Локация',
   faction: 'Фракция',
   lore: 'Лор',
+  book: 'Книга',
+  node: 'Узел',
 };
 
 const typeTones: Record<
@@ -39,13 +43,15 @@ const typeTones: Record<
   location: 'neutral',
   faction: 'danger',
   lore: 'neutral',
+  book: 'success',
+  node: 'accent',
 };
 
 type ResultLink =
   | { kind: 'character'; characterId: string }
   | { kind: 'world'; worldId: string }
   | { kind: 'editor'; nodeId: string }
-  | { kind: 'structure' };
+  | { kind: 'structure'; bookId?: string };
 
 function resultLink(result: SearchResult): ResultLink {
   switch (result.type) {
@@ -57,6 +63,10 @@ function resultLink(result: SearchResult): ResultLink {
       return result.nodeId
         ? { kind: 'editor', nodeId: result.nodeId }
         : { kind: 'structure' };
+    case 'book':
+      return { kind: 'structure', bookId: result.id };
+    case 'node':
+      return { kind: 'editor', nodeId: result.nodeId ?? result.id };
     case 'location':
     case 'faction':
     case 'lore':
@@ -275,6 +285,7 @@ export function SearchPage() {
                   <Link
                     to="/projects/$projectId/structure"
                     params={{ projectId }}
+                    search={link.bookId ? { bookId: link.bookId } : {}}
                     className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2"
                   >
                     {content}

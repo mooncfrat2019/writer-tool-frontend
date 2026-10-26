@@ -37,6 +37,13 @@ test('renders project custom fields in the character profile and manages them', 
   await dialog.getByRole('button', { name: 'Сохранить поле' }).click();
   await expect(dialog.getByText('Фамилия до брака')).toBeVisible();
 
+  const fieldItems = dialog.locator('li');
+  await expect(fieldItems.nth(0)).toContainText('Рост');
+  await dialog
+    .getByRole('button', { name: 'Переместить поле Фамилия до брака выше' })
+    .click();
+  await expect(fieldItems.nth(0)).toContainText('Фамилия до брака');
+
   await dialog.getByLabel('Закрыть').click();
   await expect(dialog).toBeHidden();
 

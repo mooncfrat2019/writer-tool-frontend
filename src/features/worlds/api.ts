@@ -11,6 +11,7 @@ export type WorldRuleUpdate = components['schemas']['WorldRuleUpdate'];
 export type Location = components['schemas']['Location'];
 export type LocationCreate = components['schemas']['LocationCreate'];
 export type LocationUpdate = components['schemas']['LocationUpdate'];
+export type LocationMove = components['schemas']['LocationMove'];
 export type Faction = components['schemas']['Faction'];
 export type FactionCreate = components['schemas']['FactionCreate'];
 export type FactionUpdate = components['schemas']['FactionUpdate'];
@@ -85,6 +86,15 @@ export async function deleteLocation(locationId: string) {
   if (error) {
     throw new ApiError(error);
   }
+}
+
+export async function moveLocation(locationId: string, body: LocationMove) {
+  return unwrap(
+    await api.POST('/locations/{locationId}/move', {
+      params: { path: { locationId } },
+      body,
+    }),
+  );
 }
 
 export async function listRules(worldId: string) {

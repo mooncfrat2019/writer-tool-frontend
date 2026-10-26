@@ -645,6 +645,24 @@ export interface paths {
         patch: operations["updateLocation"];
         trace?: never;
     };
+    "/locations/{locationId}/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                locationId: components["parameters"]["LocationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["moveLocation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/worlds/{worldId}/factions": {
         parameters: {
             query?: never;
@@ -729,6 +747,24 @@ export interface paths {
         get: operations["listCustomFields"];
         put?: never;
         post: operations["createCustomField"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectId}/custom-fields/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["reorderCustomFields"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1526,6 +1562,14 @@ export interface components {
             /** Format: int64 */
             version?: number;
         };
+        LocationMove: {
+            /** Format: uuid */
+            parentId: string | null;
+            /** Format: uuid */
+            beforeId?: string;
+            /** Format: uuid */
+            afterId?: string;
+        };
         Faction: {
             /** Format: uuid */
             id: string;
@@ -1643,8 +1687,12 @@ export interface components {
             /** Format: int64 */
             version?: number;
         };
+        CustomFieldReorder: {
+            entityType: components["schemas"]["CustomFieldEntityType"];
+            ids: string[];
+        };
         /** @enum {string} */
-        SearchResultType: "document" | "character" | "world" | "location" | "faction" | "lore";
+        SearchResultType: "document" | "character" | "world" | "location" | "faction" | "lore" | "book" | "node";
         SearchResult: {
             type: components["schemas"]["SearchResultType"];
             /** Format: uuid */
@@ -3469,6 +3517,36 @@ export interface operations {
             422: components["responses"]["ValidationFailed"];
         };
     };
+    moveLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                locationId: components["parameters"]["LocationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocationMove"];
+            };
+        };
+        responses: {
+            /** @description Moved location */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Location"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
     listFactions: {
         parameters: {
             query?: never;
@@ -3731,6 +3809,34 @@ export interface operations {
             };
             403: components["responses"]["Forbidden"];
             409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    reorderCustomFields: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomFieldReorder"];
+            };
+        };
+        responses: {
+            /** @description Custom fields in the new order */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomFieldDefList"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
             422: components["responses"]["ValidationFailed"];
         };
     };

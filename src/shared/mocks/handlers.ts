@@ -1543,6 +1543,77 @@ export const handlers = [
     return HttpResponse.json(location);
   }),
 
+  http.post(`${api}/locations/:locationId/move`, async ({ params, request }) => {
+    const state = getMockState();
+    const location = state.locations.find((item) => item.id === params.locationId);
+    if (!location) {
+      return problem(404, 'not_found', 'Location not found');
+    }
+    const body = (await request.json()) as {
+      parentId?: string | null;
+      beforeId?: string;
+      afterId?: string;
+    };
+    const parentId = body.parentId ?? null;
+    if (parentId === location.id) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Invalid parent');
+    }
+    if (parentId) {
+      const parent = state.locations.find((item) => item.id === parentId);
+      if (!parent || parent.worldId !== location.worldId) {
+        return problem(422, 'validation_failed', 'Validation failed', 'Invalid parent');
+      }
+      let current: Location | undefined = parent;
+      const seen = new Set<string>();
+      while (current?.parentId) {
+        if (seen.has(current.id)) {
+          break;
+        }
+        seen.add(current.id);
+        if (current.parentId === location.id) {
+          return problem(
+            422,
+            'validation_failed',
+            'Validation failed',
+            'Cannot move a location into its own subtree',
+          );
+        }
+        current = state.locations.find((item) => item.id === current!.parentId);
+      }
+    }
+    const siblings = state.locations
+      .filter(
+        (item) =>
+          item.worldId === location.worldId &&
+          (item.parentId ?? null) === parentId &&
+          item.id !== location.id,
+      )
+      .sort((left, right) => left.sortKey.localeCompare(right.sortKey));
+    let index = siblings.length;
+    if (body.beforeId) {
+      const position = siblings.findIndex((item) => item.id === body.beforeId);
+      if (position < 0) {
+        return problem(422, 'validation_failed', 'Validation failed', 'Invalid beforeId');
+      }
+      index = position;
+    } else if (body.afterId) {
+      const position = siblings.findIndex((item) => item.id === body.afterId);
+      if (position < 0) {
+        return problem(422, 'validation_failed', 'Validation failed', 'Invalid afterId');
+      }
+      index = position + 1;
+    }
+    siblings.splice(index, 0, location);
+    location.parentId = parentId;
+    siblings.forEach((item, position) => {
+      item.sortKey = String((position + 1) * 10).padStart(10, '0');
+    });
+    location.version += 1;
+    location.updatedAt = new Date().toISOString();
+    saveMockState();
+    return HttpResponse.json(location);
+  }),
+
   http.delete(`${api}/locations/:locationId`, ({ params }) => {
     const state = getMockState();
     const location = state.locations.find((item) => item.id === params.locationId);
@@ -1728,6 +1799,45 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 });
   }),
 
+  http.post(`${api}/projects/:projectId/custom-fields/reorder`, async ({ params, request }) => {
+    const state = getMockState();
+    const body = (await request.json()) as {
+      entityType?: string;
+      ids?: string[];
+    };
+    if (body.entityType !== 'character' && body.entityType !== 'world') {
+      return problem(422, 'validation_failed', 'Validation failed', 'Invalid entity type');
+    }
+    const ids = body.ids ?? [];
+    const definitions = state.customFields.filter(
+      (field) =>
+        field.projectId === params.projectId &&
+        field.entityType === body.entityType,
+    );
+    if (
+      ids.length !== definitions.length ||
+      new Set(ids).size !== ids.length ||
+      definitions.some((field) => !ids.includes(field.id))
+    ) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Invalid ids');
+    }
+    ids.forEach((id, index) => {
+      const definition = state.customFields.find((field) => field.id === id);
+      if (definition) {
+        definition.sortKey = String((index + 1) * 10).padStart(10, '0');
+      }
+    });
+    saveMockState();
+    const items = state.customFields
+      .filter(
+        (field) =>
+          field.projectId === params.projectId &&
+          field.entityType === body.entityType,
+      )
+      .sort((left, right) => left.sortKey.localeCompare(right.sortKey));
+    return HttpResponse.json({ items });
+  }),
+
   http.get(`${api}/projects/:projectId/custom-fields`, async ({ params, request }) => {
     const url = new URL(request.url);
     const entityType = url.searchParams.get('entityType');
@@ -1878,6 +1988,51 @@ export const handlers = [
           nodeId: node?.id ?? null,
           worldId: null,
           updatedAt: document.updatedAt,
+        });
+      }
+    }
+
+    if (allowed('book')) {
+      for (const book of state.books.filter(
+        (item) => item.projectId === params.projectId,
+      )) {
+        if (!matches(book.title, book.subtitle, book.synopsis)) {
+          continue;
+        }
+        results.push({
+          type: 'book',
+          id: book.id,
+          projectId: book.projectId,
+          title: book.title,
+          snippet: book.synopsis ?? '',
+          nodeId: null,
+          worldId: null,
+          updatedAt: book.updatedAt,
+        });
+      }
+    }
+
+    if (allowed('node')) {
+      const projectBookIds = new Set(
+        state.books
+          .filter((item) => item.projectId === params.projectId)
+          .map((item) => item.id),
+      );
+      for (const node of state.nodes.filter((item) =>
+        projectBookIds.has(item.bookId),
+      )) {
+        if (!matches(node.title, node.synopsis, node.notes)) {
+          continue;
+        }
+        results.push({
+          type: 'node',
+          id: node.id,
+          projectId: String(params.projectId),
+          title: node.title,
+          snippet: node.synopsis || node.notes || '',
+          nodeId: node.id,
+          worldId: null,
+          updatedAt: node.updatedAt,
         });
       }
     }

@@ -29,6 +29,7 @@ import {
   createLore,
   createRule,
   createWorld,
+  moveLocation,
   updateFaction,
   updateLocation,
   updateLore,
@@ -302,23 +303,64 @@ export function LocationDialog({
   const [type, setType] = useState(location?.type ?? '');
   const [description, setDescription] = useState(location?.description ?? '');
   const [parent, setParent] = useState(location?.parentId ?? parentId ?? 'root');
+  const [mapX, setMapX] = useState(location?.mapX?.toString() ?? '');
+  const [mapY, setMapY] = useState(location?.mapY?.toString() ?? '');
 
+  const excluded = new Set<string>();
+  if (location) {
+    excluded.add(location.id);
+    const children = new Map<string, string[]>();
+    for (const item of locations) {
+      if (!item.parentId) {
+        continue;
+      }
+      const list = children.get(item.parentId) ?? [];
+      list.push(item.id);
+      children.set(item.parentId, list);
+    }
+    const stack = [location.id];
+    while (stack.length) {
+      const current = stack.pop();
+      if (!current) {
+        continue;
+      }
+      for (const child of children.get(current) ?? []) {
+        if (excluded.has(child)) {
+          continue;
+        }
+        excluded.add(child);
+        stack.push(child);
+      }
+    }
+  }
+  const parentOptions = locations.filter((item) => !excluded.has(item.id));
 
   const mutation = useMutation({
     mutationFn: async () => {
+      const nextMapX = mapX.trim() === '' ? undefined : Number(mapX);
+      const nextMapY = mapY.trim() === '' ? undefined : Number(mapY);
       if (location) {
-        return updateLocation(location.id, {
+        const updated = await updateLocation(location.id, {
           name: name.trim(),
           type: type.trim(),
           description: description.trim(),
+          mapX: nextMapX,
+          mapY: nextMapY,
           version: location.version,
         });
+        const nextParent = parent === 'root' ? null : parent;
+        if ((location.parentId ?? null) !== nextParent) {
+          return moveLocation(location.id, { parentId: nextParent });
+        }
+        return updated;
       }
       return createLocation(worldId, {
         name: name.trim(),
         type: type.trim() || undefined,
         description: description.trim() || undefined,
         parentId: parent === 'root' ? undefined : parent,
+        mapX: nextMapX,
+        mapY: nextMapY,
       });
     },
     onSuccess: () => {
@@ -369,28 +411,51 @@ export function LocationDialog({
           <Datalist id="location-type-options" options={locationTypeOptions} />
         </div>
       </div>
-      {!location ? (
+      <div className="space-y-2">
+        <Label htmlFor="location-parent">Родительская локация</Label>
+        <Select value={parent} onValueChange={setParent}>
+          <SelectTrigger id="location-parent">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="root">Без родителя</SelectItem>
+            {parentOptions.map((item) => (
+              <SelectItem key={item.id} value={item.id}>
+                {item.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="location-parent">Родительская локация</Label>
-          <Select value={parent} onValueChange={setParent}>
-            <SelectTrigger id="location-parent">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="root">Без родителя</SelectItem>
-              {locations.map((item) => (
-                <SelectItem key={item.id} value={item.id}>
-                  {item.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label htmlFor="location-map-x">X на карте, %</Label>
+          <Input
+            id="location-map-x"
+            type="number"
+            min={0}
+            max={100}
+            step="any"
+            value={mapX}
+            onChange={(event) => setMapX(event.target.value)}
+          />
         </div>
-      ) : (
-        <p className="text-xs text-ink-500">
-          Перенос локации в другое место дерева появится позже.
-        </p>
-      )}
+        <div className="space-y-2">
+          <Label htmlFor="location-map-y">Y на карте, %</Label>
+          <Input
+            id="location-map-y"
+            type="number"
+            min={0}
+            max={100}
+            step="any"
+            value={mapY}
+            onChange={(event) => setMapY(event.target.value)}
+          />
+        </div>
+      </div>
+      <p className="text-xs text-ink-500">
+        Координаты от 0 до 100. Точка появится на вкладке «Карта».
+      </p>
       <div className="space-y-2">
         <Label htmlFor="location-description">Описание</Label>
         <Textarea

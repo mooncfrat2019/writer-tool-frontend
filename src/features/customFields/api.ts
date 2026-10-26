@@ -5,6 +5,7 @@ import type { components } from '@/shared/api/schema';
 export type CustomFieldDef = components['schemas']['CustomFieldDef'];
 export type CustomFieldDefCreate = components['schemas']['CustomFieldDefCreate'];
 export type CustomFieldDefUpdate = components['schemas']['CustomFieldDefUpdate'];
+export type CustomFieldReorder = components['schemas']['CustomFieldReorder'];
 export type CustomFieldEntityType = components['schemas']['CustomFieldEntityType'];
 export type CustomFieldType = components['schemas']['CustomFieldType'];
 
@@ -38,6 +39,18 @@ export async function updateCustomField(
   return unwrap(
     await api.PATCH('/custom-fields/{fieldId}', {
       params: { path: { fieldId } },
+      body,
+    }),
+  );
+}
+
+export async function reorderCustomFields(
+  projectId: string,
+  body: CustomFieldReorder,
+) {
+  return unwrap(
+    await api.POST('/projects/{projectId}/custom-fields/reorder', {
+      params: { path: { projectId } },
       body,
     }),
   );

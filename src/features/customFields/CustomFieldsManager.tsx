@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Plus, Trash2, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { getApiErrorMessage } from '@/shared/api/errors';
@@ -26,6 +26,7 @@ import {
 import {
   createCustomField,
   deleteCustomField,
+  reorderCustomFields,
   updateCustomField,
   type CustomFieldDef,
   type CustomFieldEntityType,
@@ -127,6 +128,30 @@ export function CustomFieldsManager({
 
   const needsOptions = type === 'select' || type === 'multiselect';
   const definitions = query.data?.items ?? [];
+
+  const reorder = useMutation({
+    mutationFn: (ids: string[]) =>
+      reorderCustomFields(projectId, { entityType, ids }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: customFieldKeys.list(projectId, entityType),
+      });
+      toast.success('Порядок полей обновлён.');
+    },
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, 'Не удалось изменить порядок полей.'));
+    },
+  });
+
+  const moveField = (index: number, delta: number) => {
+    const ids = definitions.map((definition) => definition.id);
+    const target = index + delta;
+    if (target < 0 || target >= ids.length) {
+      return;
+    }
+    [ids[index], ids[target]] = [ids[target], ids[index]];
+    reorder.mutate(ids);
+  };
 
   const submit = () => {
     if (!label.trim()) {
@@ -237,7 +262,7 @@ export function CustomFieldsManager({
             </p>
           ) : (
             <ul className="space-y-2">
-              {definitions.map((definition) => (
+              {definitions.map((definition, index) => (
                 <li
                   key={definition.id}
                   className="flex items-start gap-3 rounded-lg border border-paper-200 bg-white/60 px-3 py-2.5"
@@ -261,6 +286,28 @@ export function CustomFieldsManager({
                     ) : null}
                   </div>
                   <div className="flex shrink-0 gap-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Переместить поле ${definition.label} выше`}
+                      disabled={index === 0 || reorder.isPending}
+                      onClick={() => moveField(index, -1)}
+                    >
+                      <ChevronUp size={14} />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Переместить поле ${definition.label} ниже`}
+                      disabled={
+                        index === definitions.length - 1 || reorder.isPending
+                      }
+                      onClick={() => moveField(index, 1)}
+                    >
+                      <ChevronDown size={14} />
+                    </Button>
                     <Button
                       type="button"
                       variant="ghost"

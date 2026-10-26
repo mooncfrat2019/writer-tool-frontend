@@ -1,5 +1,16 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, MapPin, Pencil, Plus, Scale, Trash2, Users } from 'lucide-react';
+import {
+  BookOpen,
+  ChevronDown,
+  ChevronUp,
+  Map as MapIcon,
+  MapPin,
+  Pencil,
+  Plus,
+  Scale,
+  Trash2,
+  Users,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { getApiErrorMessage } from '@/shared/api/errors';
@@ -13,6 +24,7 @@ import {
   deleteLocation,
   deleteLore,
   deleteRule,
+  moveLocation,
   type Faction,
   type Location,
   type LoreEntry,
@@ -147,12 +159,16 @@ function LocationRow({
   canEdit,
   onEdit,
   onDelete,
+  onMove,
+  canMove,
 }: {
   node: LocationNode;
   level: number;
   canEdit: boolean;
   onEdit: (location: Location) => void;
   onDelete: (location: Location) => void;
+  onMove: (location: Location, direction: 'up' | 'down') => void;
+  canMove: (location: Location, direction: 'up' | 'down') => boolean;
 }) {
   return (
     <li>
@@ -178,6 +194,26 @@ function LocationRow({
         </div>
         {canEdit ? (
           <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={`Переместить локацию ${node.name} выше`}
+              disabled={!canMove(node, 'up')}
+              onClick={() => onMove(node, 'up')}
+            >
+              <ChevronUp size={14} />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={`Переместить локацию ${node.name} ниже`}
+              disabled={!canMove(node, 'down')}
+              onClick={() => onMove(node, 'down')}
+            >
+              <ChevronDown size={14} />
+            </Button>
             <Button
               type="button"
               variant="ghost"
@@ -209,11 +245,95 @@ function LocationRow({
               canEdit={canEdit}
               onEdit={onEdit}
               onDelete={onDelete}
+              onMove={onMove}
+              canMove={canMove}
             />
           ))}
         </ul>
       ) : null}
     </li>
+  );
+}
+
+function LocationMap({
+  items,
+  canEdit,
+  onEdit,
+  onAdd,
+}: {
+  items: Location[];
+  canEdit: boolean;
+  onEdit: (location: Location) => void;
+  onAdd: () => void;
+}) {
+  const mapped = items.flatMap((item) =>
+    item.mapX != null && item.mapY != null
+      ? [{ ...item, mapX: item.mapX, mapY: item.mapY }]
+      : [],
+  );
+
+  return (
+    <div className="mt-5" data-testid="location-map-panel">
+      <div
+        className="relative aspect-[4/3] w-full overflow-hidden rounded-lg border border-paper-200 bg-paper-50"
+        data-testid="location-map"
+      >
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-[linear-gradient(to_right,rgba(120,113,108,0.08)_1px,transparent_1px),linear-gradient(to_bottom,rgba(120,113,108,0.08)_1px,transparent_1px)] bg-[size:10%_10%]"
+        />
+        {mapped.map((location) => (
+          <button
+            key={location.id}
+            type="button"
+            aria-label={`Открыть локацию ${location.name}`}
+            className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1 rounded-md px-1 py-0.5 text-[11px] text-ink-700 hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2"
+            style={{ left: `${location.mapX}%`, top: `${location.mapY}%` }}
+            onClick={() => onEdit(location)}
+          >
+            <MapPin className="text-accent-700 drop-shadow" size={18} />
+            <span className="max-w-32 truncate rounded bg-white/85 px-1.5 py-0.5 shadow-sm">
+              {location.name}
+            </span>
+          </button>
+        ))}
+        {mapped.length === 0 ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center text-sm text-ink-500">
+            <MapPin size={22} />
+            <p>
+              Укажите координаты в карточке локации, чтобы поставить точку на
+              карте.
+            </p>
+            {canEdit ? (
+              <Button variant="outline" size="sm" onClick={onAdd}>
+                <Plus size={14} />
+                Добавить локацию
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+      <p className="mt-2 text-xs text-ink-500">
+        Координаты задаются в карточке локации (0–100%). Нажмите на точку, чтобы
+        изменить локацию.
+      </p>
+      {mapped.length ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {mapped.map((location) => (
+            <Button
+              key={location.id}
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onEdit(location)}
+            >
+              <MapPin size={13} />
+              {location.name}
+            </Button>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -223,6 +343,7 @@ export function LocationsTab({ worldId, canEdit }: TabProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Location | undefined>();
   const [deleteTarget, setDeleteTarget] = useState<Location | null>(null);
+  const [view, setView] = useState<'tree' | 'map'>('tree');
 
   const tree = useMemo(() => buildLocationTree(query.data?.items ?? []), [query.data]);
   const items = query.data?.items ?? [];
@@ -242,6 +363,69 @@ export function LocationsTab({ worldId, canEdit }: TabProps) {
     setDialogOpen(true);
   };
 
+  const move = useMutation({
+    mutationFn: ({
+      id,
+      parentId,
+      beforeId,
+      afterId,
+    }: {
+      id: string;
+      parentId: string | null;
+      beforeId?: string;
+      afterId?: string;
+    }) => moveLocation(id, { parentId, beforeId, afterId }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: worldKeys.locations(worldId) });
+      toast.success('Порядок локаций обновлён.');
+    },
+    onError: (error) =>
+      toast.error(getApiErrorMessage(error, 'Не удалось переместить локацию.')),
+  });
+
+  const siblingsOf = (location: Location) =>
+    items
+      .filter(
+        (item) => (item.parentId ?? null) === (location.parentId ?? null),
+      )
+      .sort((left, right) => left.sortKey.localeCompare(right.sortKey));
+
+  const canMove = (location: Location, direction: 'up' | 'down') => {
+    const siblings = siblingsOf(location);
+    const index = siblings.findIndex((item) => item.id === location.id);
+    return direction === 'up'
+      ? index > 0
+      : index >= 0 && index < siblings.length - 1;
+  };
+
+  const moveBy = (location: Location, direction: 'up' | 'down') => {
+    const siblings = siblingsOf(location);
+    const index = siblings.findIndex((item) => item.id === location.id);
+    if (index < 0) {
+      return;
+    }
+    if (direction === 'up' && index > 0) {
+      move.mutate({
+        id: location.id,
+        parentId: location.parentId ?? null,
+        beforeId: siblings[index - 1].id,
+      });
+      return;
+    }
+    if (direction === 'down' && index < siblings.length - 1) {
+      move.mutate({
+        id: location.id,
+        parentId: location.parentId ?? null,
+        afterId: siblings[index + 1].id,
+      });
+    }
+  };
+
+  const openEdit = (location: Location) => {
+    setEditing(location);
+    setDialogOpen(true);
+  };
+
   return (
     <div>
       <TabHeader
@@ -251,6 +435,25 @@ export function LocationsTab({ worldId, canEdit }: TabProps) {
         canEdit={canEdit}
         onAdd={openCreate}
       />
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant={view === 'tree' ? 'accent' : 'outline'}
+          onClick={() => setView('tree')}
+        >
+          Дерево
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant={view === 'map' ? 'accent' : 'outline'}
+          onClick={() => setView('map')}
+        >
+          <MapIcon size={14} />
+          Карта
+        </Button>
+      </div>
       {query.isLoading ? (
         <TabLoading />
       ) : query.isError ? (
@@ -262,19 +465,28 @@ export function LocationsTab({ worldId, canEdit }: TabProps) {
           canEdit={canEdit}
           onAdd={openCreate}
         />
+      ) : view === 'map' ? (
+        <LocationMap
+          items={items}
+          canEdit={canEdit}
+          onEdit={openEdit}
+          onAdd={openCreate}
+        />
       ) : (
-        <ul className="mt-5 space-y-1 rounded-lg border border-paper-200 bg-white/40 p-3">
+        <ul
+          className="mt-5 space-y-1 rounded-lg border border-paper-200 bg-white/40 p-3"
+          data-testid="location-tree"
+        >
           {tree.map((node) => (
             <LocationRow
               key={node.id}
               node={node}
               level={0}
               canEdit={canEdit}
-              onEdit={(location) => {
-                setEditing(location);
-                setDialogOpen(true);
-              }}
+              onEdit={openEdit}
               onDelete={setDeleteTarget}
+              onMove={moveBy}
+              canMove={canMove}
             />
           ))}
         </ul>
