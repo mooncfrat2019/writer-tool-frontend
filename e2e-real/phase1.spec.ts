@@ -67,6 +67,16 @@ test('registers, restores the session and writes through the real API', async ({
   await page.keyboard.type('Интеграционный тест реального API.');
   await expect(page.getByText('Сохранено')).toBeVisible({ timeout: 10_000 });
 
+  await page.getByRole('button', { name: 'Сноска', exact: true }).click();
+  const footnoteInput = page.getByPlaceholder('Текст сноски');
+  await expect(footnoteInput).toBeVisible();
+  await footnoteInput.fill('Сноска из E2E');
+  await page
+    .getByRole('button', { name: 'Сохранить', exact: true })
+    .click();
+  await expect(page.locator('.footnote-marker__button')).toHaveText('1');
+  await expect(page.getByText('Сохранено')).toBeVisible({ timeout: 10_000 });
+
   const editorUrl = page.url();
   const secondPage = await page.context().newPage();
   await secondPage.goto(editorUrl);
@@ -79,6 +89,7 @@ test('registers, restores the session and writes through the real API', async ({
     'Интеграционный тест реального API.',
     { timeout: 10_000 },
   );
+  await expect(secondPage.locator('.footnote-marker__button')).toHaveText('1');
   await expect(
     secondPage
       .getByTestId('presence-avatars')
@@ -95,6 +106,7 @@ test('registers, restores the session and writes through the real API', async ({
   await expect(page.locator('.ProseMirror')).toContainText(
     'Интеграционный тест реального API.',
   );
+  await expect(page.locator('.footnote-marker__button')).toHaveText('1');
 
   await page.getByRole('button', { name: 'Вернуться к структуре' }).click();
   await expect(page.getByRole('heading', { name: 'Структура' })).toBeVisible();

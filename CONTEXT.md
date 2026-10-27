@@ -9,18 +9,19 @@ lives in the backend repository:
   — implementation details and known gaps.
 
 Current point: **Phases 4 and 5 are complete for the MVP**. Phase 5 (export)
-includes FB2/DOCX images, warnings, idempotency, cancellation, retries, quotas,
-book covers, XSD validation, the cover upload dialog and S3 storage. The browser
+includes FB2/DOCX images, footnotes (editor node plus native DOCX footnotes and
+FB2 notes), warnings, idempotency, cancellation, retries, quotas, book covers,
+XSD validation, the cover upload dialog and S3 storage. The browser
 never talks to S3: uploads and downloads are proxied through the API, upload
 links use short-lived scoped tokens, and file reads use an HttpOnly cookie with
 project access checks. The backend database layer runs on GORM: the
 connection, versioned migrations and every store module are converted,
-including exports, sharing and search. Remaining backlog: footnote nodes in
-the editor (and their export), and PDF/EPUB outside the MVP.
+including exports, sharing and search. Remaining backlog: PDF/EPUB outside the
+MVP.
 
 Branches:
 
-- backend: `feat/phase-1-api` @ `3811ce9` (Phase 1–5, S3, proxied file access, GORM migration complete)
+- backend: `feat/phase-1-api` @ `b36ef1d` (Phase 1–5, footnotes, S3, proxied file access, GORM migration complete)
 - frontend: `feat/real-api-integration` — the current branch tip includes the
   Phase 4 polish, contract sync and the book cover UI
 
@@ -36,6 +37,9 @@ Phase 4 touchpoints:
 Phase 5 touchpoints:
 - book cover: `src/features/structure/BookCoverDialog.tsx` and the «Обложка»
   button/thumbnail in `StructurePage.tsx`
+- footnotes: `src/features/editor/footnote.ts` (TipTap node),
+  `FootnoteView.tsx` (marker + popover), `footnoteNumber.ts` (reading-order
+  numbering); exported by the backend as DOCX footnotes and FB2 notes
 - shared asset upload: `src/shared/api/assets.ts` (used by character
   illustrations and book covers)
 - mock handlers: `src/shared/mocks/handlers.ts`, seed data in `data.ts`

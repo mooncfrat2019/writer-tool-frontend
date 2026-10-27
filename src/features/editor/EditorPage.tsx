@@ -24,6 +24,7 @@ import {
   Quote,
   Redo2,
   Save,
+  Superscript,
   Undo2,
 } from 'lucide-react';
 import {
@@ -60,6 +61,7 @@ import { Badge } from '@/shared/ui/badge';
 import { Button } from '@/shared/ui/button';
 import { ErrorState } from '@/shared/ui/error-state';
 import { CollabStatus, PresenceAvatars } from './CollabPresence';
+import { Footnote } from './footnote';
 import { VersionHistoryDialog } from './VersionHistoryDialog';
 import {
   collabEnabled,
@@ -313,6 +315,22 @@ function EditorToolbar({ editor }: { editor: Editor }) {
       >
         <Minus size={16} />
       </ToolbarButton>
+      <ToolbarButton
+        label="Сноска"
+        onClick={() => {
+          // Collapse the selection so a footnote does not replace selected
+          // text; the marker goes to the end of the selection.
+          const position = editor.state.selection.to;
+          editor
+            .chain()
+            .focus()
+            .setTextSelection(position)
+            .insertContent({ type: 'footnote', attrs: { text: '' } })
+            .run();
+        }}
+      >
+        <Superscript size={16} />
+      </ToolbarButton>
       <span className="mx-1 h-5 w-px bg-paper-200" aria-hidden="true" />
       <ToolbarButton
         label="Отменить"
@@ -532,6 +550,7 @@ export function EditorSession({
       collabDoc && collabProvider && collabUser
         ? [
             StarterKit.configure({ undoRedo: false }),
+            Footnote,
             Collaboration.configure({ document: collabDoc }),
             CollaborationCaret.configure({
               provider: collabProvider,
@@ -540,7 +559,7 @@ export function EditorSession({
               selectionRender: renderCollaborationSelection,
             }),
           ]
-        : [StarterKit],
+        : [StarterKit, Footnote],
     [collabDoc, collabProvider, collabUser],
   );
 
