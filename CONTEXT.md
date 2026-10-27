@@ -8,18 +8,19 @@ lives in the backend repository:
 - [`docs/STATUS.md`](../../GolandProjects/writer-tool-backend/docs/STATUS.md)
   — implementation details and known gaps.
 
-Current point: **Phase 4 is complete, including polish** (calendars and the
-shared Go/TS converter, timeline world/narrative modes with drag and filters,
-plot threads, links to characters/locations/factions/lore, editable calendars,
-React Flow diagrams with live Yjs collaboration, delete/multi-link, thumbnails,
-layered auto-layout and presence cursors). The remaining Phase 5 export work is
-next.
+Current point: **Phases 4 and 5 are complete for the MVP**. Phase 5 (export)
+includes FB2/DOCX images, warnings, idempotency, cancellation, retries, quotas,
+book covers, XSD validation, the cover upload dialog and S3 storage. The browser
+never talks to S3: uploads and downloads are proxied through the API, upload
+links use short-lived scoped tokens, and file reads use an HttpOnly cookie with
+project access checks. Remaining backlog: footnote nodes in the editor (and
+their export), and PDF/EPUB outside the MVP.
 
 Branches:
 
-- backend: `feat/phase-1-api` (Phase 4 included; status docs track the polish)
+- backend: `feat/phase-1-api` @ `5cc499a` (Phase 1–5, S3, proxied file access)
 - frontend: `feat/real-api-integration` — the current branch tip includes the
-  Phase 4 baseline and its polish.
+  Phase 4 polish, contract sync and the book cover UI
 
 Start the backend on `:8080` and the frontend with `pnpm dev:real` on `:5174`;
 demo account: `demo@writer.local` / `password123`.
@@ -29,6 +30,11 @@ Phase 4 touchpoints:
   `useTimelineLinkOptions.ts` for entity links)
 - diagrams: `src/features/diagrams/` (React Flow canvas, Yjs session,
   `thumbnail.ts` for canvas thumbnails, presence cursors in `DiagramCanvas`)
+
+Phase 5 touchpoints:
+- book cover: `src/features/structure/BookCoverDialog.tsx` and the «Обложка»
+  button/thumbnail in `StructurePage.tsx`
+- shared asset upload: `src/shared/api/assets.ts` (used by character
+  illustrations and book covers)
 - mock handlers: `src/shared/mocks/handlers.ts`, seed data in `data.ts`
-- `pnpm contract:sync` also copies the shared calendar test vectors into
-  `src/features/timeline/fixtures/`.
+- `pnpm contract:sync` copies the backend OpenAPI and calendar test vectors.

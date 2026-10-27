@@ -507,6 +507,55 @@ export const handlers = [
     return HttpResponse.json(book);
   }),
 
+  http.put(`${api}/books/:bookId/cover`, async ({ params, request }) => {
+    const state = getMockState();
+    const book = state.books.find((item) => item.id === params.bookId);
+    if (!book) {
+      return problem(404, 'not_found', 'Book not found');
+    }
+    const body = (await request.json()) as { assetId?: string };
+    if (!body.assetId) {
+      return problem(422, 'validation_failed', 'Validation failed', 'assetId is required');
+    }
+    const asset = state.assets.find((item) => item.id === body.assetId);
+    if (!asset || asset.projectId !== book.projectId) {
+      return problem(
+        422,
+        'validation_failed',
+        'Validation failed',
+        'Asset belongs to another project',
+      );
+    }
+    if (asset.status !== 'ready' || !asset.mime.startsWith('image/')) {
+      return problem(
+        422,
+        'validation_failed',
+        'Validation failed',
+        'Asset must be a ready image',
+      );
+    }
+    book.coverUrl = asset.url ?? asset.thumbUrl ?? `/api/v1/dev/files/${asset.id}`;
+    book.version += 1;
+    book.updatedAt = new Date().toISOString();
+    saveMockState();
+    await delay(80);
+    return HttpResponse.json(book);
+  }),
+
+  http.delete(`${api}/books/:bookId/cover`, async ({ params }) => {
+    const state = getMockState();
+    const book = state.books.find((item) => item.id === params.bookId);
+    if (!book) {
+      return problem(404, 'not_found', 'Book not found');
+    }
+    book.coverUrl = null;
+    book.version += 1;
+    book.updatedAt = new Date().toISOString();
+    saveMockState();
+    await delay(80);
+    return HttpResponse.json(book);
+  }),
+
   http.get(`${api}/books/:bookId/tree`, async ({ params }) => {
     const state = getMockState();
     recalculateMockState(state);

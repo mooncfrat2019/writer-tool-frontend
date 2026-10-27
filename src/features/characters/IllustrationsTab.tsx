@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { uploadProjectImage } from '@/shared/api/assets';
 import { api } from '@/shared/api/client';
 import { getApiErrorMessage } from '@/shared/api/errors';
 import { unwrap } from '@/shared/api/request';
@@ -30,7 +31,6 @@ import { Skeleton } from '@/shared/ui/skeleton';
 
 type Character = components['schemas']['Character'];
 type Attachment = components['schemas']['Attachment'];
-type Asset = components['schemas']['Asset'];
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
@@ -41,24 +41,6 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toLocaleString('ru-RU', {
     maximumFractionDigits: 1,
   })} МБ`;
-}
-
-async function waitForReadyAsset(assetId: string): Promise<Asset> {
-  for (let attempt = 0; attempt < 12; attempt += 1) {
-    const asset = unwrap(
-      await api.GET('/assets/{assetId}', {
-        params: { path: { assetId } },
-      }),
-    );
-    if (asset.status === 'ready') {
-      return asset;
-    }
-    if (asset.status === 'failed') {
-      throw new Error('Asset processing failed');
-    }
-    await new Promise((resolve) => window.setTimeout(resolve, 400));
-  }
-  throw new Error('Asset is not ready');
 }
 
 type UploadIllustrationDialogProps = {
@@ -143,37 +125,7 @@ function UploadIllustrationDialog({
       if (!file) {
         throw new Error('File is required');
       }
-      const uploadRequest = unwrap(
-        await api.POST('/projects/{projectId}/assets/uploads', {
-          params: { path: { projectId: character.projectId } },
-          body: {
-            filename: file.name,
-            mime: file.type,
-            sizeBytes: file.size,
-          },
-        }),
-      );
-
-      // Upload the binary to the presigned URL (S3 in production, the dev
-      // adapter or MSW in local development), then finalize the asset.
-      const uploadResponse = await fetch(uploadRequest.uploadUrl, {
-        method: uploadRequest.method,
-        headers: uploadRequest.headers,
-        body: file,
-      });
-      if (!uploadResponse.ok) {
-        throw new Error(`Не удалось загрузить файл (${uploadResponse.status}).`);
-      }
-
-      const completed = unwrap(
-        await api.POST('/assets/{assetId}/complete', {
-          params: { path: { assetId: uploadRequest.assetId } },
-        }),
-      );
-      const asset =
-        completed.status === 'ready'
-          ? completed
-          : await waitForReadyAsset(uploadRequest.assetId);
+      const asset = await uploadProjectImage(character.projectId, file);
 
       return unwrap(
         await api.POST('/characters/{characterId}/attachments', {

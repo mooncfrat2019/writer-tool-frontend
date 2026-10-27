@@ -1518,7 +1518,7 @@ paths:
               $ref: '#/components/schemas/AssetUploadRequest'
       responses:
         '201':
-          description: Presigned upload created
+          description: Upload target created
           content:
             application/json:
               schema:

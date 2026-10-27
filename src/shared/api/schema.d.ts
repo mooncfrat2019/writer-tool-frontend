@@ -4480,7 +4480,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Presigned upload created */
+            /** @description Upload target created */
             201: {
                 headers: {
                     [name: string]: unknown;

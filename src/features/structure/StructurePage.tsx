@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import {
   BookPlus,
   ChevronDown,
+  ImageIcon,
   Layers,
   Plus,
   Share2,
@@ -51,6 +52,7 @@ import {
   nodeTypeLabels,
 } from './constants';
 import { ShareDialog } from '@/features/sharing/ShareDialog';
+import { BookCoverDialog } from './BookCoverDialog';
 import { BookCreateDialog } from './BookCreateDialog';
 import { NodeCreateDialog } from './NodeCreateDialog';
 import { NodeDeleteDialog } from './NodeDeleteDialog';
@@ -75,6 +77,7 @@ export function StructurePage() {
     nodeId: string;
   } | null>(null);
   const [bookDialogOpen, setBookDialogOpen] = useState(false);
+  const [coverOpen, setCoverOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<BookNode | null>(null);
   const [createDialog, setCreateDialog] = useState<{
@@ -135,6 +138,7 @@ export function StructurePage() {
   const tree = treeQuery.data;
   const nodes = useMemo(() => tree?.nodes ?? [], [tree]);
   const book = tree?.book ?? selectedBook;
+  const bookCoverUrl = book?.coverUrl ?? null;
   const selectedNodeId =
     selection && selection.bookId === bookId ? selection.nodeId : null;
   const selectedNode = selectedNodeId
@@ -302,6 +306,14 @@ export function StructurePage() {
                   Поделиться
                 </Button>
               ) : null}
+              <Button
+                disabled={!selectedBook}
+                onClick={() => setCoverOpen(true)}
+                variant="outline"
+              >
+                <ImageIcon size={16} />
+                Обложка
+              </Button>
               <Button variant="outline" onClick={() => setBookDialogOpen(true)}>
                 <BookPlus size={16} />
                 Новая книга
@@ -393,23 +405,32 @@ export function StructurePage() {
         <>
           <section className="mt-8 rounded-lg border border-paper-200 bg-white/55 p-5">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge tone="accent">{bookStatusLabels[selectedBook.status]}</Badge>
-                  {selectedBook.subtitle ? (
-                    <span className="truncate text-xs text-ink-500">
-                      {selectedBook.subtitle}
-                    </span>
+              <div className="flex min-w-0 flex-1 gap-4">
+                {bookCoverUrl ? (
+                  <img
+                    alt={`Обложка ${selectedBook.title}`}
+                    className="h-32 w-24 shrink-0 rounded-md border border-paper-200 object-cover"
+                    src={bookCoverUrl}
+                  />
+                ) : null}
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone="accent">{bookStatusLabels[selectedBook.status]}</Badge>
+                    {selectedBook.subtitle ? (
+                      <span className="truncate text-xs text-ink-500">
+                        {selectedBook.subtitle}
+                      </span>
+                    ) : null}
+                  </div>
+                  <h2 className="mt-2 font-serif text-2xl leading-tight text-ink-900">
+                    {selectedBook.title}
+                  </h2>
+                  {selectedBook.synopsis ? (
+                    <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-500">
+                      {selectedBook.synopsis}
+                    </p>
                   ) : null}
                 </div>
-                <h2 className="mt-2 font-serif text-2xl leading-tight text-ink-900">
-                  {selectedBook.title}
-                </h2>
-                {selectedBook.synopsis ? (
-                  <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-500">
-                    {selectedBook.synopsis}
-                  </p>
-                ) : null}
               </div>
               <div className="min-w-52 rounded-md border border-paper-200 bg-paper-50 px-4 py-3">
                 <div className="flex items-center justify-between text-xs">
@@ -503,6 +524,21 @@ export function StructurePage() {
             targetId: projectId,
             title: selectedBook.title,
           }}
+        />
+      ) : null}
+
+      {coverOpen && selectedBook ? (
+        <BookCoverDialog
+          book={book ?? selectedBook}
+          open
+          onOpenChange={setCoverOpen}
+          onUpdated={() => {
+            invalidateBooks();
+            if (bookId) {
+              void queryClient.invalidateQueries({ queryKey: ['book-tree', bookId] });
+            }
+          }}
+          projectId={projectId}
         />
       ) : null}
 

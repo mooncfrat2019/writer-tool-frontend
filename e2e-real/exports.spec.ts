@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test';
 
+const PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+  'base64',
+);
+
 test('exports a book as DOCX and downloads the generated file', async ({
   page,
 }) => {
@@ -24,6 +29,18 @@ test('exports a book as DOCX and downloads the generated file', async ({
   await bookDialog.getByLabel('Название').fill('Книга экспорта');
   await bookDialog.getByRole('button', { name: 'Создать книгу' }).click();
   await expect(bookDialog).toBeHidden();
+
+  // Upload a cover: it must reach the generated DOCX title page.
+  await page.getByRole('button', { name: 'Обложка' }).click();
+  const coverDialog = page.getByRole('dialog');
+  await coverDialog.locator('#book-cover-file').setInputFiles({
+    name: 'cover.png',
+    mimeType: 'image/png',
+    buffer: PNG,
+  });
+  await coverDialog.getByRole('button', { name: 'Сохранить обложку' }).click();
+  await expect(coverDialog).toBeHidden();
+  await expect(page.getByAltText(/^Обложка /)).toBeVisible();
 
   await page.getByRole('button', { name: 'Добавить' }).click();
   await page.getByRole('menuitem', { name: /Глава/ }).click();
@@ -73,4 +90,7 @@ test('exports a book as DOCX and downloads the generated file', async ({
   expect(response.headers()['content-disposition']).toContain('.docx');
   const body = await response.body();
   expect(body.subarray(0, 2).toString()).toBe('PK');
+  // ZIP entry names are stored uncompressed, so the cover media is visible in
+  // the raw archive.
+  expect(body.includes(Buffer.from('word/media/'))).toBe(true);
 });
