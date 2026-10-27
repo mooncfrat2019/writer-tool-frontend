@@ -22,8 +22,8 @@ Variables:
 | `DEPLOYMENT_NAME` | `writer-frontend` | Helm release, Deployment and Service name |
 | `SERVICE_PORT` | `8088` | Optional; defaults to `8088` |
 
-> The current value of `DEPLOYMENT_NAME` is `writer-fronted` (without the
-> final `n`). It works, but the release and Service will carry that name.
+The environment `main` currently has `DEPLOYMENT_NAME=writer-frontend` and
+`IMAGE_NAME=writer-frontend`; the first release uses both.
 
 ## What the image does
 
@@ -62,49 +62,86 @@ curl http://192.168.0.77:8088/healthz
 curl -I http://192.168.0.77:8088/
 ```
 
+## Live deployment (2026-10-28)
+
+- Frontend release `v1.0.0`, Deployment/Service `writer-frontend`.
+- Pod `writer-frontend` is `1/1 Running`.
+- Service: `LoadBalancer`, `externalIPs: [192.168.0.77]`, port `8088`.
+- Public URL: **https://tool.melzix.net**.
+
 ## Host reverse proxy for `tool.melzix.net`
 
-The host nginx already binds `:80`/`:443`; the frontend Service should not try
-to use those ports. Add a server block that forwards the domain to
-`192.168.0.77:8088`, including WebSocket upgrade headers. Obtain the
-certificate with certbot (the current host certificate is for another domain).
+The host nginx already binds `:80`/`:443`, so the frontend Service uses
+`8088`. On `zix-nexus` the following was installed:
+
+- `/etc/nginx/sites-available/tool.melzix.net`
+- symlink `/etc/nginx/sites-enabled/tool.melzix.net`
+
+`certbot --nginx` issued the certificate and added the HTTPS listener and
+HTTP redirect. The effective proxy configuration is:
 
 ```nginx
-map $http_upgrade $connection_upgrade {
-    default upgrade;
-    ''      close;
-}
-
 server {
-    listen 80;
     server_name tool.melzix.net;
-    return 301 https://$host$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name tool.melzix.net;
-
-    ssl_certificate     /etc/letsencrypt/live/tool.melzix.net/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/tool.melzix.net/privkey.pem;
 
     location / {
         proxy_pass http://192.168.0.77:8088;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_read_timeout 3600s;
         proxy_send_timeout 3600s;
+        client_max_body_size 110m;
     }
+
+    listen 443 ssl; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/tool.melzix.net/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/tool.melzix.net/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+}
+
+server {
+    if ($host = tool.melzix.net) {
+        return 301 https://$host$request_uri;
+    }
+    listen 80;
+    server_name tool.melzix.net;
+    return 404;
 }
 ```
 
-The backend sets `COOKIE_SECURE=true` and `COOKIE_DOMAIN=.melzix.net`, so the
-full UI/login flow should be tested through `https://tool.melzix.net`, not
-directly over HTTP.
+Certificate:
 
-The backend origin allowlist already contains `https://tool.melzix.net`.
+- `CN=tool.melzix.net`, issuer Let's Encrypt, valid until `2027-01-25`;
+- HTTP redirects to HTTPS;
+- `snap.certbot.renew.timer` is active;
+- `certbot renew --dry-run` completed successfully.
+
+Issued with:
+
+```bash
+sudo certbot --nginx -d tool.melzix.net \
+  --redirect --non-interactive --agree-tos --no-eff-email
+```
+
+Existing host sites were not modified.
+
+Verification results:
+
+| Check | Result |
+|---|---|
+| `https://tool.melzix.net/healthz` | `200` |
+| `https://tool.melzix.net/` | `200`, SPA |
+| static JS asset | `200` |
+| `https://tool.melzix.net/api/v1/auth/me` | `401` (API proxy chain works) |
+| `https://tool.melzix.net/collab/<uuid>` without token | `401` |
+| `http://tool.melzix.net/` | `301` → HTTPS |
+
+The backend sets `COOKIE_SECURE=true` and `COOKIE_DOMAIN=.melzix.net`, so use
+the HTTPS URL for the full UI/login flow. The backend origin allowlist contains
+`https://tool.melzix.net`.
