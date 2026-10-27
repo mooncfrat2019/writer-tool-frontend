@@ -333,6 +333,46 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationFailed'
 
+  /books/{bookId}/cover:
+    parameters:
+      - $ref: '#/components/parameters/BookId'
+    put:
+      tags: [Books]
+      operationId: setBookCover
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookCoverRequest'
+      responses:
+        '200':
+          description: Book with the cover attached
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    delete:
+      tags: [Books]
+      operationId: clearBookCover
+      responses:
+        '200':
+          description: Book with the cover removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /books/{bookId}/tree:
     parameters:
       - $ref: '#/components/parameters/BookId'
@@ -1575,6 +1615,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /exports/{exportId}:
     parameters:
@@ -2781,6 +2823,14 @@ components:
         version:
           type: integer
           format: int64
+
+    BookCoverRequest:
+      type: object
+      required: [assetId]
+      properties:
+        assetId:
+          type: string
+          format: uuid
 
     BookStatus:
       type: string

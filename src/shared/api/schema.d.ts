@@ -190,6 +190,24 @@ export interface paths {
         patch: operations["updateBook"];
         trace?: never;
     };
+    "/books/{bookId}/cover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: components["parameters"]["BookId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["setBookCover"];
+        post?: never;
+        delete: operations["clearBookCover"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/books/{bookId}/tree": {
         parameters: {
             query?: never;
@@ -1418,6 +1436,10 @@ export interface components {
             targetWordCount?: number;
             /** Format: int64 */
             version?: number;
+        };
+        BookCoverRequest: {
+            /** Format: uuid */
+            assetId: string;
         };
         /** @enum {string} */
         BookStatus: "planning" | "drafting" | "revising" | "final" | "published";
@@ -2942,6 +2964,59 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationFailed"];
+        };
+    };
+    setBookCover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: components["parameters"]["BookId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BookCoverRequest"];
+            };
+        };
+        responses: {
+            /** @description Book with the cover attached */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Book"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    clearBookCover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: components["parameters"]["BookId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Book with the cover removed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Book"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     getBookTree: {
@@ -4524,6 +4599,7 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationFailed"];
+            429: components["responses"]["TooManyRequests"];
         };
     };
     getExport: {
