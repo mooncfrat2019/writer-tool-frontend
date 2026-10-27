@@ -12,7 +12,8 @@ phases.
 
 The product plan lives in the backend repository at
 `writer-tool-backend/docs/PLAN.md`. The frontend-specific specification is in
-[`docs/FRONTEND_BRIEF.md`](docs/FRONTEND_BRIEF.md).
+[`docs/FRONTEND_BRIEF.md`](docs/FRONTEND_BRIEF.md). Container and Kubernetes
+release instructions are in [`DEPLOYMENT.md`](DEPLOYMENT.md).
 
 ## Stack
 

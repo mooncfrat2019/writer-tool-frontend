@@ -1,0 +1,9 @@
+Writer Tool frontend is installed as {{ include "writer-frontend.fullname" . }} in namespace {{ .Release.Namespace }}.
+
+It proxies /api and /collab to:
+  API:    {{ .Values.apiUpstream }}
+  Collab: {{ .Values.collabUpstream }}
+
+Check the rollout with:
+  kubectl -n {{ .Release.Namespace }} rollout status deployment/{{ include "writer-frontend.fullname" . }}
+  kubectl -n {{ .Release.Namespace }} get pods -l app.kubernetes.io/instance={{ .Release.Name }}

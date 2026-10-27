@@ -1,0 +1,6 @@
+apiVersion: v2
+name: writer-frontend
+description: Writer Tool web application and same-origin API/WebSocket proxy
+type: application
+version: 0.1.0
+appVersion: "latest"

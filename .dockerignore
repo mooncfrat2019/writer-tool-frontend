@@ -1,0 +1,17 @@
+.git
+.github
+.idea
+.claude
+node_modules
+dist
+coverage
+playwright-report
+test-results
+.env
+.env.*
+e2e
+e2e-real
+contracts
+deploy
+docs
+scripts
