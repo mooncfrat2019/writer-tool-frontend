@@ -69,7 +69,7 @@ export function LoginPage() {
     mutationFn: async (email: string) =>
       unwrap(
         await api.POST('/auth/resend-verification', {
-          body: { email },
+          body: redirect ? { email, redirect } : { email },
         }),
       ),
     onSuccess: () => {

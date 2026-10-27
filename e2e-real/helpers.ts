@@ -9,6 +9,8 @@ type Registration = {
   email: string;
   displayName: string;
   password?: string;
+  /** Where confirmation should land; /projects unless the flow started elsewhere. */
+  expectUrl?: RegExp;
 };
 
 /**
@@ -18,7 +20,7 @@ type Registration = {
 export async function completeRegistration(
   page: Page,
   request: APIRequestContext,
-  { email, displayName, password = 'password123' }: Registration,
+  { email, displayName, password = 'password123', expectUrl }: Registration,
 ): Promise<void> {
   await page.getByLabel('Как вас зовут').fill(displayName);
   await page.getByLabel('Email').fill(email);
@@ -26,10 +28,10 @@ export async function completeRegistration(
   await page.getByRole('button', { name: 'Создать аккаунт' }).click();
 
   await expect(page.getByRole('heading', { name: 'Проверьте почту' })).toBeVisible();
-  const token = await waitForVerificationToken(request, email);
+  const verificationPath = await waitForVerificationLink(request, email);
 
-  await page.goto(`/verify-email?token=${encodeURIComponent(token)}`);
-  await expect(page).toHaveURL(/\/projects$/);
+  await page.goto(verificationPath);
+  await expect(page).toHaveURL(expectUrl ?? /\/projects$/);
 }
 
 /** Opens /register, creates an account and confirms its email. */
@@ -42,7 +44,7 @@ export async function registerAndVerify(
   await completeRegistration(page, request, registration);
 }
 
-async function waitForVerificationToken(
+async function waitForVerificationLink(
   request: APIRequestContext,
   email: string,
 ): Promise<string> {
@@ -69,9 +71,9 @@ async function waitForVerificationToken(
       }
       const payload = (await response.json()) as { Text?: string; HTML?: string };
       const text = payload.Text || payload.HTML || '';
-      const match = text.match(/\/verify-email\?token=([A-Za-z0-9_-]+)/);
+      const match = text.match(/\/verify-email\?[^\s"'<>]+/);
       if (match) {
-        return match[1];
+        return match[0].replace(/&amp;/g, '&');
       }
     }
     await pause();

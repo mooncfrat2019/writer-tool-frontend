@@ -1351,6 +1351,8 @@ export interface components {
             email: string;
             password: string;
             displayName: string;
+            /** @description Optional same-origin path to return to after confirmation, for example /share/<token>. */
+            redirect?: string;
         };
         LoginRequest: {
             /** Format: email */
@@ -1363,6 +1365,8 @@ export interface components {
         ResendVerificationRequest: {
             /** Format: email */
             email: string;
+            /** @description Optional same-origin path to return to after confirmation. */
+            redirect?: string;
         };
         VerificationAccepted: {
             /** @enum {string} */

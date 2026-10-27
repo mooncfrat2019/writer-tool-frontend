@@ -37,7 +37,7 @@ export function RegisterPage() {
     mutationFn: async (values: RegisterValues) =>
       unwrap(
         await api.POST('/auth/register', {
-          body: values,
+          body: redirect ? { ...values, redirect } : values,
         }),
       ),
     onMutate: () => setFormError(null),
@@ -53,7 +53,7 @@ export function RegisterPage() {
     mutationFn: async (email: string) =>
       unwrap(
         await api.POST('/auth/resend-verification', {
-          body: { email },
+          body: redirect ? { email, redirect } : { email },
         }),
       ),
     onSuccess: () => {
@@ -76,6 +76,10 @@ export function RegisterPage() {
     onSuccess: (data) => {
       setSessionFromAuth(data);
       queryClient.clear();
+      if (redirect) {
+        window.location.assign(redirect);
+        return;
+      }
       void navigate({ to: '/projects' });
     },
     onError: (error) => {

@@ -9,12 +9,17 @@ import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
 import { AuthLayout } from './AuthLayout';
+import { safeRedirect } from './redirect';
 import { setSessionFromAuth } from './session';
 
 export function VerifyEmailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { token } = useSearch({ from: '/verify-email' }) as { token?: string };
+  const { token, redirect } = useSearch({ from: '/verify-email' }) as {
+    token?: string;
+    redirect?: string;
+  };
+  const target = safeRedirect(redirect);
   const started = useRef(false);
   const [email, setEmail] = useState('');
 
@@ -29,6 +34,10 @@ export function VerifyEmailPage() {
       setSessionFromAuth(data);
       queryClient.clear();
       toast.success('Почта подтверждена. Добро пожаловать в мастерскую.');
+      if (target) {
+        window.location.assign(target);
+        return;
+      }
       void navigate({ to: '/projects' });
     },
   });
@@ -45,7 +54,7 @@ export function VerifyEmailPage() {
     mutationFn: async (value: string) =>
       unwrap(
         await api.POST('/auth/resend-verification', {
-          body: { email: value },
+          body: target ? { email: value, redirect: target } : { email: value },
         }),
       ),
     onSuccess: () => {

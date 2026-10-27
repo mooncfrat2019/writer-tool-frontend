@@ -2650,6 +2650,12 @@ components:
           type: string
           minLength: 1
           maxLength: 100
+        redirect:
+          type: string
+          maxLength: 500
+          description: >-
+            Optional same-origin path to return to after confirmation, for
+            example /share/<token>.
     LoginRequest:
       type: object
       required: [email, password]
@@ -2674,6 +2680,10 @@ components:
         email:
           type: string
           format: email
+        redirect:
+          type: string
+          maxLength: 500
+          description: Optional same-origin path to return to after confirmation.
     VerificationAccepted:
       type: object
       required: [status, email]

@@ -73,9 +73,9 @@ test('shares a chapter by link and collaborates across users', async ({
   await completeRegistration(recipient, request, {
     email: recipientEmail,
     displayName: 'Соавтор',
+    expectUrl: /\/share\//,
   });
 
-  await recipient.goto(shareUrl);
   await expect(recipient.getByText('Глава для шеринга')).toBeVisible();
   await recipient.getByRole('button', { name: 'Принять приглашение' }).click();
   await expect(recipient).toHaveURL(/\/shared\/documents\//);
@@ -203,8 +203,8 @@ test('gives a viewer live read-only access to a shared chapter', async ({
   await completeRegistration(viewer, request, {
     email: viewerEmail,
     displayName: 'Читатель',
+    expectUrl: /\/share\//,
   });
-  await viewer.goto(shareUrl);
   await expect(viewer.getByText('Глава просмотра')).toBeVisible();
   await viewer.getByRole('button', { name: 'Принять приглашение' }).click();
   await expect(viewer).toHaveURL(/\/shared\/documents\//);

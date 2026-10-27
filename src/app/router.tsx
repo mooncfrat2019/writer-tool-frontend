@@ -74,9 +74,16 @@ const registerRoute = createRoute({
 const verifyEmailRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/verify-email',
-  validateSearch: (search: Record<string, unknown>): { token?: string } => {
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { token?: string; redirect?: string } => {
     const token = typeof search.token === 'string' ? search.token : undefined;
-    return token ? { token } : {};
+    const redirect =
+      typeof search.redirect === 'string' ? search.redirect : undefined;
+    return {
+      ...(token ? { token } : {}),
+      ...(redirect ? { redirect } : {}),
+    };
   },
   component: VerifyEmailPage,
 });
