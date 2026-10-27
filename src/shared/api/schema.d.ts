@@ -555,6 +555,24 @@ export interface paths {
         patch: operations["updateAttachment"];
         trace?: never;
     };
+    "/projects/{projectId}/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get: operations["listProjectAttachments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{projectId}/worlds": {
         parameters: {
             query?: never;
@@ -589,6 +607,24 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["updateWorld"];
+        trace?: never;
+    };
+    "/worlds/{worldId}/map": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                worldId: components["parameters"]["WorldId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["setWorldMap"];
+        post?: never;
+        delete: operations["clearWorldMap"];
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/worlds/{worldId}/rules": {
@@ -1398,6 +1434,11 @@ export interface components {
             seriesOrder: number;
             status: components["schemas"]["BookStatus"];
             synopsis?: string;
+            /**
+             * Format: uuid
+             * @description Primary world of the book.
+             */
+            worldId?: string | null;
             /** Format: uri */
             coverUrl?: string | null;
             targetWordCount?: number;
@@ -1426,6 +1467,11 @@ export interface components {
             seriesOrder?: number;
             synopsis?: string;
             targetWordCount?: number;
+            /**
+             * Format: uuid
+             * @description Primary world of the book.
+             */
+            worldId?: string;
         };
         BookUpdate: {
             title?: string;
@@ -1434,6 +1480,11 @@ export interface components {
             status?: components["schemas"]["BookStatus"];
             synopsis?: string;
             targetWordCount?: number;
+            /**
+             * Format: uuid
+             * @description Primary world of the book. Send the nil UUID (00000000-0000-0000-0000-000000000000) to clear the link.
+             */
+            worldId?: string;
             /** Format: int64 */
             version?: number;
         };
@@ -1610,6 +1661,16 @@ export interface components {
             color?: string;
             /** Format: uri */
             avatarUrl?: string | null;
+            /**
+             * Format: uuid
+             * @description Home world of the character.
+             */
+            worldId?: string | null;
+            /**
+             * Format: uuid
+             * @description Home location inside worldId.
+             */
+            locationId?: string | null;
             customFields: {
                 [key: string]: unknown;
             };
@@ -1644,6 +1705,16 @@ export interface components {
             status?: components["schemas"]["CharacterStatus"];
             tags?: string[];
             color?: string;
+            /**
+             * Format: uuid
+             * @description Home world of the character.
+             */
+            worldId?: string;
+            /**
+             * Format: uuid
+             * @description Home location inside worldId. Setting a location without worldId infers the world.
+             */
+            locationId?: string;
             customFields?: {
                 [key: string]: unknown;
             };
@@ -1668,6 +1739,16 @@ export interface components {
             status?: components["schemas"]["CharacterStatus"];
             tags?: string[];
             color?: string;
+            /**
+             * Format: uuid
+             * @description Home world of the character. Send the nil UUID (00000000-0000-0000-0000-000000000000) to clear the link.
+             */
+            worldId?: string;
+            /**
+             * Format: uuid
+             * @description Home location inside worldId. Send the nil UUID to clear it.
+             */
+            locationId?: string;
             customFields?: {
                 [key: string]: unknown;
             };
@@ -1731,6 +1812,13 @@ export interface components {
             };
             /** Format: int64 */
             version?: number;
+        };
+        WorldMapRequest: {
+            /**
+             * Format: uuid
+             * @description Ready image asset owned by the same project.
+             */
+            assetId: string;
         };
         WorldRule: {
             /** Format: uuid */
@@ -2026,11 +2114,14 @@ export interface components {
             url?: string | null;
             /** Format: uri */
             thumbUrl?: string | null;
+            /** @description Display name of the owning character, world or other target. */
+            targetName?: string;
             /** Format: date-time */
             createdAt: string;
         };
         AttachmentList: {
             items: components["schemas"]["Attachment"][];
+            nextCursor?: string | null;
         };
         AttachmentCreate: {
             /** Format: uuid */
@@ -3721,6 +3812,33 @@ export interface operations {
             422: components["responses"]["ValidationFailed"];
         };
     };
+    listProjectAttachments: {
+        parameters: {
+            query?: {
+                role?: components["schemas"]["AttachmentRole"];
+                cursor?: components["parameters"]["Cursor"];
+                limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Attachments across the project */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachmentList"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+        };
+    };
     listWorlds: {
         parameters: {
             query?: {
@@ -3849,6 +3967,59 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationFailed"];
+        };
+    };
+    setWorldMap: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                worldId: components["parameters"]["WorldId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorldMapRequest"];
+            };
+        };
+        responses: {
+            /** @description World with the map background attached */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["World"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    clearWorldMap: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                worldId: components["parameters"]["WorldId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description World with the map background removed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["World"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     listWorldRules: {

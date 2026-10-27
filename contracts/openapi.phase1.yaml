@@ -932,6 +932,29 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /projects/{projectId}/attachments:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [Projects]
+      operationId: listProjectAttachments
+      parameters:
+        - name: role
+          in: query
+          schema:
+            $ref: '#/components/schemas/AttachmentRole'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Attachments across the project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttachmentList'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
   /projects/{projectId}/worlds:
     parameters:
       - $ref: '#/components/parameters/ProjectId'
@@ -1020,6 +1043,46 @@ paths:
       responses:
         '204':
           description: World deleted
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /worlds/{worldId}/map:
+    parameters:
+      - $ref: '#/components/parameters/WorldId'
+    put:
+      tags: [Worlds]
+      operationId: setWorldMap
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorldMapRequest'
+      responses:
+        '200':
+          description: World with the map background attached
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/World'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    delete:
+      tags: [Worlds]
+      operationId: clearWorldMap
+      responses:
+        '200':
+          description: World with the map background removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/World'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -2746,6 +2809,10 @@ components:
           $ref: '#/components/schemas/BookStatus'
         synopsis:
           type: string
+        worldId:
+          type: [string, 'null']
+          format: uuid
+          description: Primary world of the book.
         coverUrl:
           type: [string, 'null']
           format: uri
@@ -2799,6 +2866,10 @@ components:
         targetWordCount:
           type: integer
           minimum: 0
+        worldId:
+          type: string
+          format: uuid
+          description: Primary world of the book.
     BookUpdate:
       type: object
       properties:
@@ -2820,6 +2891,12 @@ components:
         targetWordCount:
           type: integer
           minimum: 0
+        worldId:
+          type: string
+          format: uuid
+          description: >-
+            Primary world of the book. Send the nil UUID
+            (00000000-0000-0000-0000-000000000000) to clear the link.
         version:
           type: integer
           format: int64
@@ -3122,6 +3199,14 @@ components:
         avatarUrl:
           type: [string, 'null']
           format: uri
+        worldId:
+          type: [string, 'null']
+          format: uuid
+          description: Home world of the character.
+        locationId:
+          type: [string, 'null']
+          format: uuid
+          description: Home location inside worldId.
         customFields:
           type: object
           additionalProperties: true
@@ -3194,6 +3279,16 @@ components:
         color:
           type: string
           pattern: '^#[0-9a-fA-F]{6}$'
+        worldId:
+          type: string
+          format: uuid
+          description: Home world of the character.
+        locationId:
+          type: string
+          format: uuid
+          description: >-
+            Home location inside worldId. Setting a location without worldId
+            infers the world.
         customFields:
           type: object
           additionalProperties: true
@@ -3246,6 +3341,17 @@ components:
         color:
           type: string
           pattern: '^#[0-9a-fA-F]{6}$'
+        worldId:
+          type: string
+          format: uuid
+          description: >-
+            Home world of the character. Send the nil UUID
+            (00000000-0000-0000-0000-000000000000) to clear the link.
+        locationId:
+          type: string
+          format: uuid
+          description: >-
+            Home location inside worldId. Send the nil UUID to clear it.
         customFields:
           type: object
           additionalProperties: true
@@ -3358,6 +3464,15 @@ components:
         version:
           type: integer
           format: int64
+
+    WorldMapRequest:
+      type: object
+      required: [assetId]
+      properties:
+        assetId:
+          type: string
+          format: uuid
+          description: Ready image asset owned by the same project.
 
     WorldRule:
       type: object
@@ -3965,6 +4080,9 @@ components:
         thumbUrl:
           type: [string, 'null']
           format: uri
+        targetName:
+          type: string
+          description: Display name of the owning character, world or other target.
         createdAt:
           type: string
           format: date-time
@@ -3976,6 +4094,8 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Attachment'
+        nextCursor:
+          type: [string, 'null']
     AttachmentCreate:
       type: object
       required: [assetId, role]

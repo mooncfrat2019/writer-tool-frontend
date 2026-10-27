@@ -20,6 +20,14 @@ import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
 import { Textarea } from '@/shared/ui/textarea';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/shared/ui/select';
+import { useWorlds } from '@/features/worlds/queries';
+import {
   bookCreateDefaults,
   bookCreateSchema,
   parseOptionalNumber,
@@ -45,11 +53,17 @@ export function BookCreateDialog({
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<BookCreateValues>({
     resolver: zodResolver(bookCreateSchema),
     defaultValues: bookCreateDefaults,
   });
+
+  const worldId = watch('worldId');
+  const worldsQuery = useWorlds(projectId);
+  const worlds = worldsQuery.data?.items ?? [];
 
   useEffect(() => {
     if (!open) {
@@ -67,6 +81,7 @@ export function BookCreateDialog({
             subtitle: values.subtitle || undefined,
             synopsis: values.synopsis || undefined,
             targetWordCount: parseOptionalNumber(values.targetWordCount),
+            worldId: values.worldId || undefined,
           },
         }),
       ),
@@ -134,6 +149,31 @@ export function BookCreateDialog({
             {errors.synopsis ? (
               <p className="text-xs text-red-700">{errors.synopsis.message}</p>
             ) : null}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="book-world">Мир книги</Label>
+            <Select
+              value={worldId || 'none'}
+              onValueChange={(value) =>
+                setValue('worldId', value === 'none' ? '' : value)
+              }
+            >
+              <SelectTrigger id="book-world">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Без мира</SelectItem>
+                {worlds.map((world) => (
+                  <SelectItem key={world.id} value={world.id}>
+                    {world.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-ink-500">
+              Основной мир, в котором происходит действие книги.
+            </p>
           </div>
 
           <div className="space-y-2">

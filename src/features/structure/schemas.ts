@@ -20,6 +20,7 @@ export const bookCreateSchema = z.object({
   subtitle: z.string().trim().max(200, 'Подзаголовок не длиннее 200 символов'),
   synopsis: z.string().trim().max(5000, 'Синопсис не длиннее 5000 символов'),
   targetWordCount: optionalWordCount,
+  worldId: z.string(),
 });
 
 export type BookCreateValues = z.infer<typeof bookCreateSchema>;
@@ -29,6 +30,7 @@ export const bookCreateDefaults: BookCreateValues = {
   subtitle: '',
   synopsis: '',
   targetWordCount: '',
+  worldId: '',
 };
 
 export const nodeFormSchema = z.object({

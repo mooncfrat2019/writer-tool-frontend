@@ -1,6 +1,34 @@
 import { expect, test } from '@playwright/test';
 import { login, openProjectSection } from './helpers';
 
+const PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+  'base64',
+);
+
+test('uploads, persists and removes a world map background', async ({ page }) => {
+  await login(page);
+  await openProjectSection(page, 'Миры');
+  await page.getByTestId('world-card').filter({ hasText: 'Астрал' }).click();
+
+  await page.getByRole('tab', { name: 'Локации' }).click();
+  await page.getByRole('button', { name: 'Карта' }).click();
+  await page.getByTestId('map-file-input').setInputFiles({
+    name: 'map.png',
+    mimeType: 'image/png',
+    buffer: PNG,
+  });
+  await expect(page.getByTestId('location-map-background')).toBeVisible();
+
+  await page.reload();
+  await page.getByRole('tab', { name: 'Локации' }).click();
+  await page.getByRole('button', { name: 'Карта' }).click();
+  await expect(page.getByTestId('location-map-background')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Убрать фон' }).click();
+  await expect(page.getByTestId('location-map-background')).toHaveCount(0);
+});
+
 test('creates a world and fills its locations, factions, rules and lore', async ({
   page,
 }) => {

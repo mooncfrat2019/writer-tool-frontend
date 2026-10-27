@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from '@/shared/ui/select';
 import { Textarea } from '@/shared/ui/textarea';
+import { useWorlds } from '@/features/worlds/queries';
 import {
   characterRoleOptions,
   characterStatusOptions,
@@ -65,6 +66,9 @@ export function CharacterCreateDialog({
   });
   const role = watch('role');
   const status = watch('status');
+  const worldId = watch('worldId');
+  const worldsQuery = useWorlds(projectId);
+  const worlds = worldsQuery.data?.items ?? [];
 
   useEffect(() => {
     if (!open) {
@@ -89,6 +93,7 @@ export function CharacterCreateDialog({
                   .filter(Boolean)
               : [],
             goal: values.goal || undefined,
+            worldId: values.worldId || undefined,
           },
         }),
       ),
@@ -188,6 +193,31 @@ export function CharacterCreateDialog({
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="character-world">Мир</Label>
+            <Select
+              value={worldId || 'none'}
+              onValueChange={(value) =>
+                setValue('worldId', value === 'none' ? '' : value)
+              }
+            >
+              <SelectTrigger id="character-world">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Без мира</SelectItem>
+                {worlds.map((world) => (
+                  <SelectItem key={world.id} value={world.id}>
+                    {world.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-ink-500">
+              Можно указать позже в профиле.
+            </p>
           </div>
 
           <div className="space-y-2">

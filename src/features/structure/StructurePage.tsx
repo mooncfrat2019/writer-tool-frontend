@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import {
   BookPlus,
   ChevronDown,
+  Globe2,
   ImageIcon,
   Layers,
   Plus,
@@ -52,6 +53,7 @@ import {
   nodeTypeLabels,
 } from './constants';
 import { ShareDialog } from '@/features/sharing/ShareDialog';
+import { useWorlds } from '@/features/worlds/queries';
 import { BookCoverDialog } from './BookCoverDialog';
 import { BookCreateDialog } from './BookCreateDialog';
 import { NodeCreateDialog } from './NodeCreateDialog';
@@ -117,6 +119,9 @@ export function StructurePage() {
       ),
   });
 
+  const worldsQuery = useWorlds(projectId);
+  const worlds = useMemo(() => worldsQuery.data?.items ?? [], [worldsQuery.data]);
+
   const books = useMemo(() => booksQuery.data?.items ?? [], [booksQuery.data]);
   const selectedBook = useMemo(
     () => books.find((book) => book.id === search.bookId) ?? books[0],
@@ -139,6 +144,9 @@ export function StructurePage() {
   const nodes = useMemo(() => tree?.nodes ?? [], [tree]);
   const book = tree?.book ?? selectedBook;
   const bookCoverUrl = book?.coverUrl ?? null;
+  const bookWorldName = selectedBook?.worldId
+    ? (worlds.find((world) => world.id === selectedBook.worldId)?.name ?? null)
+    : null;
   const selectedNodeId =
     selection && selection.bookId === bookId ? selection.nodeId : null;
   const selectedNode = selectedNodeId
@@ -170,6 +178,41 @@ export function StructurePage() {
     }
     setCreateDialog({ open: true, type, parentId });
   };
+
+  const updateBookWorld = useMutation({
+    mutationFn: async ({
+      id,
+      worldId,
+      version,
+    }: {
+      id: string;
+      worldId: string;
+      version: number;
+    }) =>
+      unwrap(
+        await api.PATCH('/books/{bookId}', {
+          params: { path: { bookId: id } },
+          body: {
+            // The API uses the nil UUID to clear an optional link.
+            worldId:
+              worldId === 'none'
+                ? '00000000-0000-0000-0000-000000000000'
+                : worldId,
+            version,
+          },
+        }),
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['books', projectId] });
+      if (bookId) {
+        void queryClient.invalidateQueries({ queryKey: ['book-tree', bookId] });
+      }
+      toast.success('Мир книги обновлён.');
+    },
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, 'Не удалось обновить мир книги.'));
+    },
+  });
 
   const moveMutation = useMutation({
     mutationFn: async ({
@@ -425,6 +468,39 @@ export function StructurePage() {
                   <h2 className="mt-2 font-serif text-2xl leading-tight text-ink-900">
                     {selectedBook.title}
                   </h2>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-ink-500">
+                    <Globe2 size={13} />
+                    {canEdit ? (
+                      <Select
+                        value={selectedBook.worldId ?? 'none'}
+                        disabled={updateBookWorld.isPending}
+                        onValueChange={(value) =>
+                          updateBookWorld.mutate({
+                            id: selectedBook.id,
+                            worldId: value,
+                            version: book?.version ?? selectedBook.version,
+                          })
+                        }
+                      >
+                        <SelectTrigger
+                          className="h-8 w-52 border-paper-200 bg-white/70"
+                          aria-label="Мир книги"
+                        >
+                          <SelectValue placeholder="Без мира" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Без мира</SelectItem>
+                          {worlds.map((world) => (
+                            <SelectItem key={world.id} value={world.id}>
+                              {world.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <span>{bookWorldName ?? 'Мир не указан'}</span>
+                    )}
+                  </div>
                   {selectedBook.synopsis ? (
                     <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-500">
                       {selectedBook.synopsis}

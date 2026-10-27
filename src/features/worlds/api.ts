@@ -46,6 +46,23 @@ export async function updateWorld(worldId: string, body: WorldUpdate) {
   );
 }
 
+export async function setWorldMap(worldId: string, assetId: string) {
+  return unwrap(
+    await api.PUT('/worlds/{worldId}/map', {
+      params: { path: { worldId } },
+      body: { assetId },
+    }),
+  );
+}
+
+export async function clearWorldMap(worldId: string) {
+  return unwrap(
+    await api.DELETE('/worlds/{worldId}/map', {
+      params: { path: { worldId } },
+    }),
+  );
+}
+
 export async function deleteWorld(worldId: string) {
   const { error } = await api.DELETE('/worlds/{worldId}', {
     params: { path: { worldId } },

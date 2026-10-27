@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test';
 
+const PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+  'base64',
+);
+
 test('creates a world and fills it through the real API', async ({ page }) => {
   test.setTimeout(180_000);
   const stamp = Date.now();
@@ -101,6 +106,53 @@ test('creates a world and fills it through the real API', async ({ page }) => {
     'Холодный',
   );
   await page.getByRole('dialog').getByLabel('Закрыть').click();
+
+  // The map background is uploaded through the shared asset pipeline.
+  await page.getByRole('tab', { name: 'Локации' }).click();
+  await page.getByRole('button', { name: 'Карта' }).click();
+  await page.getByTestId('map-file-input').setInputFiles({
+    name: 'map.png',
+    mimeType: 'image/png',
+    buffer: PNG,
+  });
+  await expect(page.getByTestId('location-map-background')).toBeVisible({
+    timeout: 15_000,
+  });
+  await page.reload();
+  await page.getByRole('tab', { name: 'Локации' }).click();
+  await page.getByRole('button', { name: 'Карта' }).click();
+  await expect(page.getByTestId('location-map-background')).toBeVisible();
+  await page.getByRole('button', { name: 'Убрать фон' }).click();
+  await expect(page.getByTestId('location-map-background')).toHaveCount(0);
+
+  // A character is linked to the world and one of its locations.
+  await page
+    .getByRole('navigation', { name: 'Навигация по проекту' })
+    .first()
+    .getByRole('link', { name: 'Персонажи', exact: true })
+    .click();
+  await page.getByRole('button', { name: 'Новый персонаж' }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Имя', { exact: true }).fill('Персонаж мира');
+  await dialog.getByRole('button', { name: 'Создать персонажа' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Персонаж мира' }),
+  ).toBeVisible();
+
+  await page.getByLabel('Мир', { exact: true }).click();
+  await page.getByRole('option', { name: 'Мир тестов' }).click();
+  await page.getByLabel('Локация', { exact: true }).click();
+  await page.getByRole('option', { name: 'Город тестов' }).click();
+  await page.getByRole('button', { name: 'Сохранить профиль' }).click();
+  await expect(page.getByText('Профиль сохранён.')).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByLabel('Мир', { exact: true })).toContainText(
+    'Мир тестов',
+  );
+  await expect(page.getByLabel('Локация', { exact: true })).toContainText(
+    'Город тестов',
+  );
 
   // Project search finds the location created above.
   await page

@@ -160,4 +160,19 @@ test('registers, restores the session and writes through the real API', async ({
   await expect(page.getByText('Интеграционный портрет')).toBeVisible({
     timeout: 15_000,
   });
+
+  // The project gallery collects illustrations across characters.
+  await page
+    .getByRole('navigation', { name: 'Навигация по проекту' })
+    .first()
+    .getByRole('link', { name: 'Галерея', exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/gallery$/);
+  const galleryCard = page
+    .getByTestId('gallery-card')
+    .filter({ hasText: 'Интеграционный портрет' });
+  await expect(galleryCard).toBeVisible();
+  await expect(
+    galleryCard.getByRole('link', { name: 'Интеграционная Мира' }),
+  ).toBeVisible();
 });

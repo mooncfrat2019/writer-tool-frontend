@@ -22,6 +22,7 @@ export const characterCreateSchema = z.object({
   status: z.enum(['alive', 'dead', 'missing', 'unknown']),
   tags: z.string().max(500, 'Теги не длиннее 500 символов'),
   goal: optionalText(2000, 'Цель'),
+  worldId: z.string(),
 });
 
 export type CharacterCreateValues = z.infer<typeof characterCreateSchema>;
@@ -33,6 +34,7 @@ export const characterCreateDefaults: CharacterCreateValues = {
   status: 'alive',
   tags: '',
   goal: '',
+  worldId: '',
 };
 
 export const customFieldSchema = z.object({
@@ -73,6 +75,8 @@ export const characterProfileSchema = z.object({
   voice: optionalText(10_000, 'Голос'),
   secrets: optionalText(10_000, 'Секреты'),
   notes: optionalText(20_000, 'Заметки'),
+  worldId: z.string(),
+  locationId: z.string(),
   customFields: z.array(customFieldSchema).max(50, 'Не больше 50 полей'),
 });
 
@@ -108,6 +112,8 @@ export function characterToProfileValues(
     voice: character.voice ?? '',
     secrets: character.secrets ?? '',
     notes: character.notes ?? '',
+    worldId: character.worldId ?? '',
+    locationId: character.locationId ?? '',
     customFields: Object.entries(character.customFields ?? {}).map(([key, value]) => ({
       key,
       value: typeof value === 'string' ? value : JSON.stringify(value),
@@ -142,6 +148,10 @@ export function profileValuesToPayload(values: CharacterProfileValues) {
     voice: values.voice,
     secrets: values.secrets,
     notes: values.notes,
+    // The API uses the nil UUID to clear an optional link because an omitted
+    // field and an explicit null decode identically.
+    worldId: values.worldId || '00000000-0000-0000-0000-000000000000',
+    locationId: values.locationId || '00000000-0000-0000-0000-000000000000',
     customFields,
   };
 }

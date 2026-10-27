@@ -38,6 +38,7 @@ describe('bookCreateSchema', () => {
       subtitle: ' Книга первая ',
       synopsis: ' Кратко ',
       targetWordCount: ' 120000 ',
+      worldId: '',
     });
     expect(result.title).toBe('Пепел');
     expect(result.subtitle).toBe('Книга первая');
@@ -50,6 +51,7 @@ describe('bookCreateSchema', () => {
       subtitle: '',
       synopsis: '',
       targetWordCount: '12 000',
+      worldId: '',
     });
     expect(result.success).toBe(false);
     if (!result.success) {

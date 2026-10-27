@@ -24,6 +24,7 @@ import {
   customFieldValueToString,
 } from '@/features/customFields/CustomFieldsInputs';
 import { useCustomFields } from '@/features/customFields/queries';
+import { useLocations, useWorlds } from '@/features/worlds/queries';
 import {
   characterColorPalette,
   characterRoleOptions,
@@ -87,6 +88,12 @@ export function CharacterProfileForm({
   const role = watch('role');
   const status = watch('status');
   const color = watch('color');
+  const worldId = watch('worldId');
+  const locationId = watch('locationId');
+  const worldsQuery = useWorlds(character.projectId);
+  const locationsQuery = useLocations(worldId);
+  const worlds = worldsQuery.data?.items ?? [];
+  const locations = locationsQuery.data?.items ?? [];
 
   const { data: customFieldsData } = useCustomFields(character.projectId, 'character');
   const customDefinitions = useMemo(
@@ -255,6 +262,67 @@ export function CharacterProfileForm({
                 placeholder="год 1024 от Основания"
                 {...register('birthDate')}
               />
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="profile-world">Мир</Label>
+              <Select
+                value={worldId || 'none'}
+                onValueChange={(value) => {
+                  const next = value === 'none' ? '' : value;
+                  setValue('worldId', next, {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  });
+                  setValue('locationId', '', {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  });
+                }}
+              >
+                <SelectTrigger id="profile-world">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Без мира</SelectItem>
+                  {worlds.map((world) => (
+                    <SelectItem key={world.id} value={world.id}>
+                      {world.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-ink-500">Дом персонажа в истории.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="profile-location">Локация</Label>
+              <Select
+                value={locationId || 'none'}
+                disabled={!worldId}
+                onValueChange={(value) =>
+                  setValue('locationId', value === 'none' ? '' : value, {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  })
+                }
+              >
+                <SelectTrigger id="profile-location">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Без локации</SelectItem>
+                  {locations.map((location) => (
+                    <SelectItem key={location.id} value={location.id}>
+                      {location.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-ink-500">
+                Родные места внутри выбранного мира.
+              </p>
             </div>
           </div>
 

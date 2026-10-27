@@ -9,10 +9,12 @@ import {
   Plus,
   Scale,
   Trash2,
+  Upload,
   Users,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { uploadProjectImage } from '@/shared/api/assets';
 import { getApiErrorMessage } from '@/shared/api/errors';
 import { Badge } from '@/shared/ui/badge';
 import { Button } from '@/shared/ui/button';
@@ -20,11 +22,13 @@ import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
 import { ErrorState } from '@/shared/ui/error-state';
 import { Skeleton } from '@/shared/ui/skeleton';
 import {
+  clearWorldMap,
   deleteFaction,
   deleteLocation,
   deleteLore,
   deleteRule,
   moveLocation,
+  setWorldMap,
   type Faction,
   type Location,
   type LoreEntry,
@@ -258,14 +262,23 @@ function LocationRow({
 function LocationMap({
   items,
   canEdit,
+  mapUrl,
+  mapPending,
   onEdit,
   onAdd,
+  onUploadMap,
+  onClearMap,
 }: {
   items: Location[];
   canEdit: boolean;
+  mapUrl: string | null;
+  mapPending: boolean;
   onEdit: (location: Location) => void;
   onAdd: () => void;
+  onUploadMap: (file: File) => void;
+  onClearMap: () => void;
 }) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const mapped = items.flatMap((item) =>
     item.mapX != null && item.mapY != null
       ? [{ ...item, mapX: item.mapX, mapY: item.mapY }]
@@ -278,9 +291,21 @@ function LocationMap({
         className="relative aspect-[4/3] w-full overflow-hidden rounded-lg border border-paper-200 bg-paper-50"
         data-testid="location-map"
       >
+        {mapUrl ? (
+          <img
+            alt="Фон карты мира"
+            className="absolute inset-0 h-full w-full object-cover"
+            data-testid="location-map-background"
+            src={mapUrl}
+          />
+        ) : null}
         <div
           aria-hidden="true"
-          className="absolute inset-0 bg-[linear-gradient(to_right,rgba(120,113,108,0.08)_1px,transparent_1px),linear-gradient(to_bottom,rgba(120,113,108,0.08)_1px,transparent_1px)] bg-[size:10%_10%]"
+          className={
+            mapUrl
+              ? 'absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.25)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.25)_1px,transparent_1px)] bg-[size:10%_10%]'
+              : 'absolute inset-0 bg-[linear-gradient(to_right,rgba(120,113,108,0.08)_1px,transparent_1px),linear-gradient(to_bottom,rgba(120,113,108,0.08)_1px,transparent_1px)] bg-[size:10%_10%]'
+          }
         />
         {mapped.map((location) => (
           <button
@@ -297,12 +322,12 @@ function LocationMap({
             </span>
           </button>
         ))}
-        {mapped.length === 0 ? (
+        {mapped.length === 0 && !mapUrl ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center text-sm text-ink-500">
             <MapPin size={22} />
             <p>
-              Укажите координаты в карточке локации, чтобы поставить точку на
-              карте.
+              Загрузите фон карты или укажите координаты в карточке локации,
+              чтобы поставить точку.
             </p>
             {canEdit ? (
               <Button variant="outline" size="sm" onClick={onAdd}>
@@ -313,10 +338,52 @@ function LocationMap({
           </div>
         ) : null}
       </div>
-      <p className="mt-2 text-xs text-ink-500">
-        Координаты задаются в карточке локации (0–100%). Нажмите на точку, чтобы
-        изменить локацию.
-      </p>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        {canEdit ? (
+          <>
+            <input
+              ref={fileInputRef}
+              className="sr-only"
+              type="file"
+              accept="image/*"
+              data-testid="map-file-input"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = '';
+                if (file) {
+                  onUploadMap(file);
+                }
+              }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={mapPending}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload size={14} />
+              {mapPending ? 'Загружаем…' : mapUrl ? 'Заменить фон' : 'Загрузить фон'}
+            </Button>
+            {mapUrl ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={mapPending}
+                onClick={onClearMap}
+              >
+                <Trash2 size={14} />
+                Убрать фон
+              </Button>
+            ) : null}
+          </>
+        ) : null}
+        <p className="text-xs text-ink-500">
+          Координаты задаются в карточке локации (0–100%). Нажмите на точку,
+          чтобы изменить локацию.
+        </p>
+      </div>
       {mapped.length ? (
         <div className="mt-3 flex flex-wrap gap-2">
           {mapped.map((location) => (
@@ -337,7 +404,17 @@ function LocationMap({
   );
 }
 
-export function LocationsTab({ worldId, canEdit }: TabProps) {
+type LocationsTabProps = TabProps & {
+  projectId: string;
+  mapUrl: string | null;
+};
+
+export function LocationsTab({
+  worldId,
+  canEdit,
+  projectId,
+  mapUrl,
+}: LocationsTabProps) {
   const queryClient = useQueryClient();
   const query = useLocations(worldId);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -361,6 +438,41 @@ export function LocationsTab({ worldId, canEdit }: TabProps) {
   const openCreate = () => {
     setEditing(undefined);
     setDialogOpen(true);
+  };
+
+  const uploadMap = useMutation({
+    mutationFn: async (file: File) => {
+      const asset = await uploadProjectImage(projectId, file);
+      return setWorldMap(worldId, asset.id);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: worldKeys.detail(worldId) });
+      toast.success('Фон карты обновлён.');
+    },
+    onError: (error) =>
+      toast.error(getApiErrorMessage(error, 'Не удалось загрузить фон карты.')),
+  });
+
+  const clearMap = useMutation({
+    mutationFn: () => clearWorldMap(worldId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: worldKeys.detail(worldId) });
+      toast.success('Фон карты убран.');
+    },
+    onError: (error) =>
+      toast.error(getApiErrorMessage(error, 'Не удалось убрать фон карты.')),
+  });
+
+  const handleMapFile = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Фон карты должен быть изображением.');
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error('Файл больше 20 МБ.');
+      return;
+    }
+    uploadMap.mutate(file);
   };
 
   const move = useMutation({
@@ -469,8 +581,12 @@ export function LocationsTab({ worldId, canEdit }: TabProps) {
         <LocationMap
           items={items}
           canEdit={canEdit}
+          mapUrl={mapUrl}
+          mapPending={uploadMap.isPending || clearMap.isPending}
           onEdit={openEdit}
           onAdd={openCreate}
+          onUploadMap={handleMapFile}
+          onClearMap={() => clearMap.mutate()}
         />
       ) : (
         <ul

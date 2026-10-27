@@ -435,6 +435,7 @@ export const handlers = [
       seriesOrder?: number;
       synopsis?: string;
       targetWordCount?: number;
+      worldId?: string;
     };
     if (!body.title?.trim()) {
       return problem(422, 'validation_failed', 'Validation failed', 'Title is required');
@@ -456,6 +457,7 @@ export const handlers = [
       characterCount: 0,
       authorSheets: 0,
       language: project.language,
+      worldId: body.worldId ?? null,
       createdAt: timestamp,
       updatedAt: timestamp,
       version: 1,
@@ -499,6 +501,12 @@ export const handlers = [
       if (value !== undefined) {
         Object.assign(book, { [field]: value });
       }
+    }
+    if (body.worldId !== undefined) {
+      book.worldId =
+        body.worldId === '00000000-0000-0000-0000-000000000000'
+          ? null
+          : body.worldId;
     }
     book.version += 1;
     book.updatedAt = new Date().toISOString();
@@ -890,6 +898,8 @@ export const handlers = [
       tags: body.tags ?? [],
       color: body.color ?? '#8a5a2b',
       avatarUrl: null,
+      worldId: body.worldId ?? null,
+      locationId: null,
       customFields: body.customFields ?? {},
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -951,6 +961,18 @@ export const handlers = [
       if (value !== undefined) {
         Object.assign(character, { [field]: value });
       }
+    }
+    if (body.worldId !== undefined) {
+      character.worldId =
+        body.worldId === '00000000-0000-0000-0000-000000000000'
+          ? null
+          : body.worldId;
+    }
+    if (body.locationId !== undefined) {
+      character.locationId =
+        body.locationId === '00000000-0000-0000-0000-000000000000'
+          ? null
+          : body.locationId;
     }
     character.version += 1;
     character.updatedAt = new Date().toISOString();
@@ -1073,6 +1095,36 @@ export const handlers = [
     state.relations = state.relations.filter((item) => item.id !== params.relationId);
     saveMockState();
     return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.get(`${api}/projects/:projectId/attachments`, async ({ params, request }) => {
+    const url = new URL(request.url);
+    const role = url.searchParams.get('role');
+    const state = getMockState();
+    const items = state.attachments
+      .filter((attachment) => {
+        if (role && attachment.role !== role) {
+          return false;
+        }
+        if (attachment.targetType === 'character') {
+          return state.characters.some(
+            (character) =>
+              character.id === attachment.targetId &&
+              character.projectId === params.projectId,
+          );
+        }
+        return false;
+      })
+      .map((attachment) => ({
+        ...attachment,
+        targetName:
+          state.characters.find(
+            (character) => character.id === attachment.targetId,
+          )?.name ?? '',
+      }))
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+    await delay(70);
+    return HttpResponse.json({ items, nextCursor: null });
   }),
 
   http.get(`${api}/characters/:characterId/attachments`, async ({ params }) => {
@@ -1396,6 +1448,39 @@ export const handlers = [
         Object.assign(world, { [field]: value });
       }
     }
+    world.version += 1;
+    world.updatedAt = new Date().toISOString();
+    touchProject(world.projectId);
+    saveMockState();
+    return HttpResponse.json(world);
+  }),
+
+  http.put(`${api}/worlds/:worldId/map`, async ({ params, request }) => {
+    const state = getMockState();
+    const world = state.worlds.find((item) => item.id === params.worldId);
+    if (!world) {
+      return problem(404, 'not_found', 'World not found');
+    }
+    const body = (await request.json()) as { assetId?: string };
+    const asset = state.assets.find((item) => item.id === body.assetId);
+    if (!asset) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Asset not found');
+    }
+    world.mapUrl = asset.url ?? null;
+    world.version += 1;
+    world.updatedAt = new Date().toISOString();
+    touchProject(world.projectId);
+    saveMockState();
+    return HttpResponse.json(world);
+  }),
+
+  http.delete(`${api}/worlds/:worldId/map`, ({ params }) => {
+    const state = getMockState();
+    const world = state.worlds.find((item) => item.id === params.worldId);
+    if (!world) {
+      return problem(404, 'not_found', 'World not found');
+    }
+    world.mapUrl = null;
     world.version += 1;
     world.updatedAt = new Date().toISOString();
     touchProject(world.projectId);

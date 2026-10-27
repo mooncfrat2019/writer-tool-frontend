@@ -186,7 +186,12 @@ export function WorldDetailPage() {
           <TabsTrigger value="lore">Лор</TabsTrigger>
         </TabsList>
         <TabsContent value="locations">
-          <LocationsTab worldId={world.id} canEdit={canEdit} />
+          <LocationsTab
+            worldId={world.id}
+            canEdit={canEdit}
+            projectId={projectId}
+            mapUrl={world.mapUrl ?? null}
+          />
         </TabsContent>
         <TabsContent value="factions">
           <FactionsTab worldId={world.id} canEdit={canEdit} />

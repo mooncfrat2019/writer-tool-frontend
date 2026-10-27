@@ -149,6 +149,15 @@ const worldsRoute = createRoute({
   component: WorldsPage,
 });
 
+const galleryRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: 'gallery',
+  component: lazyRouteComponent(
+    () => import('@/features/gallery/GalleryPage'),
+    'GalleryPage',
+  ),
+});
+
 const worldRoute = createRoute({
   getParentRoute: () => projectRoute,
   path: 'worlds/$worldId',
@@ -208,6 +217,7 @@ const routeTree = rootRoute.addChildren([
     characterRoute,
     worldsRoute,
     worldRoute,
+    galleryRoute,
     timelineRoute,
     diagramsRoute,
     diagramRoute,
