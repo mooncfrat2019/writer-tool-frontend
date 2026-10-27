@@ -13,16 +13,14 @@ includes FB2/DOCX images, warnings, idempotency, cancellation, retries, quotas,
 book covers, XSD validation, the cover upload dialog and S3 storage. The browser
 never talks to S3: uploads and downloads are proxied through the API, upload
 links use short-lived scoped tokens, and file reads use an HttpOnly cookie with
-project access checks. The backend database layer is being migrated to GORM:
-the connection, versioned migrations and the store modules through
-documents/versions/collab, worlds, timeline and diagrams are converted;
-exports, sharing and search still use pgx during the transition. Remaining
-backlog: footnote nodes in the editor (and their export), and PDF/EPUB outside
-the MVP.
+project access checks. The backend database layer runs on GORM: the
+connection, versioned migrations and every store module are converted,
+including exports, sharing and search. Remaining backlog: footnote nodes in
+the editor (and their export), and PDF/EPUB outside the MVP.
 
 Branches:
 
-- backend: `feat/phase-1-api` @ `f8085ed` (Phase 1–5, S3, proxied file access, GORM migration in progress)
+- backend: `feat/phase-1-api` @ `3811ce9` (Phase 1–5, S3, proxied file access, GORM migration complete)
 - frontend: `feat/real-api-integration` — the current branch tip includes the
   Phase 4 polish, contract sync and the book cover UI
 
