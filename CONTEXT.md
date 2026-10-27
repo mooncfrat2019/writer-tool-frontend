@@ -13,12 +13,15 @@ includes FB2/DOCX images, warnings, idempotency, cancellation, retries, quotas,
 book covers, XSD validation, the cover upload dialog and S3 storage. The browser
 never talks to S3: uploads and downloads are proxied through the API, upload
 links use short-lived scoped tokens, and file reads use an HttpOnly cookie with
-project access checks. Remaining backlog: footnote nodes in the editor (and
+project access checks. The backend database layer is being migrated to GORM:
+the connection, versioned migrations and users/assets/projects/books/nodes/
+characters/custom_fields are converted; the remaining store modules still use
+pgx during the transition. Remaining backlog: footnote nodes in the editor (and
 their export), and PDF/EPUB outside the MVP.
 
 Branches:
 
-- backend: `feat/phase-1-api` @ `5cc499a` (Phase 1–5, S3, proxied file access)
+- backend: `feat/phase-1-api` @ `f8085ed` (Phase 1–5, S3, proxied file access, GORM migration in progress)
 - frontend: `feat/real-api-integration` — the current branch tip includes the
   Phase 4 polish, contract sync and the book cover UI
 
