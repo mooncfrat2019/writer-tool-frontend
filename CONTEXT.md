@@ -14,10 +14,11 @@ book covers, XSD validation, the cover upload dialog and S3 storage. The browser
 never talks to S3: uploads and downloads are proxied through the API, upload
 links use short-lived scoped tokens, and file reads use an HttpOnly cookie with
 project access checks. The backend database layer is being migrated to GORM:
-the connection, versioned migrations and users/assets/projects/books/nodes/
-characters/custom_fields are converted; the remaining store modules still use
-pgx during the transition. Remaining backlog: footnote nodes in the editor (and
-their export), and PDF/EPUB outside the MVP.
+the connection, versioned migrations and the store modules through
+documents/versions/collab, worlds, timeline and diagrams are converted;
+exports, sharing and search still use pgx during the transition. Remaining
+backlog: footnote nodes in the editor (and their export), and PDF/EPUB outside
+the MVP.
 
 Branches:
 
