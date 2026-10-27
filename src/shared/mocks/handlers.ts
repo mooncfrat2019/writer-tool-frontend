@@ -216,6 +216,7 @@ export const handlers = [
       email?: string;
       password?: string;
       displayName?: string;
+      inviteCode?: string;
     };
     if (!body.email || !body.password || !body.displayName) {
       return problem(422, 'validation_failed', 'Validation failed', 'All fields are required');
@@ -225,8 +226,24 @@ export const handlers = [
     }
     pendingRegistration = { email: body.email, displayName: body.displayName };
     await delay(160);
+    if (body.inviteCode?.trim()) {
+      startMockSession();
+      return HttpResponse.json(
+        {
+          user: {
+            ...mockUser,
+            email: body.email,
+            displayName: body.displayName,
+            emailVerified: true,
+          },
+          accessToken: `mock.${Date.now()}`,
+          accessTokenExpiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+        },
+        { status: 201 },
+      );
+    }
     return HttpResponse.json(
-      { status: 'verification_sent', email: body.email },
+      { status: 'verification_sent', email: body.email, verification: 'email' },
       { status: 202 },
     );
   }),

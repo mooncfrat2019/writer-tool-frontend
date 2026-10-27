@@ -1353,6 +1353,8 @@ export interface components {
             displayName: string;
             /** @description Optional same-origin path to return to after confirmation, for example /share/<token>. */
             redirect?: string;
+            /** @description Optional administrator-issued invite code. A valid code confirms the email and signs the user in without a confirmation email. */
+            inviteCode?: string;
         };
         LoginRequest: {
             /** Format: email */
@@ -1373,6 +1375,11 @@ export interface components {
             status: "verification_sent";
             /** Format: email */
             email: string;
+            /**
+             * @description email when a confirmation message was delivered, admin when the account must be approved by an administrator.
+             * @enum {string}
+             */
+            verification: "email" | "admin";
         };
         AuthResponse: {
             user: components["schemas"]["User"];
@@ -2721,7 +2728,18 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Registration accepted. A confirmation email is sent when the address can be registered; the response is identical for existing addresses to avoid account enumeration. */
+            /** @description Registered with a valid invite code. The email is recorded as confirmed and the user is signed in immediately. */
+            201: {
+                headers: {
+                    /** @description HttpOnly refresh token cookie */
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthResponse"];
+                };
+            };
+            /** @description Registration accepted without an invite. A confirmation email is sent when the address can be registered; the response is identical for existing addresses to avoid account enumeration. */
             202: {
                 headers: {
                     [name: string]: unknown;
@@ -2730,6 +2748,7 @@ export interface operations {
                     "application/json": components["schemas"]["VerificationAccepted"];
                 };
             };
+            409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationFailed"];
             429: components["responses"]["TooManyRequests"];
         };

@@ -59,6 +59,19 @@ test('registers a new account and opens the project library', async ({ page }) =
   await expect(accountMenu.getByText('reader@example.com')).toBeVisible();
 });
 
+test('registers with an invite code without email confirmation', async ({ page }) => {
+  await page.goto('/register');
+
+  await page.getByLabel('Как вас зовут').fill('Приглашённый Автор');
+  await page.getByLabel('Email').fill('invited@example.com');
+  await page.getByLabel('Пароль').fill('password123');
+  await page.getByLabel('Код приглашения').fill('mock-invite-code');
+  await page.getByRole('button', { name: 'Создать аккаунт' }).click();
+
+  await expect(page).toHaveURL(/\/projects$/);
+  await expect(page.getByRole('heading', { name: 'Проекты' })).toBeVisible();
+});
+
 test('offers a resend when the email is not confirmed', async ({ page }) => {
   await page.goto('/login');
   await page.getByLabel('Email').fill('unverified@example.com');

@@ -42,15 +42,30 @@ paths:
             schema:
               $ref: '#/components/schemas/RegisterRequest'
       responses:
+        '201':
+          description: >-
+            Registered with a valid invite code. The email is recorded as
+            confirmed and the user is signed in immediately.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: HttpOnly refresh token cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
         '202':
           description: >-
-            Registration accepted. A confirmation email is sent when the
-            address can be registered; the response is identical for existing
-            addresses to avoid account enumeration.
+            Registration accepted without an invite. A confirmation email is
+            sent when the address can be registered; the response is identical
+            for existing addresses to avoid account enumeration.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/VerificationAccepted'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationFailed'
         '429':
@@ -2656,6 +2671,12 @@ components:
           description: >-
             Optional same-origin path to return to after confirmation, for
             example /share/<token>.
+        inviteCode:
+          type: string
+          maxLength: 200
+          description: >-
+            Optional administrator-issued invite code. A valid code confirms
+            the email and signs the user in without a confirmation email.
     LoginRequest:
       type: object
       required: [email, password]
@@ -2686,7 +2707,7 @@ components:
           description: Optional same-origin path to return to after confirmation.
     VerificationAccepted:
       type: object
-      required: [status, email]
+      required: [status, email, verification]
       properties:
         status:
           type: string
@@ -2694,6 +2715,12 @@ components:
         email:
           type: string
           format: email
+        verification:
+          type: string
+          enum: [email, admin]
+          description: >-
+            email when a confirmation message was delivered, admin when the
+            account must be approved by an administrator.
     AuthResponse:
       type: object
       required: [user, accessToken, accessTokenExpiresAt]

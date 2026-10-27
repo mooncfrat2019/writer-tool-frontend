@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { api } from '@/shared/api/client';
-import { getApiErrorMessage } from '@/shared/api/errors';
+import { getApiErrorMessage, getApiProblemCode } from '@/shared/api/errors';
 import { unwrap } from '@/shared/api/request';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
@@ -24,27 +24,50 @@ export function RegisterPage() {
   const redirect = getAuthRedirect();
   const [formError, setFormError] = useState<string | null>(null);
   const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
+  const [verification, setVerification] = useState<'email' | 'admin'>('email');
   const {
     register,
     handleSubmit,
     formState: { errors },
   } = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { displayName: '', email: '', password: '' },
+    defaultValues: { displayName: '', email: '', password: '', inviteCode: '' },
   });
 
   const signUp = useMutation({
-    mutationFn: async (values: RegisterValues) =>
-      unwrap(
+    mutationFn: async (values: RegisterValues) => {
+      const inviteCode = values.inviteCode?.trim();
+      return unwrap(
         await api.POST('/auth/register', {
-          body: redirect ? { ...values, redirect } : values,
+          body: {
+            ...values,
+            ...(inviteCode ? { inviteCode } : {}),
+            ...(redirect ? { redirect } : {}),
+          },
         }),
-      ),
+      );
+    },
     onMutate: () => setFormError(null),
     onSuccess: (data) => {
+      if ('accessToken' in data) {
+        setSessionFromAuth(data);
+        queryClient.clear();
+        toast.success('Аккаунт создан. Добро пожаловать в мастерскую.');
+        if (redirect) {
+          window.location.assign(redirect);
+          return;
+        }
+        void navigate({ to: '/projects' });
+        return;
+      }
       setSubmittedEmail(data.email);
+      setVerification(data.verification);
     },
     onError: (error) => {
+      if (getApiProblemCode(error) === 'invalid_invite_code') {
+        setFormError('Код приглашения недействителен или уже использован.');
+        return;
+      }
       setFormError(getApiErrorMessage(error, 'Не удалось создать аккаунт. Попробуйте ещё раз.'));
     },
   });
@@ -88,11 +111,16 @@ export function RegisterPage() {
   });
 
   if (submittedEmail) {
+    const awaitingAdmin = verification === 'admin';
     return (
       <AuthLayout
         eyebrow="Почти готово"
-        title="Проверьте почту"
-        description="Мы отправили ссылку для подтверждения аккаунта."
+        title={awaitingAdmin ? 'Заявка создана' : 'Проверьте почту'}
+        description={
+          awaitingAdmin
+            ? 'Аккаунт создан и ждёт подтверждения администратора.'
+            : 'Мы отправили ссылку для подтверждения аккаунта.'
+        }
         footer={
           <p>
             Уже подтвердили?{' '}
@@ -107,21 +135,33 @@ export function RegisterPage() {
       >
         <div className="space-y-5">
           <p className="rounded-md border border-paper-200 bg-paper-100/70 px-3 py-2 text-sm leading-relaxed text-ink-700">
-            Письмо отправлено на <strong>{submittedEmail}</strong>. Перейдите по ссылке
-            из него, чтобы подтвердить адрес и войти.
+            {awaitingAdmin ? (
+              <>
+                Аккаунт для <strong>{submittedEmail}</strong> создан. Администратор
+                подтвердит его вручную — после этого можно будет войти с этим email и
+                паролем.
+              </>
+            ) : (
+              <>
+                Письмо отправлено на <strong>{submittedEmail}</strong>. Перейдите по
+                ссылке из него, чтобы подтвердить адрес и войти.
+              </>
+            )}
           </p>
 
-          <Button
-            className="w-full"
-            type="button"
-            variant="outline"
-            disabled={resend.isPending}
-            onClick={() => resend.mutate(submittedEmail)}
-          >
-            {resend.isPending ? 'Отправляем…' : 'Отправить ещё раз'}
-          </Button>
+          {awaitingAdmin ? null : (
+            <Button
+              className="w-full"
+              type="button"
+              variant="outline"
+              disabled={resend.isPending}
+              onClick={() => resend.mutate(submittedEmail)}
+            >
+              {resend.isPending ? 'Отправляем…' : 'Отправить ещё раз'}
+            </Button>
+          )}
 
-          {isMockMode ? (
+          {isMockMode && !awaitingAdmin ? (
             <Button
               className="w-full"
               type="button"
@@ -133,10 +173,17 @@ export function RegisterPage() {
             </Button>
           ) : null}
 
-          <p className="text-xs leading-relaxed text-ink-500">
-            Письма нет? Проверьте папку «Спам» и правильность адреса. Повторная
-            отправка доступна раз в минуту.
-          </p>
+          {awaitingAdmin ? (
+            <p className="text-xs leading-relaxed text-ink-500">
+              Если у вас есть код приглашения, вернитесь к форме и введите его — тогда
+              аккаунт подтвердится сразу.
+            </p>
+          ) : (
+            <p className="text-xs leading-relaxed text-ink-500">
+              Письма нет? Проверьте папку «Спам» и правильность адреса. Повторная
+              отправка доступна раз в минуту.
+            </p>
+          )}
         </div>
       </AuthLayout>
     );
@@ -215,6 +262,23 @@ export function RegisterPage() {
           ) : null}
         </div>
 
+        <div className="space-y-2">
+          <Label htmlFor="inviteCode">Код приглашения</Label>
+          <Input
+            id="inviteCode"
+            autoComplete="one-time-code"
+            aria-invalid={Boolean(errors.inviteCode)}
+            aria-describedby="invite-hint"
+            {...register('inviteCode')}
+          />
+          <p id="invite-hint" className="text-xs text-ink-500">
+            Необязательно. С кодом от администратора почту подтверждать не нужно.
+          </p>
+          {errors.inviteCode ? (
+            <p className="text-xs text-red-700">{errors.inviteCode.message}</p>
+          ) : null}
+        </div>
+
         {formError ? (
           <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
             {formError}
@@ -226,8 +290,8 @@ export function RegisterPage() {
         </Button>
 
         <p className="text-xs leading-relaxed text-ink-500">
-          После регистрации мы отправим письмо для подтверждения адреса. Без него
-          войти в аккаунт нельзя.
+          Без кода приглашения аккаунт подтверждает письмо или администратор. Почту
+          указывать обязательно.
         </p>
       </form>
     </AuthLayout>

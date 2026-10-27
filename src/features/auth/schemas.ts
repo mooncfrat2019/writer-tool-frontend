@@ -18,6 +18,10 @@ export const registerSchema = z.object({
     .string()
     .min(8, 'Пароль должен быть не короче 8 символов')
     .max(128, 'Пароль слишком длинный'),
+  inviteCode: z
+    .string()
+    .max(200, 'Код приглашения слишком длинный')
+    .optional(),
 });
 
 export type RegisterValues = z.infer<typeof registerSchema>;
