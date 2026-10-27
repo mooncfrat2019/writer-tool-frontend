@@ -86,4 +86,38 @@ test('creates a calendar and a timeline event through the real API', async ({
   await expect(page.getByText('Событие тестов')).toBeVisible();
   await page.getByLabel('Важность от', { exact: true }).click();
   await page.getByRole('option', { name: 'Любая' }).click();
+
+  // Narrative mode: an event is positioned by chapter, so creating it from a
+  // lane must not require a calendar date. The chapter is preselected from the
+  // clicked column.
+  const nav = page.getByRole('navigation', { name: 'Навигация по проекту' }).first();
+  await nav.getByRole('link', { name: 'Структура', exact: true }).click();
+  await expect(page.getByText('Начнём с книги')).toBeVisible();
+  await page.getByRole('button', { name: 'Создать книгу' }).click();
+  let structureDialog = page.getByRole('dialog');
+  await structureDialog.getByLabel('Название').fill('Книга повествования');
+  await structureDialog.getByRole('button', { name: 'Создать книгу' }).click();
+  await expect(structureDialog).toBeHidden();
+  await expect(page.getByText('Структура пока пуста')).toBeVisible();
+  await page.getByRole('button', { name: 'Добавить' }).click();
+  await page.getByRole('menuitem', { name: /Глава/ }).click();
+  structureDialog = page.getByRole('dialog');
+  await structureDialog.getByLabel('Название').fill('Глава повествования');
+  await structureDialog.getByRole('button', { name: 'Создать', exact: true }).click();
+  await expect(structureDialog).toBeHidden();
+
+  await nav.getByRole('link', { name: 'Таймлайн', exact: true }).click();
+  await page.getByRole('button', { name: 'Повествование' }).click();
+  const lane = page.locator('[data-lane-id]').first();
+  await lane.click({ position: { x: 20, y: 20 } });
+  dialog = page.getByRole('dialog');
+  await expect(dialog.getByLabel('Название')).toBeVisible();
+  await expect(dialog.getByLabel('Год', { exact: true })).toHaveCount(0);
+  await expect(dialog.getByLabel('Глава или сцена')).toContainText(
+    'Глава повествования',
+  );
+  await dialog.getByLabel('Название').fill('Событие повествования');
+  await dialog.getByRole('button', { name: 'Создать событие' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByText('Событие повествования')).toBeVisible();
 });

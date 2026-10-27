@@ -444,6 +444,7 @@ export function TimelinePage() {
           canEdit={canEdit}
           characters={characters}
           draft={eventDialog.draft}
+          mode={mode}
           open
           onOpenChange={(open) => {
             if (!open) {
@@ -462,6 +463,7 @@ export function TimelinePage() {
           canEdit={canEdit}
           characters={characters}
           event={editingEvent}
+          mode={mode}
           open
           onOpenChange={(open) => {
             if (!open) {

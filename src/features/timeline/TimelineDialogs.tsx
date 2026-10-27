@@ -44,6 +44,7 @@ import {
   type TimelineEventLink,
   type TimelineEventUpdate,
   type TimelineLinkEntityType,
+  type TimelineMode,
   type TimelinePrecision,
 } from './api';
 import {
@@ -551,6 +552,7 @@ export function PlotThreadDialog({
 
 type EventDialogProps = DialogBase & {
   projectId: string;
+  mode: TimelineMode;
   event?: TimelineEvent;
   draft?: CanvasCreatePoint;
   calendars: Calendar[];
@@ -581,6 +583,7 @@ function initialParts(value: number | null | undefined, config: CalendarConfig) 
 
 export function TimelineEventDialog({
   projectId,
+  mode,
   event,
   draft,
   calendars,
@@ -615,7 +618,9 @@ export function TimelineEventDialog({
   const [title, setTitle] = useState(event?.title ?? '');
   const [description, setDescription] = useState(event?.description ?? '');
   const [dateMode, setDateMode] = useState<TimelineDateMode>(
-    event?.dateMode ?? 'exact',
+    // Narrative events are positioned by chapter, not by a calendar date, so
+    // a new event starts undated; the user can still switch to a date.
+    event?.dateMode ?? (mode === 'narrative' ? 'unknown' : 'exact'),
   );
   const [precision, setPrecision] =
     useState<TimelinePrecision>(initialPrecision);
