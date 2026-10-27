@@ -15,11 +15,15 @@ import { registerSchema, type RegisterValues } from './schemas';
 import { getAuthRedirect, redirectQuery } from './redirect';
 import { setSessionFromAuth } from './session';
 
+const isMockMode =
+  import.meta.env.DEV && (import.meta.env.VITE_API_MODE ?? 'mock') === 'mock';
+
 export function RegisterPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const redirect = getAuthRedirect();
   const [formError, setFormError] = useState<string | null>(null);
+  const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -38,19 +42,101 @@ export function RegisterPage() {
       ),
     onMutate: () => setFormError(null),
     onSuccess: (data) => {
-      setSessionFromAuth(data);
-      queryClient.clear();
-      toast.success('Аккаунт создан. Добро пожаловать в мастерскую.');
-      if (redirect) {
-        window.location.assign(redirect);
-        return;
-      }
-      void navigate({ to: '/projects' });
+      setSubmittedEmail(data.email);
     },
     onError: (error) => {
       setFormError(getApiErrorMessage(error, 'Не удалось создать аккаунт. Попробуйте ещё раз.'));
     },
   });
+
+  const resend = useMutation({
+    mutationFn: async (email: string) =>
+      unwrap(
+        await api.POST('/auth/resend-verification', {
+          body: { email },
+        }),
+      ),
+    onSuccess: () => {
+      toast.success('Если аккаунт существует, письмо отправлено ещё раз.');
+    },
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, 'Не удалось отправить письмо. Попробуйте позже.'));
+    },
+  });
+
+  // The mock API has no mailbox. This button exercises the confirmation route
+  // in local development without a backend.
+  const mockVerify = useMutation({
+    mutationFn: async () =>
+      unwrap(
+        await api.POST('/auth/verify-email', {
+          body: { token: 'mock-verification' },
+        }),
+      ),
+    onSuccess: (data) => {
+      setSessionFromAuth(data);
+      queryClient.clear();
+      void navigate({ to: '/projects' });
+    },
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, 'Не удалось подтвердить почту.'));
+    },
+  });
+
+  if (submittedEmail) {
+    return (
+      <AuthLayout
+        eyebrow="Почти готово"
+        title="Проверьте почту"
+        description="Мы отправили ссылку для подтверждения аккаунта."
+        footer={
+          <p>
+            Уже подтвердили?{' '}
+            <a
+              className="font-medium text-accent-700 underline-offset-4 hover:underline"
+              href={`/login${redirectQuery(redirect)}`}
+            >
+              Войти
+            </a>
+          </p>
+        }
+      >
+        <div className="space-y-5">
+          <p className="rounded-md border border-paper-200 bg-paper-100/70 px-3 py-2 text-sm leading-relaxed text-ink-700">
+            Письмо отправлено на <strong>{submittedEmail}</strong>. Перейдите по ссылке
+            из него, чтобы подтвердить адрес и войти.
+          </p>
+
+          <Button
+            className="w-full"
+            type="button"
+            variant="outline"
+            disabled={resend.isPending}
+            onClick={() => resend.mutate(submittedEmail)}
+          >
+            {resend.isPending ? 'Отправляем…' : 'Отправить ещё раз'}
+          </Button>
+
+          {isMockMode ? (
+            <Button
+              className="w-full"
+              type="button"
+              variant="ghost"
+              disabled={mockVerify.isPending}
+              onClick={() => mockVerify.mutate()}
+            >
+              {mockVerify.isPending ? 'Подтверждаем…' : 'Демо: подтвердить почту'}
+            </Button>
+          ) : null}
+
+          <p className="text-xs leading-relaxed text-ink-500">
+            Письма нет? Проверьте папку «Спам» и правильность адреса. Повторная
+            отправка доступна раз в минуту.
+          </p>
+        </div>
+      </AuthLayout>
+    );
+  }
 
   return (
     <AuthLayout
@@ -134,6 +220,11 @@ export function RegisterPage() {
         <Button className="w-full" type="submit" disabled={signUp.isPending}>
           {signUp.isPending ? 'Создаём аккаунт…' : 'Создать аккаунт'}
         </Button>
+
+        <p className="text-xs leading-relaxed text-ink-500">
+          После регистрации мы отправим письмо для подтверждения адреса. Без него
+          войти в аккаунт нельзя.
+        </p>
       </form>
     </AuthLayout>
   );

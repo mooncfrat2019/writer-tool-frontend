@@ -36,6 +36,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/verify-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["verifyEmail"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/resend-verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["resendVerification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/refresh": {
         parameters: {
             query?: never;
@@ -1324,6 +1356,19 @@ export interface components {
             /** Format: email */
             email: string;
             password: string;
+        };
+        VerifyEmailRequest: {
+            token: string;
+        };
+        ResendVerificationRequest: {
+            /** Format: email */
+            email: string;
+        };
+        VerificationAccepted: {
+            /** @enum {string} */
+            status: "verification_sent";
+            /** Format: email */
+            email: string;
         };
         AuthResponse: {
             user: components["schemas"]["User"];
@@ -2672,18 +2717,15 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Registered and signed in */
-            201: {
+            /** @description Registration accepted. A confirmation email is sent when the address can be registered; the response is identical for existing addresses to avoid account enumeration. */
+            202: {
                 headers: {
-                    /** @description HttpOnly refresh token cookie */
-                    "Set-Cookie"?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AuthResponse"];
+                    "application/json": components["schemas"]["VerificationAccepted"];
                 };
             };
-            409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationFailed"];
             429: components["responses"]["TooManyRequests"];
         };
@@ -2712,6 +2754,77 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+            /** @description The email address has not been confirmed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    verifyEmail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyEmailRequest"];
+            };
+        };
+        responses: {
+            /** @description Email confirmed and signed in */
+            200: {
+                headers: {
+                    /** @description HttpOnly refresh token cookie */
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthResponse"];
+                };
+            };
+            /** @description The token is invalid, expired or already used */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    resendVerification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResendVerificationRequest"];
+            };
+        };
+        responses: {
+            /** @description Accepted. A confirmation email is sent if the account exists and still needs confirmation; the response does not reveal which. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerificationAccepted"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
             429: components["responses"]["TooManyRequests"];
         };
     };

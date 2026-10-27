@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { registerAndVerify } from './helpers';
 
 const PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
@@ -7,16 +8,15 @@ const PNG = Buffer.from(
 
 test('exports a book as DOCX and downloads the generated file', async ({
   page,
+  request,
 }) => {
   test.setTimeout(180_000);
   const stamp = Date.now();
 
-  await page.goto('/register');
-  await page.getByLabel('Как вас зовут').fill('Экспортный Автор');
-  await page.getByLabel('Email').fill(`exports+${stamp}@example.com`);
-  await page.getByLabel('Пароль').fill('password123');
-  await page.getByRole('button', { name: 'Создать аккаунт' }).click();
-  await expect(page).toHaveURL(/\/projects$/);
+  await registerAndVerify(page, request, {
+    email: `exports+${stamp}@example.com`,
+    displayName: 'Экспортный Автор',
+  });
 
   await page.getByRole('button', { name: 'Новый проект' }).click();
   const projectDialog = page.getByRole('dialog');

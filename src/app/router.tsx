@@ -8,6 +8,7 @@ import {
 } from '@tanstack/react-router';
 import { LoginPage } from '@/features/auth/LoginPage';
 import { RegisterPage } from '@/features/auth/RegisterPage';
+import { VerifyEmailPage } from '@/features/auth/VerifyEmailPage';
 import { bootstrapSession, useSession } from '@/features/auth/session';
 import { CharactersPage } from '@/features/characters/CharactersPage';
 import { ExportsPage } from '@/features/exports/ExportsPage';
@@ -68,6 +69,16 @@ const registerRoute = createRoute({
     }
   },
   component: RegisterPage,
+});
+
+const verifyEmailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/verify-email',
+  validateSearch: (search: Record<string, unknown>): { token?: string } => {
+    const token = typeof search.token === 'string' ? search.token : undefined;
+    return token ? { token } : {};
+  },
+  component: VerifyEmailPage,
 });
 
 async function requireAuth() {
@@ -208,6 +219,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
   registerRoute,
+  verifyEmailRoute,
   shareRoute,
   sharedDocumentRoute,
   projectsRoute,

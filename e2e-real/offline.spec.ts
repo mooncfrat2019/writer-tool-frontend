@@ -1,19 +1,19 @@
 import { expect, test } from '@playwright/test';
+import { registerAndVerify } from './helpers';
 
 test('merges offline edits after the editor reconnects', async ({
   browser,
   page,
+  request,
 }) => {
   test.setTimeout(240_000);
   const stamp = Date.now();
   const email = `offline+${stamp}@example.com`;
 
-  await page.goto('/register');
-  await page.getByLabel('Как вас зовут').fill('Офлайн Автор');
-  await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Пароль').fill('password123');
-  await page.getByRole('button', { name: 'Создать аккаунт' }).click();
-  await expect(page).toHaveURL(/\/projects$/);
+  await registerAndVerify(page, request, {
+    email,
+    displayName: 'Офлайн Автор',
+  });
 
   await page.getByRole('button', { name: 'Новый проект' }).click();
   const projectDialog = page.getByRole('dialog');

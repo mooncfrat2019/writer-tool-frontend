@@ -1,8 +1,10 @@
 import { expect, test } from '@playwright/test';
+import { completeRegistration, registerAndVerify } from './helpers';
 
 test('shares a chapter by link and collaborates across users', async ({
   browser,
   page,
+  request,
 }) => {
   test.setTimeout(180_000);
 
@@ -10,12 +12,10 @@ test('shares a chapter by link and collaborates across users', async ({
   const ownerEmail = `share-owner+${stamp}@example.com`;
   const recipientEmail = `share-recipient+${stamp}@example.com`;
 
-  await page.goto('/register');
-  await page.getByLabel('Как вас зовут').fill('Владелец Книги');
-  await page.getByLabel('Email').fill(ownerEmail);
-  await page.getByLabel('Пароль').fill('password123');
-  await page.getByRole('button', { name: 'Создать аккаунт' }).click();
-  await expect(page).toHaveURL(/\/projects$/);
+  await registerAndVerify(page, request, {
+    email: ownerEmail,
+    displayName: 'Владелец Книги',
+  });
 
   await page.getByRole('button', { name: 'Новый проект' }).click();
   const projectDialog = page.getByRole('dialog');
@@ -70,12 +70,13 @@ test('shares a chapter by link and collaborates across users', async ({
   await expect(
     recipient.getByRole('heading', { name: 'Создать аккаунт' }),
   ).toBeVisible();
-  await recipient.getByLabel('Как вас зовут').fill('Соавтор');
-  await recipient.getByLabel('Email').fill(recipientEmail);
-  await recipient.getByLabel('Пароль').fill('password123');
-  await recipient.getByRole('button', { name: 'Создать аккаунт' }).click();
+  await completeRegistration(recipient, request, {
+    email: recipientEmail,
+    displayName: 'Соавтор',
+  });
 
-  await expect(recipient).toHaveURL(/\/share\//);
+  await recipient.goto(shareUrl);
+  await expect(recipient.getByText('Глава для шеринга')).toBeVisible();
   await recipient.getByRole('button', { name: 'Принять приглашение' }).click();
   await expect(recipient).toHaveURL(/\/shared\/documents\//);
   await expect(recipient.locator('.ProseMirror')).toBeVisible();
@@ -147,18 +148,17 @@ test('shares a chapter by link and collaborates across users', async ({
 test('gives a viewer live read-only access to a shared chapter', async ({
   browser,
   page,
+  request,
 }) => {
   test.setTimeout(180_000);
   const stamp = Date.now();
   const ownerEmail = `viewer-owner+${stamp}@example.com`;
   const viewerEmail = `viewer-guest+${stamp}@example.com`;
 
-  await page.goto('/register');
-  await page.getByLabel('Как вас зовут').fill('Владелец Просмотра');
-  await page.getByLabel('Email').fill(ownerEmail);
-  await page.getByLabel('Пароль').fill('password123');
-  await page.getByRole('button', { name: 'Создать аккаунт' }).click();
-  await expect(page).toHaveURL(/\/projects$/);
+  await registerAndVerify(page, request, {
+    email: ownerEmail,
+    displayName: 'Владелец Просмотра',
+  });
 
   await page.getByRole('button', { name: 'Новый проект' }).click();
   const projectDialog = page.getByRole('dialog');
@@ -200,11 +200,12 @@ test('gives a viewer live read-only access to a shared chapter', async ({
   await viewer.goto(shareUrl);
   await expect(viewer.getByText('Глава просмотра')).toBeVisible();
   await viewer.getByRole('link', { name: 'Создать аккаунт' }).click();
-  await viewer.getByLabel('Как вас зовут').fill('Читатель');
-  await viewer.getByLabel('Email').fill(viewerEmail);
-  await viewer.getByLabel('Пароль').fill('password123');
-  await viewer.getByRole('button', { name: 'Создать аккаунт' }).click();
-  await expect(viewer).toHaveURL(/\/share\//);
+  await completeRegistration(viewer, request, {
+    email: viewerEmail,
+    displayName: 'Читатель',
+  });
+  await viewer.goto(shareUrl);
+  await expect(viewer.getByText('Глава просмотра')).toBeVisible();
   await viewer.getByRole('button', { name: 'Принять приглашение' }).click();
   await expect(viewer).toHaveURL(/\/shared\/documents\//);
 

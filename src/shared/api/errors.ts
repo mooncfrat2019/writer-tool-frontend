@@ -26,3 +26,7 @@ export function getApiErrorMessage(
 export function isVersionConflict(error: unknown): boolean {
   return error instanceof ApiError && error.problem.status === 409;
 }
+
+export function getApiProblemCode(error: unknown): string | null {
+  return error instanceof ApiError ? error.problem.code : null;
+}

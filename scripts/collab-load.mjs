@@ -28,6 +28,10 @@ function parseArgs(argv) {
 
 const args = parseArgs(process.argv.slice(2));
 const apiBase = (args.api ?? 'http://localhost:8080/api/v1').replace(/\/$/, '');
+const mailpitUrl = (args.mailpit ?? process.env.MAILPIT_URL ?? 'http://localhost:8025').replace(
+  /\/$/,
+  '',
+);
 const documentCount = Number(args.docs ?? 50);
 const clientsPerDocument = Number(args.clients ?? 2);
 const cleanup = args.cleanup !== 'false';
@@ -57,16 +61,53 @@ async function request(method, path, body, token) {
   return text ? JSON.parse(text) : null;
 }
 
+async function waitForVerificationToken(address) {
+  const deadline = Date.now() + 20_000;
+  let lastStatus = 'no response';
+  while (Date.now() < deadline) {
+    const search = await fetch(
+      `${mailpitUrl}/api/v1/search?query=${encodeURIComponent(`to:${address}`)}&limit=5`,
+    );
+    if (search.ok) {
+      const body = await search.json();
+      for (const message of body.messages ?? []) {
+        const response = await fetch(`${mailpitUrl}/api/v1/message/${message.ID}`);
+        if (!response.ok) {
+          lastStatus = `message ${response.status}`;
+          continue;
+        }
+        const payload = await response.json();
+        const text = payload.Text || payload.HTML || '';
+        const match = text.match(/\/verify-email\?token=([A-Za-z0-9_-]+)/);
+        if (match) return match[1];
+      }
+    } else {
+      lastStatus = `search ${search.status}`;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  }
+  throw new Error(
+    `No confirmation email for ${address} in Mailpit at ${mailpitUrl} (${lastStatus}). ` +
+      'Run Mailpit and the API with MAIL_DRIVER=smtp / SMTP_ADDR=localhost:1025.',
+  );
+}
+
 async function loginOrRegister() {
   try {
     return await request('POST', '/auth/login', { email, password });
   } catch (error) {
-    if (error.status !== 401 && error.status !== 404) throw error;
-    return request('POST', '/auth/register', {
-      email,
-      password,
-      displayName: 'Collab Load',
-    });
+    if (error.status !== 401 && error.status !== 403 && error.status !== 404) throw error;
+    if (error.status === 403) {
+      await request('POST', '/auth/resend-verification', { email });
+    } else {
+      await request('POST', '/auth/register', {
+        email,
+        password,
+        displayName: 'Collab Load',
+      });
+    }
+    const token = await waitForVerificationToken(email);
+    return request('POST', '/auth/verify-email', { token });
   }
 }
 

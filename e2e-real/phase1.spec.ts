@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { registerAndVerify } from './helpers';
 
 test('registers, restores the session and writes through the real API', async ({
   page,
@@ -11,13 +12,11 @@ test('registers, restores the session and writes through the real API', async ({
 
   const email = `e2e-real+${Date.now()}@example.com`;
 
-  await page.goto('/register');
-  await page.getByLabel('Как вас зовут').fill('Интеграционный Автор');
-  await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Пароль').fill('password123');
-  await page.getByRole('button', { name: 'Создать аккаунт' }).click();
+  await registerAndVerify(page, request, {
+    email,
+    displayName: 'Интеграционный Автор',
+  });
 
-  await expect(page).toHaveURL(/\/projects$/);
   await expect(page.getByRole('heading', { name: 'Проекты' })).toBeVisible();
 
   // The access token lives in memory; a reload must restore the session

@@ -1,15 +1,14 @@
 import { expect, test } from '@playwright/test';
+import { registerAndVerify } from './helpers';
 
-test('creates and restores a document version', async ({ page }) => {
+test('creates and restores a document version', async ({ page, request }) => {
   test.setTimeout(180_000);
   const stamp = Date.now();
 
-  await page.goto('/register');
-  await page.getByLabel('Как вас зовут').fill('Версионный Автор');
-  await page.getByLabel('Email').fill(`versions+${stamp}@example.com`);
-  await page.getByLabel('Пароль').fill('password123');
-  await page.getByRole('button', { name: 'Создать аккаунт' }).click();
-  await expect(page).toHaveURL(/\/projects$/);
+  await registerAndVerify(page, request, {
+    email: `versions+${stamp}@example.com`,
+    displayName: 'Версионный Автор',
+  });
 
   await page.getByRole('button', { name: 'Новый проект' }).click();
   const projectDialog = page.getByRole('dialog');

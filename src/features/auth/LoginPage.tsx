@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { api } from '@/shared/api/client';
-import { getApiErrorMessage } from '@/shared/api/errors';
+import { getApiErrorMessage, getApiProblemCode } from '@/shared/api/errors';
 import { unwrap } from '@/shared/api/request';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
@@ -23,6 +23,7 @@ export function LoginPage() {
   const queryClient = useQueryClient();
   const redirect = getAuthRedirect();
   const [formError, setFormError] = useState<string | null>(null);
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -41,7 +42,10 @@ export function LoginPage() {
           body: values,
         }),
       ),
-    onMutate: () => setFormError(null),
+    onMutate: () => {
+      setFormError(null);
+      setUnverifiedEmail(null);
+    },
     onSuccess: (data) => {
       setSessionFromAuth(data);
       queryClient.clear();
@@ -53,7 +57,26 @@ export function LoginPage() {
       void navigate({ to: '/projects' });
     },
     onError: (error) => {
+      if (getApiProblemCode(error) === 'email_not_verified') {
+        setUnverifiedEmail(login.variables?.email ?? '');
+        return;
+      }
       setFormError(getApiErrorMessage(error, 'Не удалось войти. Проверьте почту и пароль.'));
+    },
+  });
+
+  const resend = useMutation({
+    mutationFn: async (email: string) =>
+      unwrap(
+        await api.POST('/auth/resend-verification', {
+          body: { email },
+        }),
+      ),
+    onSuccess: () => {
+      toast.success('Если аккаунт существует, письмо отправлено ещё раз.');
+    },
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, 'Не удалось отправить письмо. Попробуйте позже.'));
     },
   });
 
@@ -117,6 +140,27 @@ export function LoginPage() {
           <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
             {formError}
           </p>
+        ) : null}
+
+        {unverifiedEmail ? (
+          <div
+            role="alert"
+            className="space-y-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900"
+          >
+            <p>
+              Почта <strong>{unverifiedEmail}</strong> ещё не подтверждена. Перейдите
+              по ссылке из письма или запросите новое.
+            </p>
+            <Button
+              className="w-full"
+              type="button"
+              variant="outline"
+              disabled={resend.isPending}
+              onClick={() => resend.mutate(unverifiedEmail)}
+            >
+              {resend.isPending ? 'Отправляем…' : 'Отправить письмо ещё раз'}
+            </Button>
+          </div>
         ) : null}
 
         <Button className="w-full" type="submit" disabled={login.isPending}>

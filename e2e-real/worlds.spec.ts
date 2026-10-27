@@ -1,20 +1,19 @@
 import { expect, test } from '@playwright/test';
+import { registerAndVerify } from './helpers';
 
 const PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
   'base64',
 );
 
-test('creates a world and fills it through the real API', async ({ page }) => {
+test('creates a world and fills it through the real API', async ({ page, request }) => {
   test.setTimeout(180_000);
   const stamp = Date.now();
 
-  await page.goto('/register');
-  await page.getByLabel('Как вас зовут').fill('Мировой Автор');
-  await page.getByLabel('Email').fill(`worlds+${stamp}@example.com`);
-  await page.getByLabel('Пароль').fill('password123');
-  await page.getByRole('button', { name: 'Создать аккаунт' }).click();
-  await expect(page).toHaveURL(/\/projects$/);
+  await registerAndVerify(page, request, {
+    email: `worlds+${stamp}@example.com`,
+    displayName: 'Мировой Автор',
+  });
 
   await page.getByRole('button', { name: 'Новый проект' }).click();
   let dialog = page.getByRole('dialog');

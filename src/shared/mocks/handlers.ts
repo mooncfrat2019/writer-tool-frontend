@@ -38,6 +38,10 @@ type Diagram = components['schemas']['Diagram'];
 const api = '/api/v1';
 const EXPORT_DURATION_MS = 2_600;
 
+// The mock API has no mailbox. Remember the registration so the demo
+// confirmation button can start a session for the same identity.
+let pendingRegistration: { email: string; displayName: string } | null = null;
+
 function problem(status: number, code: string, title: string, detail?: string) {
   return HttpResponse.json(
     {
@@ -219,19 +223,45 @@ export const handlers = [
     if (body.password.length < 8) {
       return problem(422, 'validation_failed', 'Validation failed', 'Password is too short');
     }
-    startMockSession();
+    pendingRegistration = { email: body.email, displayName: body.displayName };
     await delay(160);
     return HttpResponse.json(
-      {
-        user: {
-          ...mockUser,
-          email: body.email,
-          displayName: body.displayName,
-        },
-        accessToken: `mock.${Date.now()}`,
-        accessTokenExpiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+      { status: 'verification_sent', email: body.email },
+      { status: 202 },
+    );
+  }),
+
+  http.post(`${api}/auth/verify-email`, async ({ request }) => {
+    const body = (await request.json()) as { token?: string };
+    if (!body.token) {
+      return problem(
+        400,
+        'invalid_verification_token',
+        'Invalid verification link',
+        'The link is invalid or expired.',
+      );
+    }
+    startMockSession();
+    await delay(160);
+    return HttpResponse.json({
+      ...authResponse(),
+      user: {
+        ...mockUser,
+        email: pendingRegistration?.email ?? mockUser.email,
+        displayName: pendingRegistration?.displayName ?? mockUser.displayName,
       },
-      { status: 201 },
+    });
+  }),
+
+  http.post(`${api}/auth/resend-verification`, async ({ request }) => {
+    const body = (await request.json()) as { email?: string };
+    if (!body.email) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Email is required');
+    }
+    await delay(120);
+    return HttpResponse.json(
+      { status: 'verification_sent', email: body.email },
+      { status: 202 },
     );
   }),
 
@@ -239,6 +269,14 @@ export const handlers = [
     const body = (await request.json()) as { email?: string; password?: string };
     if (!body.email || !body.password || body.password.length < 8) {
       return problem(401, 'invalid_credentials', 'Invalid email or password');
+    }
+    if (body.email === 'unverified@example.com') {
+      return problem(
+        403,
+        'email_not_verified',
+        'Email not confirmed',
+        'Confirm your email address before signing in.',
+      );
     }
     startMockSession();
     await delay(180);

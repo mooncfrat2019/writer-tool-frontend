@@ -42,19 +42,15 @@ paths:
             schema:
               $ref: '#/components/schemas/RegisterRequest'
       responses:
-        '201':
-          description: Registered and signed in
-          headers:
-            Set-Cookie:
-              schema:
-                type: string
-              description: HttpOnly refresh token cookie
+        '202':
+          description: >-
+            Registration accepted. A confirmation email is sent when the
+            address can be registered; the response is identical for existing
+            addresses to avoid account enumeration.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResponse'
-        '409':
-          $ref: '#/components/responses/Conflict'
+                $ref: '#/components/schemas/VerificationAccepted'
         '422':
           $ref: '#/components/responses/ValidationFailed'
         '429':
@@ -84,6 +80,69 @@ paths:
                 $ref: '#/components/schemas/AuthResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The email address has not been confirmed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/verify-email:
+    post:
+      tags: [Auth]
+      operationId: verifyEmail
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyEmailRequest'
+      responses:
+        '200':
+          description: Email confirmed and signed in
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: HttpOnly refresh token cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: The token is invalid, expired or already used
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/resend-verification:
+    post:
+      tags: [Auth]
+      operationId: resendVerification
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResendVerificationRequest'
+      responses:
+        '202':
+          description: >-
+            Accepted. A confirmation email is sent if the account exists and
+            still needs confirmation; the response does not reveal which.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationAccepted'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
@@ -2600,6 +2659,31 @@ components:
           format: email
         password:
           type: string
+    VerifyEmailRequest:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          minLength: 1
+          maxLength: 200
+    ResendVerificationRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+    VerificationAccepted:
+      type: object
+      required: [status, email]
+      properties:
+        status:
+          type: string
+          enum: [verification_sent]
+        email:
+          type: string
+          format: email
     AuthResponse:
       type: object
       required: [user, accessToken, accessTokenExpiresAt]
