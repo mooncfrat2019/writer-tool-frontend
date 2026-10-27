@@ -143,3 +143,90 @@ test('shares a chapter by link and collaborates across users', async ({
 
   await recipientContext.close();
 });
+
+test('gives a viewer live read-only access to a shared chapter', async ({
+  browser,
+  page,
+}) => {
+  test.setTimeout(180_000);
+  const stamp = Date.now();
+  const ownerEmail = `viewer-owner+${stamp}@example.com`;
+  const viewerEmail = `viewer-guest+${stamp}@example.com`;
+
+  await page.goto('/register');
+  await page.getByLabel('Как вас зовут').fill('Владелец Просмотра');
+  await page.getByLabel('Email').fill(ownerEmail);
+  await page.getByLabel('Пароль').fill('password123');
+  await page.getByRole('button', { name: 'Создать аккаунт' }).click();
+  await expect(page).toHaveURL(/\/projects$/);
+
+  await page.getByRole('button', { name: 'Новый проект' }).click();
+  const projectDialog = page.getByRole('dialog');
+  await projectDialog.getByLabel('Название').fill('Проект просмотра');
+  await projectDialog.getByRole('button', { name: 'Создать проект' }).click();
+  await expect(page).toHaveURL(/\/projects\/[^/]+\/structure$/);
+  await expect(page.getByText('Начнём с книги')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Создать книгу' }).click();
+  const bookDialog = page.getByRole('dialog');
+  await bookDialog.getByLabel('Название').fill('Книга просмотра');
+  await bookDialog.getByRole('button', { name: 'Создать книгу' }).click();
+  await expect(bookDialog).toBeHidden();
+  await page.getByRole('button', { name: 'Добавить' }).click();
+  await page.getByRole('menuitem', { name: /Глава/ }).click();
+  const chapterDialog = page.getByRole('dialog');
+  await chapterDialog.getByLabel('Название').fill('Глава просмотра');
+  await chapterDialog.getByRole('button', { name: 'Создать', exact: true }).click();
+  await expect(chapterDialog).toBeHidden();
+
+  const chapterRow = page
+    .getByRole('list', { name: 'Структура книги' })
+    .locator('[data-testid="structure-node-chapter"]')
+    .filter({ hasText: 'Глава просмотра' });
+  await chapterRow.click();
+  await page.getByRole('button', { name: 'Поделиться главой' }).click();
+  const shareDialog = page.getByRole('dialog');
+  await shareDialog.getByLabel('Доступ по ссылке').click();
+  await page.getByRole('option', { name: 'Только просмотр' }).click();
+  await shareDialog.getByRole('button', { name: 'Создать ссылку' }).click();
+  const linkInput = shareDialog.getByLabel('Ссылка для доступа');
+  await expect(linkInput).toBeVisible();
+  const shareUrl = await linkInput.inputValue();
+  await page.keyboard.press('Escape');
+  await expect(shareDialog).toBeHidden();
+
+  const viewerContext = await browser.newContext();
+  const viewer = await viewerContext.newPage();
+  await viewer.goto(shareUrl);
+  await expect(viewer.getByText('Глава просмотра')).toBeVisible();
+  await viewer.getByRole('link', { name: 'Создать аккаунт' }).click();
+  await viewer.getByLabel('Как вас зовут').fill('Читатель');
+  await viewer.getByLabel('Email').fill(viewerEmail);
+  await viewer.getByLabel('Пароль').fill('password123');
+  await viewer.getByRole('button', { name: 'Создать аккаунт' }).click();
+  await expect(viewer).toHaveURL(/\/share\//);
+  await viewer.getByRole('button', { name: 'Принять приглашение' }).click();
+  await expect(viewer).toHaveURL(/\/shared\/documents\//);
+
+  const viewerEditor = viewer.locator('.ProseMirror');
+  await expect(viewerEditor).toBeVisible();
+  await expect(viewer.getByTestId('collab-status')).toHaveAttribute(
+    'data-status',
+    'connected',
+  );
+  await expect(viewerEditor).toHaveAttribute('contenteditable', 'false');
+
+  await page.getByRole('button', { name: 'Открыть в редакторе' }).click();
+  const ownerEditor = page.locator('.ProseMirror');
+  await expect(ownerEditor).toBeVisible();
+  await ownerEditor.click();
+  await page.keyboard.type('Текст для зрителя.');
+  await expect(viewerEditor).toContainText('Текст для зрителя.');
+
+  await viewerEditor.click({ force: true });
+  await viewer.keyboard.type('Нельзя редактировать');
+  await viewer.waitForTimeout(500);
+  await expect(viewerEditor).not.toContainText('Нельзя редактировать');
+
+  await viewerContext.close();
+});

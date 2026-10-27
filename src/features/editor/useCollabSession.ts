@@ -6,6 +6,7 @@ import { getApiErrorMessage } from '@/shared/api/errors';
 import { api } from '@/shared/api/client';
 import { unwrap } from '@/shared/api/request';
 import { getSessionState } from '@/features/auth/session';
+import { collabSocketUrl, collabTokenRefreshDelay } from './collabToken';
 
 export type CollabUser = {
   clientId: number;
@@ -110,9 +111,76 @@ export function useCollabSession(documentId: string, enabled: boolean): CollabSt
     let cancelled = false;
     let provider: HocuspocusProvider | null = null;
     let persistence: IndexeddbPersistence | null = null;
+    let refreshTimer: number | null = null;
+    let authRetryUsed = false;
+    let tokenState: {
+      token: string;
+      websocketPath: string;
+      expiresAt: string;
+    } | null = null;
     const ydoc = new Y.Doc();
     syncedRef.current = false;
     accessRevokedRef.current = false;
+
+    function clearRefreshTimer() {
+      if (refreshTimer !== null) {
+        window.clearTimeout(refreshTimer);
+        refreshTimer = null;
+      }
+    }
+
+    function applyToken(next: {
+      token: string;
+      websocketPath: string;
+      expiresAt: string;
+    }) {
+      tokenState = next;
+      provider?.configuration.websocketProvider.setConfiguration({
+        url: collabSocketUrl(next.websocketPath, next.token),
+      });
+    }
+
+    function scheduleRefresh(delay?: number) {
+      clearRefreshTimer();
+      if (cancelled) {
+        return;
+      }
+      const nextDelay =
+        delay ??
+        (tokenState ? collabTokenRefreshDelay(tokenState.expiresAt) : 60_000);
+      refreshTimer = window.setTimeout(() => {
+        void refreshToken();
+      }, nextDelay);
+    }
+
+    async function refreshToken(): Promise<boolean> {
+      try {
+        const next = unwrap(
+          await api.POST('/documents/{documentId}/collab-token', {
+            params: { path: { documentId } },
+          }),
+        );
+        if (cancelled || !next.collabAvailable) {
+          return false;
+        }
+        applyToken(next);
+        scheduleRefresh();
+        return true;
+      } catch {
+        // Keep the existing token; retry before it expires.
+        scheduleRefresh(30_000);
+        return false;
+      }
+    }
+
+    function showAuthError() {
+      checkAccessRef.current();
+      setState((current) => ({
+        ...current,
+        error:
+          'Соединение отклонено. Возможно, доступ отозван или документ был восстановлен из версии.',
+      }));
+    }
 
     const updateSession = (patch: Partial<CollabSession>) => {
       setState((current) => {
@@ -187,17 +255,17 @@ export function useCollabSession(documentId: string, enabled: boolean): CollabSt
         };
 
         persistence = new IndexeddbPersistence(`writer-tool-doc-${documentId}`, ydoc);
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const url = `${protocol}//${window.location.host}${token.websocketPath}?token=${encodeURIComponent(token.token)}`;
         provider = new HocuspocusProvider({
-          url,
+          url: collabSocketUrl(token.websocketPath, token.token),
           name: documentId,
           document: ydoc,
         });
         providerRef.current = provider;
 
         provider.on('status', ({ status }: { status: WebSocketStatus }) => {
-          if (status !== 'connected') {
+          if (status === WebSocketStatus.Connected) {
+            authRetryUsed = false;
+          } else {
             syncedRef.current = false;
             checkAccessRef.current();
           }
@@ -210,12 +278,23 @@ export function useCollabSession(documentId: string, enabled: boolean): CollabSt
         });
         provider.on('awarenessChange', readUsers);
         provider.on('authenticationFailed', () => {
-          checkAccessRef.current();
-          setState((current) => ({
-            ...current,
-            error:
-              'Соединение отклонено. Возможно, доступ отозван или документ был восстановлен из версии.',
-          }));
+          if (!authRetryUsed) {
+            // The token in the URL may have expired while the tab was asleep.
+            // Refresh it once and force a clean reconnect.
+            authRetryUsed = true;
+            void (async () => {
+              const refreshed = await refreshToken();
+              if (!refreshed) {
+                showAuthError();
+                return;
+              }
+              const socket = provider?.configuration.websocketProvider;
+              socket?.disconnect();
+              void socket?.connect();
+            })();
+            return;
+          }
+          showAuthError();
         });
         provider.setAwarenessField('user', user);
 
@@ -235,6 +314,8 @@ export function useCollabSession(documentId: string, enabled: boolean): CollabSt
           accessRevoked: false,
         });
         readUsers();
+        applyToken(token);
+        scheduleRefresh();
       } catch (error) {
         if (!cancelled) {
           setState({
@@ -255,6 +336,7 @@ export function useCollabSession(documentId: string, enabled: boolean): CollabSt
 
     return () => {
       cancelled = true;
+      clearRefreshTimer();
       syncedRef.current = false;
       providerRef.current = null;
       provider?.destroy();
