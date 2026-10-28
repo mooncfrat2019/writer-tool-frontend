@@ -69,13 +69,13 @@ curl -I http://192.168.0.77:8088/
 - Service: `LoadBalancer`, `externalIPs: [192.168.0.77]`, port `8088`.
 - Public URL: **https://tool.melzix.net**.
 
-## Unreleased changes
+## Release v1.1.0 (pending deploy)
 
-`main` (`6df4867` plus the auth-recovery work) adds `/settings` with password
-change, email change and email 2FA, plus `/forgot-password`,
-`/reset-password`, `/confirm-email-change` and the 2FA code step on `/login`.
-The live image is still `v1.0.0`; these pages need the matching backend release
-before they can work against the live API.
+`v1.1.0` (`8d0ae55`) adds `/settings` with password change, email change and
+email 2FA, plus `/forgot-password`, `/reset-password`,
+`/confirm-email-change` and the 2FA code step on `/login`. The live image is
+still `v1.0.0`; these pages need the backend `v1.3.0` release before they can
+work against the live API.
 
 Current checks: `pnpm test` 69/69, `pnpm e2e` 43/43, `pnpm lint` 0 errors
 (9 non-blocking warnings), `pnpm build` passes.
