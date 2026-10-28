@@ -8,6 +8,9 @@ info:
     Real-time collaboration, sharing, version history, timelines with
     calendars, and React Flow diagrams are included.
 
+    Auth includes password change/reset, email change and email-based
+    two-factor authentication.
+
     Auth and API endpoints may return `429` with the `rate_limited` problem
     code and a `Retry-After` header when the deployment rate limit is
     exceeded.
@@ -97,6 +100,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
+        '202':
+          description: Password accepted; an email code is required as a second factor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TwoFactorChallenge'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -211,6 +220,278 @@ paths:
             revoked; the current session remains valid.
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/forgot-password:
+    post:
+      tags: [Auth]
+      operationId: forgotPassword
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordRequest'
+      responses:
+        '202':
+          description: >-
+            Accepted. A reset link is sent if the account exists; the response
+            is identical for unknown addresses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasswordResetAccepted'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/reset-password:
+    post:
+      tags: [Auth]
+      operationId: resetPassword
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '204':
+          description: Password reset. All refresh sessions were revoked.
+        '400':
+          description: The reset token is invalid, expired or already used
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/change-email:
+    post:
+      tags: [Auth]
+      operationId: changeEmail
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeEmailRequest'
+      responses:
+        '202':
+          description: Verification link sent to the new address
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailChangeAccepted'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/confirm-email-change:
+    post:
+      tags: [Auth]
+      operationId: confirmEmailChange
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmEmailChangeRequest'
+      responses:
+        '204':
+          description: Email changed and all refresh sessions revoked
+        '400':
+          description: The email-change token is invalid, expired or already used
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/2fa/enable:
+    post:
+      tags: [Auth]
+      operationId: enableTwoFactor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TwoFactorPasswordRequest'
+      responses:
+        '202':
+          description: A confirmation code was sent to the account email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TwoFactorChallenge'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Two-factor authentication is already enabled
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/2fa/challenge:
+    post:
+      tags: [Auth]
+      operationId: createTwoFactorChallenge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TwoFactorChallengeRequest'
+      responses:
+        '202':
+          description: A code was sent for a sensitive account action
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TwoFactorChallenge'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Two-factor authentication is not enabled
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/2fa/enable/confirm:
+    post:
+      tags: [Auth]
+      operationId: confirmTwoFactorEnable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TwoFactorConfirmRequest'
+      responses:
+        '200':
+          description: Two-factor authentication enabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/2fa/disable:
+    post:
+      tags: [Auth]
+      operationId: disableTwoFactor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TwoFactorPasswordRequest'
+      responses:
+        '202':
+          description: A confirmation code was sent to the account email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TwoFactorChallenge'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Two-factor authentication is not enabled
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/2fa/disable/confirm:
+    post:
+      tags: [Auth]
+      operationId: confirmTwoFactorDisable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TwoFactorConfirmRequest'
+      responses:
+        '200':
+          description: Two-factor authentication disabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/2fa/verify:
+    post:
+      tags: [Auth]
+      operationId: verifyTwoFactor
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TwoFactorVerifyRequest'
+      responses:
+        '200':
+          description: Code accepted and session issued
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: The challenge is invalid, expired or the code is wrong
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
         '422':
           $ref: '#/components/responses/ValidationFailed'
         '429':
@@ -2724,6 +3005,119 @@ components:
           type: string
           minLength: 8
           maxLength: 128
+    ForgotPasswordRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+    PasswordResetAccepted:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [reset_sent]
+    ResetPasswordRequest:
+      type: object
+      required: [token, newPassword]
+      properties:
+        token:
+          type: string
+          minLength: 1
+          maxLength: 200
+        newPassword:
+          type: string
+          minLength: 8
+          maxLength: 128
+    ChangeEmailRequest:
+      type: object
+      required: [newEmail, currentPassword]
+      properties:
+        newEmail:
+          type: string
+          format: email
+        currentPassword:
+          type: string
+          minLength: 1
+          maxLength: 128
+        challengeToken:
+          type: string
+          maxLength: 200
+          description: Required when two-factor authentication is enabled.
+        code:
+          type: string
+          pattern: '^[0-9]{6}$'
+          description: Email code required together with challengeToken when 2FA is enabled.
+    EmailChangeAccepted:
+      type: object
+      required: [status, email]
+      properties:
+        status:
+          type: string
+          enum: [verification_sent]
+        email:
+          type: string
+          format: email
+    ConfirmEmailChangeRequest:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          minLength: 1
+          maxLength: 200
+    TwoFactorPasswordRequest:
+      type: object
+      required: [currentPassword]
+      properties:
+        currentPassword:
+          type: string
+          minLength: 1
+          maxLength: 128
+    TwoFactorChallengeRequest:
+      type: object
+      required: [currentPassword, purpose]
+      properties:
+        currentPassword:
+          type: string
+          minLength: 1
+          maxLength: 128
+        purpose:
+          type: string
+          enum: [change_email]
+    TwoFactorConfirmRequest:
+      type: object
+      required: [challengeToken, code]
+      properties:
+        challengeToken:
+          type: string
+          minLength: 1
+          maxLength: 200
+        code:
+          type: string
+          pattern: '^[0-9]{6}$'
+    TwoFactorVerifyRequest:
+      type: object
+      required: [challengeToken, code]
+      properties:
+        challengeToken:
+          type: string
+          minLength: 1
+          maxLength: 200
+        code:
+          type: string
+          pattern: '^[0-9]{6}$'
+    TwoFactorChallenge:
+      type: object
+      required: [challengeToken, expiresAt]
+      properties:
+        challengeToken:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
     VerifyEmailRequest:
       type: object
       required: [token]
@@ -2773,7 +3167,7 @@ components:
 
     User:
       type: object
-      required: [id, email, displayName, emailVerified, createdAt]
+      required: [id, email, displayName, emailVerified, twoFactorEnabled, createdAt]
       properties:
         id:
           type: string
@@ -2787,6 +3181,8 @@ components:
           type: [string, 'null']
           format: uri
         emailVerified:
+          type: boolean
+        twoFactorEnabled:
           type: boolean
         createdAt:
           type: string

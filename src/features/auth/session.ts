@@ -61,6 +61,12 @@ export function clearSessionState(): void {
   }
 }
 
+export function updateSessionUser(user: User): void {
+  if (sessionState.status === 'authenticated') {
+    setState({ status: 'authenticated', user });
+  }
+}
+
 export async function bootstrapSession(): Promise<SessionState> {
   if (bootstrapped) {
     return sessionState;

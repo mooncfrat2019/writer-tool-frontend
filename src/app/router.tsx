@@ -9,6 +9,9 @@ import {
 import { LoginPage } from '@/features/auth/LoginPage';
 import { RegisterPage } from '@/features/auth/RegisterPage';
 import { VerifyEmailPage } from '@/features/auth/VerifyEmailPage';
+import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage';
+import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
+import { ConfirmEmailChangePage } from '@/features/auth/ConfirmEmailChangePage';
 import { bootstrapSession, useSession } from '@/features/auth/session';
 import { CharactersPage } from '@/features/characters/CharactersPage';
 import { ExportsPage } from '@/features/exports/ExportsPage';
@@ -87,6 +90,36 @@ const verifyEmailRoute = createRoute({
     };
   },
   component: VerifyEmailPage,
+});
+
+const forgotPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/forgot-password',
+  beforeLoad: async () => {
+    const session = await bootstrapSession();
+    if (session.status === 'authenticated') {
+      throw redirect({ to: '/settings' });
+    }
+  },
+  component: ForgotPasswordPage,
+});
+
+const resetPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/reset-password',
+  validateSearch: (search: Record<string, unknown>): { token?: string } => ({
+    ...(typeof search.token === 'string' ? { token: search.token } : {}),
+  }),
+  component: ResetPasswordPage,
+});
+
+const confirmEmailChangeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/confirm-email-change',
+  validateSearch: (search: Record<string, unknown>): { token?: string } => ({
+    ...(typeof search.token === 'string' ? { token: search.token } : {}),
+  }),
+  component: ConfirmEmailChangePage,
 });
 
 async function requireAuth() {
@@ -235,6 +268,9 @@ const routeTree = rootRoute.addChildren([
   loginRoute,
   registerRoute,
   verifyEmailRoute,
+  forgotPasswordRoute,
+  resetPasswordRoute,
+  confirmEmailChangeRoute,
   shareRoute,
   sharedDocumentRoute,
   projectsRoute,

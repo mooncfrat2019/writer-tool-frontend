@@ -109,7 +109,7 @@ test('changes the password from the settings page', async ({ page }) => {
   await expect(page).toHaveURL(/\/settings$/);
   await expect(page.getByRole('heading', { name: 'Настройки' })).toBeVisible();
 
-  await page.getByLabel('Текущий пароль').fill('password123');
+  await page.locator('#currentPassword').fill('password123');
   await page.getByLabel('Новый пароль', { exact: true }).fill('new-password-456');
   await page.getByLabel('Повторите новый пароль').fill('new-password-456');
   await page.getByRole('button', { name: 'Изменить пароль' }).click();
@@ -117,5 +117,60 @@ test('changes the password from the settings page', async ({ page }) => {
   await expect(
     page.getByText('Пароль изменён. Остальные сессии завершены.'),
   ).toBeVisible();
-  await expect(page.getByLabel('Текущий пароль')).toHaveValue('');
+  await expect(page.locator('#currentPassword')).toHaveValue('');
+});
+
+test('requests a password reset and completes it from the email link', async ({
+  page,
+}) => {
+  await page.goto('/forgot-password');
+  await page.getByLabel('Email').fill('author@example.com');
+  await page.getByRole('button', { name: 'Отправить ссылку' }).click();
+  await expect(page.getByRole('heading', { name: 'Проверьте почту' })).toBeVisible();
+
+  await page.goto('/reset-password?token=mock-reset');
+  await page.getByLabel('Новый пароль').fill('new-password-456');
+  await page.getByLabel('Повторите пароль').fill('new-password-456');
+  await page.getByRole('button', { name: 'Сохранить пароль' }).click();
+  await expect(page.getByRole('heading', { name: 'Пароль обновлён' })).toBeVisible();
+});
+
+test('asks for an email code when two-factor login is enabled', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByLabel('Email').fill('2fa@example.com');
+  await page.getByLabel('Пароль').fill('password123');
+  await page.getByRole('button', { name: 'Войти' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Введите код' })).toBeVisible();
+  await page.getByLabel('Код из письма').fill('123456');
+  await page.getByRole('button', { name: 'Подтвердить код' }).click();
+  await expect(page).toHaveURL(/\/projects$/);
+});
+
+test('enables two-factor authentication from settings', async ({ page }) => {
+  await login(page);
+  await page.goto('/settings');
+
+  await page.locator('#twoFactorPassword').fill('password123');
+  await page.getByRole('button', { name: 'Включить 2FA' }).click();
+  await expect(page.locator('#twoFactorCode')).toBeVisible();
+  await page.locator('#twoFactorCode').fill('123456');
+  await page.getByRole('button', { name: 'Подтвердить' }).click();
+
+  await expect(page.getByText('Сейчас включена.')).toBeVisible();
+});
+
+test('starts an email change from settings and confirms it', async ({ page }) => {
+  await login(page);
+  await page.goto('/settings');
+
+  await page.locator('#newEmail').fill('new-author@example.com');
+  await page.locator('#emailCurrentPassword').fill('password123');
+  await page.getByRole('button', { name: 'Сменить email' }).click();
+  await expect(
+    page.getByText(/Письмо для подтверждения отправлено на/),
+  ).toBeVisible();
+
+  await page.goto('/confirm-email-change?token=mock-email-change');
+  await expect(page.getByRole('heading', { name: 'Email обновлён' })).toBeVisible();
 });

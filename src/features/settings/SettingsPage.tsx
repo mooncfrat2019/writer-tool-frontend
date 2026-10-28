@@ -18,6 +18,8 @@ import {
 } from '@/shared/ui/card';
 import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
+import { ChangeEmailCard } from './ChangeEmailCard';
+import { TwoFactorCard } from './TwoFactorCard';
 import {
   changePasswordSchema,
   type ChangePasswordValues,
@@ -229,6 +231,9 @@ export function SettingsPage() {
             </form>
           </CardContent>
         </Card>
+
+        <ChangeEmailCard />
+        <TwoFactorCard />
       </main>
     </div>
   );

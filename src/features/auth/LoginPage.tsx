@@ -11,7 +11,12 @@ import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
 import { AuthLayout } from './AuthLayout';
-import { loginSchema, type LoginValues } from './schemas';
+import {
+  loginSchema,
+  twoFactorCodeSchema,
+  type LoginValues,
+  type TwoFactorCodeValues,
+} from './schemas';
 import { getAuthRedirect, redirectQuery } from './redirect';
 import { setSessionFromAuth } from './session';
 
@@ -24,6 +29,10 @@ export function LoginPage() {
   const redirect = getAuthRedirect();
   const [formError, setFormError] = useState<string | null>(null);
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
+  const [twoFactor, setTwoFactor] = useState<{
+    challengeToken: string;
+    expiresAt: string;
+  } | null>(null);
   const {
     register,
     handleSubmit,
@@ -34,6 +43,21 @@ export function LoginPage() {
       ? { email: 'author@example.com', password: 'password123' }
       : { email: '', password: '' },
   });
+  const twoFactorForm = useForm<TwoFactorCodeValues>({
+    resolver: zodResolver(twoFactorCodeSchema),
+    defaultValues: { code: '' },
+  });
+
+  const finishLogin = (data: Parameters<typeof setSessionFromAuth>[0]) => {
+    setSessionFromAuth(data);
+    queryClient.clear();
+    toast.success('С возвращением. Продолжим книгу.');
+    if (redirect) {
+      window.location.assign(redirect);
+      return;
+    }
+    void navigate({ to: '/projects' });
+  };
 
   const login = useMutation({
     mutationFn: async (values: LoginValues) =>
@@ -47,14 +71,11 @@ export function LoginPage() {
       setUnverifiedEmail(null);
     },
     onSuccess: (data) => {
-      setSessionFromAuth(data);
-      queryClient.clear();
-      toast.success('С возвращением. Продолжим книгу.');
-      if (redirect) {
-        window.location.assign(redirect);
+      if ('challengeToken' in data) {
+        setTwoFactor(data);
         return;
       }
-      void navigate({ to: '/projects' });
+      finishLogin(data);
     },
     onError: (error) => {
       if (getApiProblemCode(error) === 'email_not_verified') {
@@ -62,6 +83,38 @@ export function LoginPage() {
         return;
       }
       setFormError(getApiErrorMessage(error, 'Не удалось войти. Проверьте почту и пароль.'));
+    },
+  });
+
+  const verifyTwoFactor = useMutation({
+    mutationFn: async (values: TwoFactorCodeValues) => {
+      if (!twoFactor) {
+        throw new Error('Two-factor challenge is missing');
+      }
+      return unwrap(
+        await api.POST('/auth/2fa/verify', {
+          body: {
+            challengeToken: twoFactor.challengeToken,
+            code: values.code,
+          },
+        }),
+      );
+    },
+    onMutate: () => setFormError(null),
+    onSuccess: (data) => finishLogin(data),
+    onError: (error) => {
+      const code = getApiProblemCode(error);
+      if (code === 'invalid_two_factor_code') {
+        setFormError('Неверный код. Проверьте письмо и попробуйте снова.');
+        return;
+      }
+      if (code === 'too_many_attempts' || code === 'invalid_two_factor_challenge') {
+        setTwoFactor(null);
+        twoFactorForm.reset();
+        setFormError('Код больше не действует. Войдите заново, чтобы получить новый.');
+        return;
+      }
+      setFormError(getApiErrorMessage(error, 'Не удалось проверить код.'));
     },
   });
 
@@ -79,6 +132,76 @@ export function LoginPage() {
       toast.error(getApiErrorMessage(error, 'Не удалось отправить письмо. Попробуйте позже.'));
     },
   });
+
+  if (twoFactor) {
+    return (
+      <AuthLayout
+        eyebrow="Два шага"
+        title="Введите код"
+        description="Мы отправили шестизначный код на почту аккаунта."
+        footer={
+          <p>
+            <button
+              className="font-medium text-accent-700 underline-offset-4 hover:underline"
+              type="button"
+              onClick={() => {
+                setTwoFactor(null);
+                setFormError(null);
+                twoFactorForm.reset();
+              }}
+            >
+              Войти заново
+            </button>
+          </p>
+        }
+      >
+        <form
+          className="space-y-5"
+          noValidate
+          onSubmit={twoFactorForm.handleSubmit((values) =>
+            verifyTwoFactor.mutate(values),
+          )}
+        >
+          <div className="space-y-2">
+            <Label htmlFor="code">Код из письма</Label>
+            <Input
+              id="code"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              aria-invalid={Boolean(twoFactorForm.formState.errors.code)}
+              aria-describedby={
+                twoFactorForm.formState.errors.code ? 'code-error' : undefined
+              }
+              {...twoFactorForm.register('code')}
+            />
+            {twoFactorForm.formState.errors.code ? (
+              <p id="code-error" className="text-xs text-red-700">
+                {twoFactorForm.formState.errors.code.message}
+              </p>
+            ) : null}
+          </div>
+
+          {formError ? (
+            <p
+              role="alert"
+              className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+            >
+              {formError}
+            </p>
+          ) : null}
+
+          <Button
+            className="w-full"
+            type="submit"
+            disabled={verifyTwoFactor.isPending}
+          >
+            {verifyTwoFactor.isPending ? 'Проверяем…' : 'Подтвердить код'}
+          </Button>
+        </form>
+      </AuthLayout>
+    );
+  }
 
   return (
     <AuthLayout
@@ -120,7 +243,15 @@ export function LoginPage() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="password">Пароль</Label>
+          <div className="flex items-center justify-between gap-3">
+            <Label htmlFor="password">Пароль</Label>
+            <a
+              className="text-xs font-medium text-accent-700 underline-offset-4 hover:underline"
+              href="/forgot-password"
+            >
+              Забыли пароль?
+            </a>
+          </div>
           <Input
             id="password"
             type="password"

@@ -88,6 +88,7 @@ export const mockUser: User = {
   displayName: 'Анна Автор',
   avatarUrl: null,
   emailVerified: true,
+  twoFactorEnabled: false,
   createdAt: new Date('2025-02-14T10:00:00.000Z').toISOString(),
 };
 

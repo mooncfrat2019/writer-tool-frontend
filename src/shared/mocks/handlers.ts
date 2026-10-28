@@ -295,6 +295,15 @@ export const handlers = [
         'Confirm your email address before signing in.',
       );
     }
+    if (body.email === '2fa@example.com') {
+      return HttpResponse.json(
+        {
+          challengeToken: 'mock-login-challenge',
+          expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+        },
+        { status: 202 },
+      );
+    }
     startMockSession();
     await delay(180);
     return HttpResponse.json({
@@ -350,6 +359,169 @@ export const handlers = [
     }
     await delay(120);
     return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post(`${api}/auth/forgot-password`, async ({ request }) => {
+    const body = (await request.json()) as { email?: string };
+    if (!body.email) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Email is required');
+    }
+    await delay(120);
+    return HttpResponse.json({ status: 'reset_sent' }, { status: 202 });
+  }),
+
+  http.post(`${api}/auth/reset-password`, async ({ request }) => {
+    const body = (await request.json()) as {
+      token?: string;
+      newPassword?: string;
+    };
+    if (body.token !== 'mock-reset' || !body.newPassword || body.newPassword.length < 8) {
+      return problem(
+        400,
+        'invalid_reset_token',
+        'Invalid reset link',
+        'The link is invalid, expired or already used.',
+      );
+    }
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post(`${api}/auth/change-email`, async ({ request }) => {
+    if (!hasMockSession()) {
+      return problem(401, 'unauthorized', 'Authentication required');
+    }
+    const body = (await request.json()) as {
+      newEmail?: string;
+      currentPassword?: string;
+      challengeToken?: string;
+      code?: string;
+    };
+    if (!body.currentPassword || body.currentPassword.length < 8) {
+      return problem(
+        422,
+        'invalid_current_password',
+        'Invalid current password',
+        'The current password is incorrect.',
+      );
+    }
+    if (!body.newEmail) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Email is required');
+    }
+    if (body.newEmail === mockUser.email) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Enter a different email address');
+    }
+    if (body.challengeToken && body.code !== '123456') {
+      return problem(401, 'invalid_two_factor_code', 'Invalid code', 'The code is incorrect.');
+    }
+    return HttpResponse.json(
+      { status: 'verification_sent', email: body.newEmail },
+      { status: 202 },
+    );
+  }),
+
+  http.post(`${api}/auth/confirm-email-change`, async ({ request }) => {
+    const body = (await request.json()) as { token?: string };
+    if (body.token !== 'mock-email-change') {
+      return problem(
+        400,
+        'invalid_email_change_token',
+        'Invalid email-change link',
+        'The link is invalid or expired.',
+      );
+    }
+    endMockSession();
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post(`${api}/auth/2fa/enable`, async ({ request }) => {
+    if (!hasMockSession()) {
+      return problem(401, 'unauthorized', 'Authentication required');
+    }
+    const body = (await request.json()) as { currentPassword?: string };
+    if (!body.currentPassword || body.currentPassword.length < 8) {
+      return problem(422, 'invalid_current_password', 'Invalid current password', 'Wrong password.');
+    }
+    return HttpResponse.json(
+      {
+        challengeToken: 'mock-enable-challenge',
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+      },
+      { status: 202 },
+    );
+  }),
+
+  http.post(`${api}/auth/2fa/enable/confirm`, async ({ request }) => {
+    if (!hasMockSession()) {
+      return problem(401, 'unauthorized', 'Authentication required');
+    }
+    const body = (await request.json()) as { challengeToken?: string; code?: string };
+    if (body.challengeToken !== 'mock-enable-challenge' || body.code !== '123456') {
+      return problem(401, 'invalid_two_factor_code', 'Invalid code', 'The code is incorrect.');
+    }
+    return HttpResponse.json({ ...mockUser, twoFactorEnabled: true });
+  }),
+
+  http.post(`${api}/auth/2fa/disable`, async ({ request }) => {
+    if (!hasMockSession()) {
+      return problem(401, 'unauthorized', 'Authentication required');
+    }
+    const body = (await request.json()) as { currentPassword?: string };
+    if (!body.currentPassword || body.currentPassword.length < 8) {
+      return problem(422, 'invalid_current_password', 'Invalid current password', 'Wrong password.');
+    }
+    return HttpResponse.json(
+      {
+        challengeToken: 'mock-disable-challenge',
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+      },
+      { status: 202 },
+    );
+  }),
+
+  http.post(`${api}/auth/2fa/disable/confirm`, async ({ request }) => {
+    if (!hasMockSession()) {
+      return problem(401, 'unauthorized', 'Authentication required');
+    }
+    const body = (await request.json()) as { challengeToken?: string; code?: string };
+    if (body.challengeToken !== 'mock-disable-challenge' || body.code !== '123456') {
+      return problem(401, 'invalid_two_factor_code', 'Invalid code', 'The code is incorrect.');
+    }
+    return HttpResponse.json({ ...mockUser, twoFactorEnabled: false });
+  }),
+
+  http.post(`${api}/auth/2fa/challenge`, async ({ request }) => {
+    if (!hasMockSession()) {
+      return problem(401, 'unauthorized', 'Authentication required');
+    }
+    const body = (await request.json()) as {
+      currentPassword?: string;
+      purpose?: string;
+    };
+    if (body.purpose !== 'change_email') {
+      return problem(422, 'validation_failed', 'Validation failed', 'Unknown purpose');
+    }
+    if (!body.currentPassword || body.currentPassword.length < 8) {
+      return problem(422, 'invalid_current_password', 'Invalid current password', 'Wrong password.');
+    }
+    return HttpResponse.json(
+      {
+        challengeToken: 'mock-email-challenge',
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+      },
+      { status: 202 },
+    );
+  }),
+
+  http.post(`${api}/auth/2fa/verify`, async ({ request }) => {
+    const body = (await request.json()) as {
+      challengeToken?: string;
+      code?: string;
+    };
+    if (body.challengeToken !== 'mock-login-challenge' || body.code !== '123456') {
+      return problem(401, 'invalid_two_factor_code', 'Invalid code', 'The code is incorrect.');
+    }
+    startMockSession();
+    return HttpResponse.json(authResponse());
   }),
 
   http.get(`${api}/auth/me`, () => {
