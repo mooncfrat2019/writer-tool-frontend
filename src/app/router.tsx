@@ -15,6 +15,7 @@ import { ExportsPage } from '@/features/exports/ExportsPage';
 import { DiagramsPage } from '@/features/diagrams/DiagramsPage';
 import { ProjectsPage } from '@/features/projects/ProjectsPage';
 import { SearchPage } from '@/features/search/SearchPage';
+import { SettingsPage } from '@/features/settings/SettingsPage';
 import { StructurePage } from '@/features/structure/StructurePage';
 import { TimelinePage } from '@/features/timeline/TimelinePage';
 import { WorldsPage } from '@/features/worlds/WorldsPage';
@@ -119,6 +120,13 @@ const projectsRoute = createRoute({
   path: '/projects',
   beforeLoad: requireAuth,
   component: ProjectsPage,
+});
+
+const settingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/settings',
+  beforeLoad: requireAuth,
+  component: SettingsPage,
 });
 
 const projectRoute = createRoute({
@@ -230,6 +238,7 @@ const routeTree = rootRoute.addChildren([
   shareRoute,
   sharedDocumentRoute,
   projectsRoute,
+  settingsRoute,
   projectRoute.addChildren([
     structureRoute,
     charactersRoute,

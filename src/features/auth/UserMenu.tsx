@@ -1,4 +1,5 @@
-import { ChevronDown, LogOut, UserRound } from 'lucide-react';
+import { useNavigate } from '@tanstack/react-router';
+import { ChevronDown, LogOut, Settings, UserRound } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import {
   DropdownMenu,
@@ -18,6 +19,7 @@ type UserMenuProps = {
 export function UserMenu({ align = 'end' }: UserMenuProps) {
   const { user } = useSession();
   const logout = useLogout();
+  const navigate = useNavigate();
   const initial = user?.displayName.slice(0, 1).toLocaleUpperCase('ru') ?? '?';
 
   return (
@@ -48,6 +50,10 @@ export function UserMenu({ align = 'end' }: UserMenuProps) {
           </span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => void navigate({ to: '/settings' })}>
+          <Settings size={15} />
+          Настройки
+        </DropdownMenuItem>
         <DropdownMenuItem
           className="text-red-800 focus:bg-red-50"
           disabled={logout.isPending}

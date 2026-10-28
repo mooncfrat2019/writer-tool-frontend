@@ -7,6 +7,10 @@ info:
     characters, worlds, custom fields, search, assets and exports.
     Real-time collaboration, sharing, version history, timelines with
     calendars, and React Flow diagrams are included.
+
+    Auth and API endpoints may return `429` with the `rate_limited` problem
+    code and a `Retry-After` header when the deployment rate limit is
+    exceeded.
 servers:
   - url: http://localhost:8080/api/v1
     description: Local development
@@ -189,6 +193,28 @@ paths:
           description: Signed out
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+  /auth/change-password:
+    post:
+      tags: [Auth]
+      operationId: changePassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '204':
+          description: >-
+            Password changed. Other refresh sessions for this account were
+            revoked; the current session remains valid.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /auth/me:
     get:
@@ -2686,6 +2712,18 @@ components:
           format: email
         password:
           type: string
+    ChangePasswordRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+          minLength: 1
+          maxLength: 128
+        newPassword:
+          type: string
+          minLength: 8
+          maxLength: 128
     VerifyEmailRequest:
       type: object
       required: [token]

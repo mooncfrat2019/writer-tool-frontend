@@ -316,6 +316,42 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 });
   }),
 
+  http.post(`${api}/auth/change-password`, async ({ request }) => {
+    if (!hasMockSession()) {
+      return problem(401, 'unauthorized', 'Authentication required');
+    }
+    const body = (await request.json()) as {
+      currentPassword?: string;
+      newPassword?: string;
+    };
+    if (!body.currentPassword || body.currentPassword.length < 8) {
+      return problem(
+        422,
+        'invalid_current_password',
+        'Invalid current password',
+        'The current password is incorrect.',
+      );
+    }
+    if (!body.newPassword || body.newPassword.length < 8) {
+      return problem(
+        422,
+        'validation_failed',
+        'Validation failed',
+        'Password must contain at least 8 characters',
+      );
+    }
+    if (body.currentPassword === body.newPassword) {
+      return problem(
+        422,
+        'password_unchanged',
+        'Password unchanged',
+        'The new password must be different from the current password.',
+      );
+    }
+    await delay(120);
+    return new HttpResponse(null, { status: 204 });
+  }),
+
   http.get(`${api}/auth/me`, () => {
     if (!hasMockSession()) {
       return problem(401, 'unauthorized', 'Authentication required');

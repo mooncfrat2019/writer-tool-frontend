@@ -69,6 +69,13 @@ curl -I http://192.168.0.77:8088/
 - Service: `LoadBalancer`, `externalIPs: [192.168.0.77]`, port `8088`.
 - Public URL: **https://tool.melzix.net**.
 
+## Unreleased changes
+
+`main` adds the `/settings` page with password change, its MSW handler, unit
+test and Playwright scenario. The live image is still `v1.0.0`; the page needs
+the backend `POST /api/v1/auth/change-password` endpoint from the next backend
+release before it can work against the live API.
+
 ## Host reverse proxy for `tool.melzix.net`
 
 The host nginx already binds `:80`/`:443`, so the frontend Service uses

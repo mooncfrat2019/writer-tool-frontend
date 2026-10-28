@@ -25,3 +25,26 @@ export const registerSchema = z.object({
 });
 
 export type RegisterValues = z.infer<typeof registerSchema>;
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z
+      .string()
+      .min(1, 'Введите текущий пароль')
+      .max(128, 'Пароль слишком длинный'),
+    newPassword: z
+      .string()
+      .min(8, 'Пароль должен быть не короче 8 символов')
+      .max(128, 'Пароль слишком длинный'),
+    confirmPassword: z.string().min(1, 'Повторите новый пароль'),
+  })
+  .refine((values) => values.newPassword === values.confirmPassword, {
+    message: 'Пароли не совпадают',
+    path: ['confirmPassword'],
+  })
+  .refine((values) => values.newPassword !== values.currentPassword, {
+    message: 'Новый пароль должен отличаться от текущего',
+    path: ['newPassword'],
+  });
+
+export type ChangePasswordValues = z.infer<typeof changePasswordSchema>;

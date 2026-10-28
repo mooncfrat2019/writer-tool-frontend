@@ -10,6 +10,9 @@ persistence, server-side canonical projection, project/chapter share links,
 and version history with restore. Worlds, timeline and diagrams are later
 phases.
 
+The account settings page (`/settings`, opened from the user menu) supports an
+authenticated password change; the API revokes other sessions after the change.
+
 The product plan lives in the backend repository at
 `writer-tool-backend/docs/PLAN.md`. The frontend-specific specification is in
 [`docs/FRONTEND_BRIEF.md`](docs/FRONTEND_BRIEF.md). Container and Kubernetes

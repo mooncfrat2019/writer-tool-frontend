@@ -100,3 +100,22 @@ test('opens a protected project only after the refresh session check', async ({
 
   await expect(page).toHaveURL(/\/login$/);
 });
+
+test('changes the password from the settings page', async ({ page }) => {
+  await login(page);
+  await page.getByRole('button', { name: 'Меню пользователя' }).click();
+  await page.getByRole('menuitem', { name: 'Настройки' }).click();
+
+  await expect(page).toHaveURL(/\/settings$/);
+  await expect(page.getByRole('heading', { name: 'Настройки' })).toBeVisible();
+
+  await page.getByLabel('Текущий пароль').fill('password123');
+  await page.getByLabel('Новый пароль', { exact: true }).fill('new-password-456');
+  await page.getByLabel('Повторите новый пароль').fill('new-password-456');
+  await page.getByRole('button', { name: 'Изменить пароль' }).click();
+
+  await expect(
+    page.getByText('Пароль изменён. Остальные сессии завершены.'),
+  ).toBeVisible();
+  await expect(page.getByLabel('Текущий пароль')).toHaveValue('');
+});
