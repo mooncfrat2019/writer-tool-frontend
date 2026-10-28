@@ -64,18 +64,14 @@ curl -I http://192.168.0.77:8088/
 
 ## Live deployment (2026-10-28)
 
-- Frontend release `v1.1.0`, Deployment/Service `writer-frontend`.
+- Frontend release `v1.2.0`, Deployment/Service `writer-frontend`.
 - Pod `writer-frontend` is `1/1 Running`.
 - Service: `LoadBalancer`, `externalIPs: [192.168.0.77]`, port `8088`.
 - Public URL: **https://tool.melzix.net**.
 
-## Release v1.2.0 (pending deploy)
-
-`v1.2.0` adds TOTP setup with a QR code and login method selection. The live
-image is `v1.1.0`; TOTP requires the backend `v1.4.0` release.
-
-Current checks: `pnpm test` 69/69, `pnpm e2e` 45/45, `pnpm lint` 0 errors
-(9 non-blocking warnings), `pnpm build` passes.
+`v1.2.0` includes TOTP setup with a QR code and the email/TOTP choice on
+login. Current checks: `pnpm test` 69/69, `pnpm e2e` 45/45, `pnpm lint`
+0 errors (9 non-blocking warnings), `pnpm build` passes.
 
 ## Host reverse proxy for `tool.melzix.net`
 
