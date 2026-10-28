@@ -71,10 +71,13 @@ curl -I http://192.168.0.77:8088/
 
 ## Unreleased changes
 
-`main` adds the `/settings` page with password change, its MSW handler, unit
-test and Playwright scenario. The live image is still `v1.0.0`; the page needs
-the backend `POST /api/v1/auth/change-password` endpoint from the next backend
-release before it can work against the live API.
+`main` (`6df4867`) adds the `/settings` page with password change, its MSW
+handler, unit test and Playwright scenario. The live image is still `v1.0.0`;
+the page needs the backend `POST /api/v1/auth/change-password` endpoint from
+the next backend release before it can work against the live API.
+
+Current checks: `pnpm test` 65/65, `pnpm e2e` 39/39, `pnpm lint` 0 errors
+(9 non-blocking warnings), `pnpm build` passes.
 
 ## Host reverse proxy for `tool.melzix.net`
 
