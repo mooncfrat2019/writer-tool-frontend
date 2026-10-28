@@ -97,6 +97,13 @@ export function RegisterPage() {
         }),
       ),
     onSuccess: (data) => {
+      if ('challengeToken' in data) {
+        // The mock API signs in directly; a real account with 2FA would be
+        // asked for a code after verification.
+        toast.success('Почта подтверждена. Войдите, чтобы продолжить.');
+        void navigate({ to: '/login' });
+        return;
+      }
       setSessionFromAuth(data);
       queryClient.clear();
       if (redirect) {

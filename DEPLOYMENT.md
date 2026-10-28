@@ -65,13 +65,15 @@ curl -I http://192.168.0.77:8088/
 ## Live deployment (2026-10-28)
 
 - Frontend release `v1.2.0`, Deployment/Service `writer-frontend`.
+- `v1.3.0` (email-confirmation 2FA flow) is tagged and pending deployment.
 - Pod `writer-frontend` is `1/1 Running`.
 - Service: `LoadBalancer`, `externalIPs: [192.168.0.77]`, port `8088`.
 - Public URL: **https://tool.melzix.net**.
 
 `v1.2.0` includes TOTP setup with a QR code and the email/TOTP choice on
-login. Current checks: `pnpm test` 69/69, `pnpm e2e` 45/45, `pnpm lint`
-0 errors (9 non-blocking warnings), `pnpm build` passes.
+login. `v1.3.0` adds the two-factor step after email confirmation. Current
+checks: `pnpm test` 69/69, `pnpm e2e` 46/46, `pnpm lint` 0 errors
+(9 non-blocking warnings), `pnpm build` passes.
 
 ## Host reverse proxy for `tool.melzix.net`
 

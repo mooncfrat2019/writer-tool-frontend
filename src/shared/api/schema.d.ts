@@ -3066,6 +3066,15 @@ export interface operations {
                     "application/json": components["schemas"]["AuthResponse"];
                 };
             };
+            /** @description Email confirmed; the account has two-factor authentication enabled */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TwoFactorChallenge"];
+                };
+            };
             /** @description The token is invalid, expired or already used */
             400: {
                 headers: {

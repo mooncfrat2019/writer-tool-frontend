@@ -259,6 +259,17 @@ export const handlers = [
         'The link is invalid or expired.',
       );
     }
+    if (body.token === 'mock-verification-2fa') {
+      await delay(120);
+      return HttpResponse.json(
+        {
+          challengeToken: 'mock-login-challenge',
+          expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+          method: 'email',
+        },
+        { status: 202 },
+      );
+    }
     startMockSession();
     await delay(160);
     return HttpResponse.json({

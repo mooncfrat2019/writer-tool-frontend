@@ -59,6 +59,18 @@ test('registers a new account and opens the project library', async ({ page }) =
   await expect(accountMenu.getByText('reader@example.com')).toBeVisible();
 });
 
+test('asks for a code after confirming email when 2FA is enabled', async ({ page }) => {
+  await page.goto('/verify-email?token=mock-verification-2fa');
+
+  await expect(page.getByRole('heading', { name: 'Введите код' })).toBeVisible();
+  await expect(page.getByLabel('Код из письма')).toBeVisible();
+  await page.getByLabel('Код из письма').fill('123456');
+  await page.getByRole('button', { name: 'Подтвердить код' }).click();
+
+  await expect(page).toHaveURL(/\/projects$/);
+  await expect(page.getByRole('heading', { name: 'Проекты' })).toBeVisible();
+});
+
 test('registers with an invite code without email confirmation', async ({ page }) => {
   await page.goto('/register');
 

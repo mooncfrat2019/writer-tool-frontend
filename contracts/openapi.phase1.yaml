@@ -140,6 +140,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
+        '202':
+          description: Email confirmed; the account has two-factor authentication enabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TwoFactorChallenge'
         '400':
           description: The token is invalid, expired or already used
           content:

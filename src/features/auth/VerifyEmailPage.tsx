@@ -1,16 +1,25 @@
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { api } from '@/shared/api/client';
-import { getApiErrorMessage } from '@/shared/api/errors';
+import { getApiErrorMessage, getApiProblemCode } from '@/shared/api/errors';
 import { unwrap } from '@/shared/api/request';
+import type { components } from '@/shared/api/schema';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
 import { AuthLayout } from './AuthLayout';
 import { safeRedirect } from './redirect';
+import {
+  twoFactorCodeSchema,
+  type TwoFactorCodeValues,
+} from './schemas';
 import { setSessionFromAuth } from './session';
+
+type TwoFactorChallenge = components['schemas']['TwoFactorChallenge'];
 
 export function VerifyEmailPage() {
   const navigate = useNavigate();
@@ -22,6 +31,23 @@ export function VerifyEmailPage() {
   const target = safeRedirect(redirect);
   const started = useRef(false);
   const [email, setEmail] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
+  const [twoFactor, setTwoFactor] = useState<TwoFactorChallenge | null>(null);
+  const twoFactorForm = useForm<TwoFactorCodeValues>({
+    resolver: zodResolver(twoFactorCodeSchema),
+    defaultValues: { code: '' },
+  });
+
+  const finish = (data: components['schemas']['AuthResponse']) => {
+    setSessionFromAuth(data);
+    queryClient.clear();
+    toast.success('Почта подтверждена. Добро пожаловать в мастерскую.');
+    if (target) {
+      window.location.assign(target);
+      return;
+    }
+    void navigate({ to: '/projects' });
+  };
 
   const verify = useMutation({
     mutationFn: async (value: string) =>
@@ -31,14 +57,45 @@ export function VerifyEmailPage() {
         }),
       ),
     onSuccess: (data) => {
-      setSessionFromAuth(data);
-      queryClient.clear();
-      toast.success('Почта подтверждена. Добро пожаловать в мастерскую.');
-      if (target) {
-        window.location.assign(target);
+      // Accounts with 2FA get a challenge instead of a session, so the
+      // verification link cannot bypass the second factor.
+      if ('challengeToken' in data) {
+        setTwoFactor(data);
         return;
       }
-      void navigate({ to: '/projects' });
+      finish(data);
+    },
+  });
+
+  const verifyTwoFactor = useMutation({
+    mutationFn: async (values: TwoFactorCodeValues) => {
+      if (!twoFactor) {
+        throw new Error('Two-factor challenge is missing');
+      }
+      return unwrap(
+        await api.POST('/auth/2fa/verify', {
+          body: {
+            challengeToken: twoFactor.challengeToken,
+            code: values.code,
+          },
+        }),
+      );
+    },
+    onMutate: () => setFormError(null),
+    onSuccess: (data) => finish(data),
+    onError: (error) => {
+      const code = getApiProblemCode(error);
+      if (code === 'invalid_two_factor_code') {
+        setFormError('Неверный код. Проверьте письмо и попробуйте снова.');
+        return;
+      }
+      if (code === 'too_many_attempts' || code === 'invalid_two_factor_challenge') {
+        setTwoFactor(null);
+        twoFactorForm.reset();
+        setFormError('Код больше не действует. Войдите заново, чтобы получить новый.');
+        return;
+      }
+      setFormError(getApiErrorMessage(error, 'Не удалось проверить код.'));
     },
   });
 
@@ -64,6 +121,78 @@ export function VerifyEmailPage() {
       toast.error(getApiErrorMessage(error, 'Не удалось отправить письмо. Попробуйте позже.'));
     },
   });
+
+  if (twoFactor) {
+    const fromApp = twoFactor.method === 'totp';
+    return (
+      <AuthLayout
+        eyebrow="Два шага"
+        title="Введите код"
+        description={
+          fromApp
+            ? 'Почта подтверждена. Введите шестизначный код из приложения-аутентификатора.'
+            : 'Почта подтверждена. Мы отправили шестизначный код на почту аккаунта.'
+        }
+        footer={
+          <p>
+            <a
+              className="font-medium text-accent-700 underline-offset-4 hover:underline"
+              href="/login"
+            >
+              Вернуться ко входу
+            </a>
+          </p>
+        }
+      >
+        <form
+          className="space-y-5"
+          noValidate
+          onSubmit={twoFactorForm.handleSubmit((values) =>
+            verifyTwoFactor.mutate(values),
+          )}
+        >
+          <div className="space-y-2">
+            <Label htmlFor="code">
+              {fromApp ? 'Код из приложения' : 'Код из письма'}
+            </Label>
+            <Input
+              id="code"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              aria-invalid={Boolean(twoFactorForm.formState.errors.code)}
+              aria-describedby={
+                twoFactorForm.formState.errors.code ? 'code-error' : undefined
+              }
+              {...twoFactorForm.register('code')}
+            />
+            {twoFactorForm.formState.errors.code ? (
+              <p id="code-error" className="text-xs text-red-700">
+                {twoFactorForm.formState.errors.code.message}
+              </p>
+            ) : null}
+          </div>
+
+          {formError ? (
+            <p
+              role="alert"
+              className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+            >
+              {formError}
+            </p>
+          ) : null}
+
+          <Button
+            className="w-full"
+            type="submit"
+            disabled={verifyTwoFactor.isPending}
+          >
+            {verifyTwoFactor.isPending ? 'Проверяем…' : 'Подтвердить код'}
+          </Button>
+        </form>
+      </AuthLayout>
+    );
+  }
 
   const failed = !token || verify.isError;
   const message = !token
