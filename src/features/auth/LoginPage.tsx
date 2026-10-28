@@ -32,6 +32,7 @@ export function LoginPage() {
   const [twoFactor, setTwoFactor] = useState<{
     challengeToken: string;
     expiresAt: string;
+    method: 'email' | 'totp';
   } | null>(null);
   const {
     register,
@@ -134,11 +135,16 @@ export function LoginPage() {
   });
 
   if (twoFactor) {
+    const fromApp = twoFactor.method === 'totp';
     return (
       <AuthLayout
         eyebrow="Два шага"
         title="Введите код"
-        description="Мы отправили шестизначный код на почту аккаунта."
+        description={
+          fromApp
+            ? 'Введите шестизначный код из приложения-аутентификатора.'
+            : 'Мы отправили шестизначный код на почту аккаунта.'
+        }
         footer={
           <p>
             <button
@@ -163,7 +169,9 @@ export function LoginPage() {
           )}
         >
           <div className="space-y-2">
-            <Label htmlFor="code">Код из письма</Label>
+            <Label htmlFor="code">
+              {fromApp ? 'Код из приложения' : 'Код из письма'}
+            </Label>
             <Input
               id="code"
               inputMode="numeric"

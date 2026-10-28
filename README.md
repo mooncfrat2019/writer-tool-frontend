@@ -12,9 +12,10 @@ phases.
 
 The account settings page (`/settings`, opened from the user menu) supports an
 authenticated password change; the API revokes other sessions after the change.
-It also supports email change and email-based two-factor authentication.
-Password recovery lives at `/forgot-password` and `/reset-password`; the 2FA
-login challenge is handled on `/login`.
+It also supports email change and two-factor authentication with either an
+emailed code or a TOTP app such as Google Authenticator. Password recovery
+lives at `/forgot-password` and `/reset-password`; the 2FA login challenge is
+handled on `/login`.
 
 The product plan lives in the backend repository at
 `writer-tool-backend/docs/PLAN.md`. The frontend-specific specification is in

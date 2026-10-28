@@ -41,6 +41,7 @@ const EXPORT_DURATION_MS = 2_600;
 // The mock API has no mailbox. Remember the registration so the demo
 // confirmation button can start a session for the same identity.
 let pendingRegistration: { email: string; displayName: string } | null = null;
+let mockTwoFactorMethod: 'email' | 'totp' = 'email';
 
 function problem(status: number, code: string, title: string, detail?: string) {
   return HttpResponse.json(
@@ -300,6 +301,17 @@ export const handlers = [
         {
           challengeToken: 'mock-login-challenge',
           expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+          method: 'email',
+        },
+        { status: 202 },
+      );
+    }
+    if (body.email === 'totp@example.com') {
+      return HttpResponse.json(
+        {
+          challengeToken: 'mock-login-totp',
+          expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+          method: 'totp',
         },
         { status: 202 },
       );
@@ -437,14 +449,31 @@ export const handlers = [
     if (!hasMockSession()) {
       return problem(401, 'unauthorized', 'Authentication required');
     }
-    const body = (await request.json()) as { currentPassword?: string };
+    const body = (await request.json()) as {
+      currentPassword?: string;
+      method?: 'email' | 'totp';
+    };
     if (!body.currentPassword || body.currentPassword.length < 8) {
       return problem(422, 'invalid_current_password', 'Invalid current password', 'Wrong password.');
+    }
+    if (body.method === 'totp') {
+      return HttpResponse.json(
+        {
+          challengeToken: 'mock-totp-challenge',
+          expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+          method: 'totp',
+          secret: 'JBSWY3DPEHPK3PXP',
+          otpauthUrl:
+            'otpauth://totp/Writer%20Tool:author@example.com?secret=JBSWY3DPEHPK3PXP&issuer=Writer+Tool',
+        },
+        { status: 202 },
+      );
     }
     return HttpResponse.json(
       {
         challengeToken: 'mock-enable-challenge',
         expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+        method: 'email',
       },
       { status: 202 },
     );
@@ -455,10 +484,20 @@ export const handlers = [
       return problem(401, 'unauthorized', 'Authentication required');
     }
     const body = (await request.json()) as { challengeToken?: string; code?: string };
-    if (body.challengeToken !== 'mock-enable-challenge' || body.code !== '123456') {
+    if (
+      (body.challengeToken !== 'mock-enable-challenge' &&
+        body.challengeToken !== 'mock-totp-challenge') ||
+      body.code !== '123456'
+    ) {
       return problem(401, 'invalid_two_factor_code', 'Invalid code', 'The code is incorrect.');
     }
-    return HttpResponse.json({ ...mockUser, twoFactorEnabled: true });
+    mockTwoFactorMethod =
+      body.challengeToken === 'mock-totp-challenge' ? 'totp' : 'email';
+    return HttpResponse.json({
+      ...mockUser,
+      twoFactorEnabled: true,
+      twoFactorMethod: mockTwoFactorMethod,
+    });
   }),
 
   http.post(`${api}/auth/2fa/disable`, async ({ request }) => {
@@ -471,8 +510,12 @@ export const handlers = [
     }
     return HttpResponse.json(
       {
-        challengeToken: 'mock-disable-challenge',
+        challengeToken:
+          mockTwoFactorMethod === 'totp'
+            ? 'mock-disable-totp'
+            : 'mock-disable-challenge',
         expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+        method: mockTwoFactorMethod,
       },
       { status: 202 },
     );
@@ -483,10 +526,19 @@ export const handlers = [
       return problem(401, 'unauthorized', 'Authentication required');
     }
     const body = (await request.json()) as { challengeToken?: string; code?: string };
-    if (body.challengeToken !== 'mock-disable-challenge' || body.code !== '123456') {
+    if (
+      (body.challengeToken !== 'mock-disable-challenge' &&
+        body.challengeToken !== 'mock-disable-totp') ||
+      body.code !== '123456'
+    ) {
       return problem(401, 'invalid_two_factor_code', 'Invalid code', 'The code is incorrect.');
     }
-    return HttpResponse.json({ ...mockUser, twoFactorEnabled: false });
+    mockTwoFactorMethod = 'email';
+    return HttpResponse.json({
+      ...mockUser,
+      twoFactorEnabled: false,
+      twoFactorMethod: 'email',
+    });
   }),
 
   http.post(`${api}/auth/2fa/challenge`, async ({ request }) => {
@@ -505,8 +557,12 @@ export const handlers = [
     }
     return HttpResponse.json(
       {
-        challengeToken: 'mock-email-challenge',
+        challengeToken:
+          mockTwoFactorMethod === 'totp'
+            ? 'mock-email-totp'
+            : 'mock-email-challenge',
         expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+        method: mockTwoFactorMethod,
       },
       { status: 202 },
     );
@@ -517,7 +573,11 @@ export const handlers = [
       challengeToken?: string;
       code?: string;
     };
-    if (body.challengeToken !== 'mock-login-challenge' || body.code !== '123456') {
+    if (
+      (body.challengeToken !== 'mock-login-challenge' &&
+        body.challengeToken !== 'mock-login-totp') ||
+      body.code !== '123456'
+    ) {
       return problem(401, 'invalid_two_factor_code', 'Invalid code', 'The code is incorrect.');
     }
     startMockSession();

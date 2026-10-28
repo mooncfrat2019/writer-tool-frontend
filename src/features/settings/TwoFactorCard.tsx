@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import QRCode from 'react-qr-code';
 import { toast } from 'sonner';
 import { api } from '@/shared/api/client';
 import { getApiErrorMessage, getApiProblemCode } from '@/shared/api/errors';
@@ -26,14 +27,19 @@ import { updateSessionUser, useSession } from '@/features/auth/session';
 type Challenge = {
   challengeToken: string;
   expiresAt: string;
+  method: 'email' | 'totp';
+  secret?: string;
+  otpauthUrl?: string;
 };
 
 type Mode = 'enable' | 'disable';
+type Method = 'email' | 'totp';
 
 export function TwoFactorCard() {
   const { user } = useSession();
   const enabled = user?.twoFactorEnabled ?? false;
   const [mode, setMode] = useState<Mode | null>(null);
+  const [method, setMethod] = useState<Method>('email');
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +59,10 @@ export function TwoFactorCard() {
       }
       return unwrap(
         await api.POST('/auth/2fa/enable', {
-          body: { currentPassword: values.currentPassword },
+          body: {
+            currentPassword: values.currentPassword,
+            method,
+          },
         }),
       );
     },
@@ -116,7 +125,7 @@ export function TwoFactorCard() {
     onError: (confirmError) => {
       const problem = getApiProblemCode(confirmError);
       if (problem === 'invalid_two_factor_code') {
-        setError('Неверный код из письма.');
+        setError('Неверный код.');
         return;
       }
       if (problem === 'too_many_attempts') {
@@ -143,21 +152,56 @@ export function TwoFactorCard() {
           <CardTitle>Двухфакторная защита</CardTitle>
         </div>
         <CardDescription>
-          Второй фактор — шестизначный код на привязанную почту.{' '}
-          <strong className="text-ink-700">
-            {enabled ? 'Сейчас включена.' : 'Сейчас выключена.'}
-          </strong>
+          {enabled ? (
+            <>
+              Сейчас включена:{' '}
+              <strong className="text-ink-700">
+                {user?.twoFactorMethod === 'totp'
+                  ? 'приложение-аутентификатор'
+                  : 'код на почту'}
+              </strong>
+              .
+            </>
+          ) : (
+            'Выберите второй фактор: код на почту или приложение-аутентификатор.'
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent>
         {challenge ? (
           <div className="space-y-4">
+            {challenge.method === 'totp' &&
+            mode === 'enable' &&
+            challenge.otpauthUrl ? (
+              <div className="space-y-3 rounded-md border border-paper-200 bg-white p-4">
+                <p className="text-sm text-ink-700">
+                  Отсканируйте QR-код в Google Authenticator (или аналогичном
+                  приложении).
+                </p>
+                <div className="flex justify-center">
+                  <QRCode value={challenge.otpauthUrl} size={180} />
+                </div>
+                {challenge.secret ? (
+                  <p className="break-all rounded bg-paper-100 px-3 py-2 text-xs text-ink-600">
+                    Ключ вручную: <code>{challenge.secret}</code>
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
             <p className="text-sm text-ink-700">
-              Код отправлен на <strong>{user?.email}</strong>. Введите его, чтобы{' '}
-              {mode === 'enable' ? 'включить' : 'выключить'} защиту.
+              {challenge.method === 'totp'
+                ? 'Введите шестизначный код из приложения.'
+                : `Код отправлен на ${user?.email ?? 'вашу почту'}.`}{' '}
+              {mode === 'enable' ? 'Это включит защиту.' : 'Это выключит защиту.'}
             </p>
+
             <div className="space-y-2">
-              <Label htmlFor="twoFactorCode">Код из письма</Label>
+              <Label htmlFor="twoFactorCode">
+                {challenge.method === 'totp'
+                  ? 'Код из приложения'
+                  : 'Код из письма'}
+              </Label>
               <Input
                 id="twoFactorCode"
                 inputMode="numeric"
@@ -167,6 +211,7 @@ export function TwoFactorCard() {
                 onChange={(event) => setCode(event.target.value)}
               />
             </div>
+
             {error ? (
               <p
                 role="alert"
@@ -175,6 +220,7 @@ export function TwoFactorCard() {
                 {error}
               </p>
             ) : null}
+
             <div className="flex flex-wrap gap-3">
               <Button
                 type="button"
@@ -203,6 +249,34 @@ export function TwoFactorCard() {
             noValidate
             onSubmit={form.handleSubmit((values) => start.mutate(values))}
           >
+            {!enabled ? (
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-medium text-ink-900">
+                  Второй фактор
+                </legend>
+                <label className="flex cursor-pointer items-center gap-3 rounded-md border border-paper-200 px-3 py-2 text-sm">
+                  <input
+                    type="radio"
+                    name="twoFactorMethod"
+                    value="email"
+                    checked={method === 'email'}
+                    onChange={() => setMethod('email')}
+                  />
+                  Код на почту
+                </label>
+                <label className="flex cursor-pointer items-center gap-3 rounded-md border border-paper-200 px-3 py-2 text-sm">
+                  <input
+                    type="radio"
+                    name="twoFactorMethod"
+                    value="totp"
+                    checked={method === 'totp'}
+                    onChange={() => setMethod('totp')}
+                  />
+                  Приложение-аутентификатор (Google Authenticator)
+                </label>
+              </fieldset>
+            ) : null}
+
             <div className="space-y-2">
               <Label htmlFor="twoFactorPassword">Текущий пароль</Label>
               <Input
@@ -223,6 +297,7 @@ export function TwoFactorCard() {
                 </p>
               ) : null}
             </div>
+
             {error ? (
               <p
                 role="alert"
@@ -231,9 +306,10 @@ export function TwoFactorCard() {
                 {error}
               </p>
             ) : null}
+
             <Button type="submit" disabled={start.isPending}>
               {start.isPending
-                ? 'Отправляем код…'
+                ? 'Проверяем…'
                 : enabled
                   ? 'Выключить 2FA'
                   : 'Включить 2FA'}

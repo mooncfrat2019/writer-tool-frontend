@@ -22,6 +22,7 @@ import { useSession } from '@/features/auth/session';
 type Challenge = {
   challengeToken: string;
   expiresAt: string;
+  method: 'email' | 'totp';
 };
 
 export function ChangeEmailCard() {
@@ -180,12 +181,18 @@ export function ChangeEmailCard() {
           {needsCode ? (
             <div className="space-y-3 rounded-md border border-paper-200 bg-paper-100/60 p-4">
               <p className="text-sm text-ink-700">
-                Для аккаунта включена двухфакторная защита. Запросите код на
-                текущую почту и введите его ниже.
+                Для аккаунта включена двухфакторная защита.{' '}
+                {user?.twoFactorMethod === 'totp'
+                  ? 'Введите код из приложения-аутентификатора.'
+                  : 'Запросите код на текущую почту и введите его ниже.'}
               </p>
               {challenge ? (
                 <div className="space-y-2">
-                  <Label htmlFor="emailCode">Код из письма</Label>
+                  <Label htmlFor="emailCode">
+                    {challenge.method === 'totp'
+                      ? 'Код из приложения'
+                      : 'Код из письма'}
+                  </Label>
                   <Input
                     id="emailCode"
                     inputMode="numeric"
@@ -202,7 +209,11 @@ export function ChangeEmailCard() {
                   disabled={requestCode.isPending}
                   onClick={() => void startCode()}
                 >
-                  {requestCode.isPending ? 'Отправляем…' : 'Получить код'}
+                  {requestCode.isPending
+                    ? 'Проверяем…'
+                    : user?.twoFactorMethod === 'totp'
+                      ? 'Ввести код из приложения'
+                      : 'Получить код'}
                 </Button>
               )}
             </div>

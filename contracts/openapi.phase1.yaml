@@ -335,10 +335,12 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TwoFactorPasswordRequest'
+              $ref: '#/components/schemas/TwoFactorEnableRequest'
       responses:
         '202':
-          description: A confirmation code was sent to the account email
+          description: >-
+            A confirmation code was sent to the account email, or an
+            authenticator secret was generated for the app method.
           content:
             application/json:
               schema:
@@ -3109,15 +3111,36 @@ components:
         code:
           type: string
           pattern: '^[0-9]{6}$'
+    TwoFactorEnableRequest:
+      type: object
+      required: [currentPassword, method]
+      properties:
+        currentPassword:
+          type: string
+          minLength: 1
+          maxLength: 128
+        method:
+          $ref: '#/components/schemas/TwoFactorMethod'
+    TwoFactorMethod:
+      type: string
+      enum: [email, totp]
     TwoFactorChallenge:
       type: object
-      required: [challengeToken, expiresAt]
+      required: [challengeToken, expiresAt, method]
       properties:
         challengeToken:
           type: string
         expiresAt:
           type: string
           format: date-time
+        method:
+          $ref: '#/components/schemas/TwoFactorMethod'
+        secret:
+          type: string
+          description: Base32 secret for the authenticator app, returned only during TOTP setup.
+        otpauthUrl:
+          type: string
+          description: otpauth URI for a QR code, returned only during TOTP setup.
     VerifyEmailRequest:
       type: object
       required: [token]
@@ -3167,7 +3190,7 @@ components:
 
     User:
       type: object
-      required: [id, email, displayName, emailVerified, twoFactorEnabled, createdAt]
+      required: [id, email, displayName, emailVerified, twoFactorEnabled, twoFactorMethod, createdAt]
       properties:
         id:
           type: string
@@ -3184,6 +3207,8 @@ components:
           type: boolean
         twoFactorEnabled:
           type: boolean
+        twoFactorMethod:
+          $ref: '#/components/schemas/TwoFactorMethod'
         createdAt:
           type: string
           format: date-time

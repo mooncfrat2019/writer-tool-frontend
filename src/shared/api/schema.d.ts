@@ -1587,10 +1587,21 @@ export interface components {
             challengeToken: string;
             code: string;
         };
+        TwoFactorEnableRequest: {
+            currentPassword: string;
+            method: components["schemas"]["TwoFactorMethod"];
+        };
+        /** @enum {string} */
+        TwoFactorMethod: "email" | "totp";
         TwoFactorChallenge: {
             challengeToken: string;
             /** Format: date-time */
             expiresAt: string;
+            method: components["schemas"]["TwoFactorMethod"];
+            /** @description Base32 secret for the authenticator app, returned only during TOTP setup. */
+            secret?: string;
+            /** @description otpauth URI for a QR code, returned only during TOTP setup. */
+            otpauthUrl?: string;
         };
         VerifyEmailRequest: {
             token: string;
@@ -1628,6 +1639,7 @@ export interface components {
             avatarUrl?: string | null;
             emailVerified: boolean;
             twoFactorEnabled: boolean;
+            twoFactorMethod: components["schemas"]["TwoFactorMethod"];
             /** Format: date-time */
             createdAt: string;
         };
@@ -3287,11 +3299,11 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["TwoFactorPasswordRequest"];
+                "application/json": components["schemas"]["TwoFactorEnableRequest"];
             };
         };
         responses: {
-            /** @description A confirmation code was sent to the account email */
+            /** @description A confirmation code was sent to the account email, or an authenticator secret was generated for the app method. */
             202: {
                 headers: {
                     [name: string]: unknown;

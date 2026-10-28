@@ -103,8 +103,7 @@ test('opens a protected project only after the refresh session check', async ({
 
 test('changes the password from the settings page', async ({ page }) => {
   await login(page);
-  await page.getByRole('button', { name: 'Меню пользователя' }).click();
-  await page.getByRole('menuitem', { name: 'Настройки' }).click();
+  await page.goto('/settings');
 
   await expect(page).toHaveURL(/\/settings$/);
   await expect(page.getByRole('heading', { name: 'Настройки' })).toBeVisible();
@@ -142,7 +141,21 @@ test('asks for an email code when two-factor login is enabled', async ({ page })
   await page.getByRole('button', { name: 'Войти' }).click();
 
   await expect(page.getByRole('heading', { name: 'Введите код' })).toBeVisible();
+  await expect(page.getByLabel('Код из письма')).toBeVisible();
   await page.getByLabel('Код из письма').fill('123456');
+  await page.getByRole('button', { name: 'Подтвердить код' }).click();
+  await expect(page).toHaveURL(/\/projects$/);
+});
+
+test('asks for an authenticator code when TOTP login is enabled', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByLabel('Email').fill('totp@example.com');
+  await page.getByLabel('Пароль').fill('password123');
+  await page.getByRole('button', { name: 'Войти' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Введите код' })).toBeVisible();
+  await expect(page.getByLabel('Код из приложения')).toBeVisible();
+  await page.getByLabel('Код из приложения').fill('123456');
   await page.getByRole('button', { name: 'Подтвердить код' }).click();
   await expect(page).toHaveURL(/\/projects$/);
 });
@@ -157,7 +170,26 @@ test('enables two-factor authentication from settings', async ({ page }) => {
   await page.locator('#twoFactorCode').fill('123456');
   await page.getByRole('button', { name: 'Подтвердить' }).click();
 
-  await expect(page.getByText('Сейчас включена.')).toBeVisible();
+  await expect(page.getByText('Сейчас включена:')).toBeVisible();
+});
+
+test('enables TOTP authentication from settings', async ({ page }) => {
+  await login(page);
+  await page.goto('/settings');
+
+  await page
+    .getByLabel('Приложение-аутентификатор (Google Authenticator)')
+    .check();
+  await page.locator('#twoFactorPassword').fill('password123');
+  await page.getByRole('button', { name: 'Включить 2FA' }).click();
+
+  await expect(page.getByText('Отсканируйте QR-код в Google Authenticator')).toBeVisible();
+  await expect(page.getByText('JBSWY3DPEHPK3PXP')).toBeVisible();
+  await page.locator('#twoFactorCode').fill('123456');
+  await page.getByRole('button', { name: 'Подтвердить' }).click();
+
+  await expect(page.getByText('Сейчас включена:')).toBeVisible();
+  await expect(page.getByText('приложение-аутентификатор')).toBeVisible();
 });
 
 test('starts an email change from settings and confirms it', async ({ page }) => {
