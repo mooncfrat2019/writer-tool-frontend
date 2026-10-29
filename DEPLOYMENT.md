@@ -66,11 +66,11 @@ curl http://192.168.0.77:8088/healthz
 curl -I http://192.168.0.77:8088/
 ```
 
-## Live deployment (2026-10-28)
+## Live deployment (2026-10-29)
 
-- Frontend release `v1.3.0`, Deployment/Service `writer-frontend`.
-- `v1.4.0` (plans page) is tagged and pending deployment.
-- `v1.2.0` (TOTP setup/QR and login method selection) is the previous release.
+- Frontend release `v1.4.0`, Deployment/Service `writer-frontend`.
+- `v1.3.0` (email-confirmation 2FA flow) and `v1.2.0` (TOTP setup/QR and
+  login method selection) are the previous releases.
 - Pod `writer-frontend` is `1/1 Running`.
 - Service: `LoadBalancer`, `externalIPs: [192.168.0.77]`, port `8088`.
 - Public URL: **https://tool.melzix.net**.
