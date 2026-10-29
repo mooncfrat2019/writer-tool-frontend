@@ -4,6 +4,10 @@ The frontend is built into an nginx image and deployed with Helm to the
 `writer-tool` namespace. Releases are manual: push a tag on `main`, then run
 the **deploy** workflow and pass that tag.
 
+On-call procedures for both services, including rollback and incident
+playbooks, are in the backend repository:
+[`docs/RUNBOOK.md`](https://github.com/mooncfrat2019/writer-tool-backend/blob/main/docs/RUNBOOK.md).
+
 ## GitHub environment `main`
 
 Secrets:
