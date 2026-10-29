@@ -64,8 +64,8 @@ curl -I http://192.168.0.77:8088/
 
 ## Live deployment (2026-10-28)
 
-- Frontend release `v1.2.0`, Deployment/Service `writer-frontend`.
-- `v1.3.0` (email-confirmation 2FA flow) is tagged and pending deployment.
+- Frontend release `v1.3.0`, Deployment/Service `writer-frontend`.
+- `v1.2.0` (TOTP setup/QR and login method selection) is the previous release.
 - Pod `writer-frontend` is `1/1 Running`.
 - Service: `LoadBalancer`, `externalIPs: [192.168.0.77]`, port `8088`.
 - Public URL: **https://tool.melzix.net**.
