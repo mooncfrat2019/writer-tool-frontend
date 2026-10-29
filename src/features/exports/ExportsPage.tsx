@@ -201,6 +201,9 @@ function ExportJobCard({
               </a>
             </Button>
           ) : null}
+          {job.status === 'succeeded' && !job.downloadUrl ? (
+            <p className="text-xs text-ink-500">Файл удалён по сроку хранения</p>
+          ) : null}
           {canEdit && active ? (
             <Button
               type="button"

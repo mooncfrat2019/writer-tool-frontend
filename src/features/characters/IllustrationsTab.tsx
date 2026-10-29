@@ -186,7 +186,7 @@ function UploadIllustrationDialog({
             id="illustration-file"
             className="sr-only"
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/gif"
             onChange={(event) => handleFile(event.target.files?.[0] ?? null)}
           />
 

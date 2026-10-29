@@ -165,7 +165,7 @@ export function BookCoverDialog({
           )}
 
           <input
-            accept="image/*"
+            accept="image/jpeg,image/png,image/gif"
             className="sr-only"
             id="book-cover-file"
             onChange={(event) => handleFile(event.target.files?.[0] ?? null)}

@@ -624,7 +624,7 @@ export const handlers = [
       locations: 500,
       factions: 200,
       loreEntries: 500,
-      storageBytes: 50 * 1024 ** 3,
+      storageBytes: 10 * 1024 ** 3,
       manuscriptCharacters: 7_000_000,
     };
     return HttpResponse.json({
@@ -661,7 +661,7 @@ export const handlers = [
         locations: 500,
         factions: 200,
         loreEntries: 500,
-        storageBytes: 50 * 1024 ** 3,
+        storageBytes: 10 * 1024 ** 3,
         manuscriptCharacters: 7_000_000,
       },
       usage: {

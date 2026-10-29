@@ -345,7 +345,7 @@ function LocationMap({
               ref={fileInputRef}
               className="sr-only"
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/gif"
               data-testid="map-file-input"
               onChange={(event) => {
                 const file = event.target.files?.[0];
