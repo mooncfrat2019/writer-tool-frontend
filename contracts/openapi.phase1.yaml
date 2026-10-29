@@ -3595,11 +3595,16 @@ components:
 
     BookCoverRequest:
       type: object
-      required: [assetId]
       properties:
         assetId:
           type: string
           format: uuid
+          description: Legacy ready asset. Prefer url for new covers.
+        url:
+          type: string
+          format: uri
+          maxLength: 2048
+          description: Direct https/http image URL. Mutually exclusive with assetId.
 
     BookStatus:
       type: string
@@ -4159,12 +4164,16 @@ components:
 
     WorldMapRequest:
       type: object
-      required: [assetId]
       properties:
         assetId:
           type: string
           format: uuid
-          description: Ready image asset owned by the same project.
+          description: Legacy ready asset owned by the same project.
+        url:
+          type: string
+          format: uri
+          maxLength: 2048
+          description: Direct https/http image URL. Mutually exclusive with assetId.
 
     WorldRule:
       type: object
@@ -4746,7 +4755,7 @@ components:
       enum: [avatar, illustration, cover, map, inline]
     Attachment:
       type: object
-      required: [id, assetId, targetType, targetId, role, sortOrder, createdAt]
+      required: [id, targetType, targetId, role, sortOrder, createdAt]
       properties:
         id:
           type: string
@@ -4754,6 +4763,7 @@ components:
         assetId:
           type: string
           format: uuid
+          description: Set for legacy uploaded assets; null for external links.
         targetType:
           type: string
           enum: [character, world, location, faction, timeline_event, document]
@@ -4790,11 +4800,17 @@ components:
           type: [string, 'null']
     AttachmentCreate:
       type: object
-      required: [assetId, role]
+      required: [role]
       properties:
         assetId:
           type: string
           format: uuid
+          description: Existing ready asset. New uploads are disabled; prefer url.
+        url:
+          type: string
+          format: uri
+          maxLength: 2048
+          description: Direct https/http image URL. Mutually exclusive with assetId.
         role:
           $ref: '#/components/schemas/AttachmentRole'
         caption:

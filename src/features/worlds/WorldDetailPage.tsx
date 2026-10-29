@@ -189,7 +189,6 @@ export function WorldDetailPage() {
           <LocationsTab
             worldId={world.id}
             canEdit={canEdit}
-            projectId={projectId}
             mapUrl={world.mapUrl ?? null}
           />
         </TabsContent>

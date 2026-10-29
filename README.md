@@ -95,7 +95,10 @@ pnpm e2e:real       # Playwright against the real API on :8080
 
 `e2e:real` registers a fresh user, restores the session through the refresh
 cookie, creates a project/book/chapter, autosaves the editor and creates a
-character. It requires the Go backend to be running.
+character. It requires the Go backend to be running. Covers, illustration and
+map checks use a public placeholder image URL, so the suite needs network
+access; the backend does not fetch the image. Production keeps uploads
+disabled and uses direct image links.
 
 ## Layout
 

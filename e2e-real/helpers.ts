@@ -5,6 +5,11 @@ const MAILPIT_URL = (process.env.MAILPIT_URL ?? 'http://localhost:8025').replace
   '',
 );
 
+// Public placeholder used by the external-image URL flows. The real-API suite
+// runs without MSW, so the browser must be able to load this URL.
+export const EXTERNAL_IMAGE_URL =
+  'https://picsum.photos/seed/writer-tool/300/400';
+
 type Registration = {
   email: string;
   displayName: string;

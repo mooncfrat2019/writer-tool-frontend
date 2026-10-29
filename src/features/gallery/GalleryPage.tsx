@@ -146,6 +146,7 @@ export function GalleryPage() {
                       src={attachment.url}
                       alt={attachment.caption || 'Иллюстрация проекта'}
                       loading="lazy"
+                      referrerPolicy="no-referrer"
                     />
                   ) : (
                     <span className="flex h-full items-center justify-center text-ink-500">
@@ -191,6 +192,7 @@ export function GalleryPage() {
               className="max-h-[70vh] w-full rounded-md object-contain"
               src={active.url}
               alt={active.caption || 'Иллюстрация проекта'}
+              referrerPolicy="no-referrer"
             />
           ) : null}
         </DialogContent>

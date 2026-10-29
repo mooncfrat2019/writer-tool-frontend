@@ -13,10 +13,10 @@ function problem(overrides: Partial<Problem>): Problem {
 }
 
 describe('getApiErrorMessage', () => {
-  it('explains that image uploads require Pro', () => {
-    const error = new ApiError(problem({ code: 'image_uploads_pro_only' }));
+  it('explains that image uploads are disabled', () => {
+    const error = new ApiError(problem({ code: 'image_uploads_disabled' }));
     expect(getApiErrorMessage(error)).toBe(
-      'Загрузка изображений доступна на тарифе Pro.',
+      'Загрузка файлов отключена. Прикрепите изображение по прямой ссылке.',
     );
   });
 

@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { login, openProjectSection } from './helpers';
+import {
+  EXTERNAL_IMAGE_URL,
+  login,
+  openProjectSection,
+} from './helpers';
 
 test('searches, filters, creates, edits and deletes a character', async ({
   page,
@@ -118,22 +122,17 @@ test('creates and deletes a relation, then edits and deletes an illustration', a
 
   await page.getByRole('tab', { name: 'Иллюстрации' }).click();
   await expect(page.getByText('Мира на площади')).toBeVisible();
-  await page.getByRole('button', { name: 'Загрузить' }).click();
+  await page.getByRole('button', { name: 'Добавить по ссылке' }).click();
 
   const uploadDialog = page.getByRole('dialog');
   await expect(
     uploadDialog.getByRole('heading', { name: 'Новая иллюстрация' }),
   ).toBeVisible();
-  await uploadDialog.locator('#illustration-file').setInputFiles({
-    name: 'portrait.png',
-    mimeType: 'image/png',
-    buffer: Buffer.from(
-      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-      'base64',
-    ),
-  });
+  await uploadDialog.locator('#illustration-url').fill(EXTERNAL_IMAGE_URL);
+  await uploadDialog.getByRole('button', { name: 'Проверить' }).click();
+  await expect(uploadDialog.getByTestId('illustration-url-preview')).toBeVisible();
   await uploadDialog.getByLabel('Подпись').fill('Портрет Миры');
-  await uploadDialog.getByRole('button', { name: 'Загрузить' }).click();
+  await uploadDialog.getByRole('button', { name: 'Добавить', exact: true }).click();
   await expect(uploadDialog).toBeHidden();
   await expect(page.getByText('Портрет Миры')).toBeVisible({ timeout: 8_000 });
 

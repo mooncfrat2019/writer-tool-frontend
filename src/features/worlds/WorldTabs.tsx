@@ -9,17 +9,24 @@ import {
   Plus,
   Scale,
   Trash2,
-  Upload,
   Users,
 } from 'lucide-react';
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { uploadProjectImage } from '@/shared/api/assets';
 import { getApiErrorMessage } from '@/shared/api/errors';
 import { Badge } from '@/shared/ui/badge';
 import { Button } from '@/shared/ui/button';
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/shared/ui/dialog';
 import { ErrorState } from '@/shared/ui/error-state';
+import { ImageUrlField } from '@/shared/ui/image-url-field';
 import { Skeleton } from '@/shared/ui/skeleton';
 import {
   clearWorldMap,
@@ -266,7 +273,7 @@ function LocationMap({
   mapPending,
   onEdit,
   onAdd,
-  onUploadMap,
+  onSetMapUrl,
   onClearMap,
 }: {
   items: Location[];
@@ -275,10 +282,12 @@ function LocationMap({
   mapPending: boolean;
   onEdit: (location: Location) => void;
   onAdd: () => void;
-  onUploadMap: (file: File) => void;
+  onSetMapUrl: (url: string) => void;
   onClearMap: () => void;
 }) {
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [mapDialogOpen, setMapDialogOpen] = useState(false);
+  const [mapDraft, setMapDraft] = useState('');
+  const [mapDraftValid, setMapDraftValid] = useState(false);
   const mapped = items.flatMap((item) =>
     item.mapX != null && item.mapY != null
       ? [{ ...item, mapX: item.mapX, mapY: item.mapY }]
@@ -296,6 +305,7 @@ function LocationMap({
             alt="Фон карты мира"
             className="absolute inset-0 h-full w-full object-cover"
             data-testid="location-map-background"
+            referrerPolicy="no-referrer"
             src={mapUrl}
           />
         ) : null}
@@ -326,8 +336,8 @@ function LocationMap({
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center text-sm text-ink-500">
             <MapPin size={22} />
             <p>
-              Загрузите фон карты или укажите координаты в карточке локации,
-              чтобы поставить точку.
+              Укажите ссылку на фон карты или задайте координаты в карточке
+              локации, чтобы поставить точку.
             </p>
             {canEdit ? (
               <Button variant="outline" size="sm" onClick={onAdd}>
@@ -341,29 +351,19 @@ function LocationMap({
       <div className="mt-2 flex flex-wrap items-center gap-2">
         {canEdit ? (
           <>
-            <input
-              ref={fileInputRef}
-              className="sr-only"
-              type="file"
-              accept="image/jpeg,image/png,image/gif"
-              data-testid="map-file-input"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                event.target.value = '';
-                if (file) {
-                  onUploadMap(file);
-                }
-              }}
-            />
             <Button
               type="button"
               variant="outline"
               size="sm"
               disabled={mapPending}
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => {
+                setMapDraft('');
+                setMapDraftValid(false);
+                setMapDialogOpen(true);
+              }}
             >
-              <Upload size={14} />
-              {mapPending ? 'Загружаем…' : mapUrl ? 'Заменить фон' : 'Загрузить фон'}
+              <Plus size={14} />
+              {mapPending ? 'Сохраняем…' : mapUrl ? 'Заменить фон' : 'Указать фон'}
             </Button>
             {mapUrl ? (
               <Button
@@ -400,21 +400,57 @@ function LocationMap({
           ))}
         </div>
       ) : null}
+
+      <Dialog open={mapDialogOpen} onOpenChange={setMapDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Фон карты мира</DialogTitle>
+            <DialogDescription>
+              Вставьте прямую ссылку на изображение карты. Оно будет
+              загружаться со стороннего сайта.
+            </DialogDescription>
+          </DialogHeader>
+          <ImageUrlField
+            id="world-map-url"
+            label="Ссылка на карту"
+            value={mapDraft}
+            onChange={setMapDraft}
+            onValidityChange={setMapDraftValid}
+            disabled={mapPending}
+            helpText="Превью появится после успешной загрузки изображения."
+          />
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={mapPending}
+              onClick={() => setMapDialogOpen(false)}
+            >
+              Отмена
+            </Button>
+            <Button
+              type="button"
+              variant="accent"
+              disabled={!mapDraftValid || mapPending}
+              onClick={() => {
+                onSetMapUrl(mapDraft.trim());
+                setMapDialogOpen(false);
+              }}
+            >
+              {mapPending ? 'Сохраняем…' : 'Сохранить фон'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
 type LocationsTabProps = TabProps & {
-  projectId: string;
   mapUrl: string | null;
 };
 
-export function LocationsTab({
-  worldId,
-  canEdit,
-  projectId,
-  mapUrl,
-}: LocationsTabProps) {
+export function LocationsTab({ worldId, canEdit, mapUrl }: LocationsTabProps) {
   const queryClient = useQueryClient();
   const query = useLocations(worldId);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -440,17 +476,14 @@ export function LocationsTab({
     setDialogOpen(true);
   };
 
-  const uploadMap = useMutation({
-    mutationFn: async (file: File) => {
-      const asset = await uploadProjectImage(projectId, file);
-      return setWorldMap(worldId, asset.id);
-    },
+  const setMap = useMutation({
+    mutationFn: (url: string) => setWorldMap(worldId, url),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: worldKeys.detail(worldId) });
       toast.success('Фон карты обновлён.');
     },
     onError: (error) =>
-      toast.error(getApiErrorMessage(error, 'Не удалось загрузить фон карты.')),
+      toast.error(getApiErrorMessage(error, 'Не удалось сохранить фон карты.')),
   });
 
   const clearMap = useMutation({
@@ -462,18 +495,6 @@ export function LocationsTab({
     onError: (error) =>
       toast.error(getApiErrorMessage(error, 'Не удалось убрать фон карты.')),
   });
-
-  const handleMapFile = (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      toast.error('Фон карты должен быть изображением.');
-      return;
-    }
-    if (file.size > 20 * 1024 * 1024) {
-      toast.error('Файл больше 20 МБ.');
-      return;
-    }
-    uploadMap.mutate(file);
-  };
 
   const move = useMutation({
     mutationFn: ({
@@ -582,10 +603,10 @@ export function LocationsTab({
           items={items}
           canEdit={canEdit}
           mapUrl={mapUrl}
-          mapPending={uploadMap.isPending || clearMap.isPending}
+          mapPending={setMap.isPending || clearMap.isPending}
           onEdit={openEdit}
           onAdd={openCreate}
-          onUploadMap={handleMapFile}
+          onSetMapUrl={(url) => setMap.mutate(url)}
           onClearMap={() => clearMap.mutate()}
         />
       ) : (

@@ -46,6 +46,7 @@ export function CharacterAvatar({
           className="h-full w-full object-cover"
           src={avatarUrl}
           alt={`Портрет: ${name}`}
+          referrerPolicy="no-referrer"
         />
       ) : (
         initials(name)

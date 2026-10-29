@@ -1,19 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  ImageIcon,
-  Images,
-  Pencil,
-  Trash2,
-  Upload,
-} from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { ImageIcon, Images, Pencil, Plus, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 import { toast } from 'sonner';
-import { uploadProjectImage } from '@/shared/api/assets';
 import { api } from '@/shared/api/client';
 import { getApiErrorMessage } from '@/shared/api/errors';
 import { unwrap } from '@/shared/api/request';
 import type { components } from '@/shared/api/schema';
-import { formatDate, formatNumber } from '@/shared/lib/format';
+import { formatDate } from '@/shared/lib/format';
 import { Button } from '@/shared/ui/button';
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
 import {
@@ -25,6 +18,7 @@ import {
   DialogTitle,
 } from '@/shared/ui/dialog';
 import { ErrorState } from '@/shared/ui/error-state';
+import { ImageUrlField } from '@/shared/ui/image-url-field';
 import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
 import { Skeleton } from '@/shared/ui/skeleton';
@@ -32,59 +26,28 @@ import { Skeleton } from '@/shared/ui/skeleton';
 type Character = components['schemas']['Character'];
 type Attachment = components['schemas']['Attachment'];
 
-const MAX_FILE_SIZE = 20 * 1024 * 1024;
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024 * 1024) {
-    return `${formatNumber(Math.max(1, Math.round(bytes / 1024)))} КБ`;
-  }
-  return `${(bytes / (1024 * 1024)).toLocaleString('ru-RU', {
-    maximumFractionDigits: 1,
-  })} МБ`;
-}
-
-type UploadIllustrationDialogProps = {
+type AddIllustrationDialogProps = {
   character: Character;
   attachmentsCount: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
 
-function UploadIllustrationDialog({
+function AddIllustrationDialog({
   character,
   attachmentsCount,
   open,
   onOpenChange,
-}: UploadIllustrationDialogProps) {
+}: AddIllustrationDialogProps) {
   const queryClient = useQueryClient();
-  const [file, setFile] = useState<File | null>(null);
+  const [url, setUrl] = useState('');
+  const [urlValid, setUrlValid] = useState(false);
   const [caption, setCaption] = useState('');
-  const [fileError, setFileError] = useState<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const previewUrlRef = useRef<string | null>(null);
-
-  useEffect(
-    () => () => {
-      if (previewUrlRef.current) {
-        URL.revokeObjectURL(previewUrlRef.current);
-      }
-    },
-    [],
-  );
-
-  const clearPreview = () => {
-    if (previewUrlRef.current) {
-      URL.revokeObjectURL(previewUrlRef.current);
-      previewUrlRef.current = null;
-    }
-    setPreviewUrl(null);
-  };
 
   const resetDialog = () => {
-    clearPreview();
-    setFile(null);
+    setUrl('');
+    setUrlValid(false);
     setCaption('');
-    setFileError(null);
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -94,51 +57,19 @@ function UploadIllustrationDialog({
     onOpenChange(nextOpen);
   };
 
-  const handleFile = (selected: File | null) => {
-    clearPreview();
-    if (!selected) {
-      setFile(null);
-      return;
-    }
-    if (!selected.type.startsWith('image/')) {
-      setFileError('Поддерживаются только изображения.');
-      setFile(null);
-      return;
-    }
-    if (selected.size > MAX_FILE_SIZE) {
-      setFileError('Файл больше 20 МБ.');
-      setFile(null);
-      return;
-    }
-    setFileError(null);
-    setFile(selected);
-    const url = URL.createObjectURL(selected);
-    previewUrlRef.current = url;
-    setPreviewUrl(url);
-    if (!caption) {
-      setCaption(selected.name.replace(/\.[^.]+$/, ''));
-    }
-  };
-
-  const upload = useMutation({
-    mutationFn: async () => {
-      if (!file) {
-        throw new Error('File is required');
-      }
-      const asset = await uploadProjectImage(character.projectId, file);
-
-      return unwrap(
+  const save = useMutation({
+    mutationFn: async () =>
+      unwrap(
         await api.POST('/characters/{characterId}/attachments', {
           params: { path: { characterId: character.id } },
           body: {
-            assetId: asset.id,
+            url: url.trim(),
             role: 'illustration',
             caption: caption.trim() || undefined,
             sortOrder: attachmentsCount,
           },
         }),
-      );
-    },
+      ),
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: ['character-attachments', character.id],
@@ -147,7 +78,7 @@ function UploadIllustrationDialog({
       handleOpenChange(false);
     },
     onError: (error) => {
-      toast.error(getApiErrorMessage(error, 'Не удалось загрузить иллюстрацию.'));
+      toast.error(getApiErrorMessage(error, 'Не удалось добавить иллюстрацию.'));
     },
   });
 
@@ -157,46 +88,21 @@ function UploadIllustrationDialog({
         <DialogHeader>
           <DialogTitle>Новая иллюстрация</DialogTitle>
           <DialogDescription>
-            Изображение прикрепится к профилю {character.name}. Поддерживаются
-            JPG, PNG, WebP и другие изображения до 20 МБ.
+            Вставьте прямую ссылку на изображение — оно прикрепится к профилю{' '}
+            {character.name} и будет загружаться со стороннего сайта.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          {previewUrl ? (
-            <img
-              className="max-h-64 w-full rounded-md border border-paper-200 object-contain"
-              src={previewUrl}
-              alt="Предпросмотр иллюстрации"
-            />
-          ) : (
-            <label
-              htmlFor="illustration-file"
-              className="flex cursor-pointer flex-col items-center rounded-lg border border-dashed border-paper-300 bg-paper-100/40 px-6 py-10 text-center transition hover:border-accent-500/60 hover:bg-paper-100"
-            >
-              <Upload className="text-ink-500" size={22} />
-              <span className="mt-2 text-sm font-medium text-ink-900">
-                Выбрать изображение
-              </span>
-              <span className="mt-1 text-xs text-ink-500">До 20 МБ</span>
-            </label>
-          )}
-
-          <input
-            id="illustration-file"
-            className="sr-only"
-            type="file"
-            accept="image/jpeg,image/png,image/gif"
-            onChange={(event) => handleFile(event.target.files?.[0] ?? null)}
+          <ImageUrlField
+            id="illustration-url"
+            label="Ссылка на иллюстрацию"
+            value={url}
+            onChange={setUrl}
+            onValidityChange={setUrlValid}
+            disabled={save.isPending}
+            helpText="Сначала проверьте ссылку: превью появится, когда изображение действительно загрузится."
           />
-
-          {file ? (
-            <div className="flex items-center justify-between gap-3 rounded-md border border-paper-200 bg-white/60 px-3 py-2 text-xs">
-              <span className="truncate text-ink-700">{file.name}</span>
-              <span className="shrink-0 text-ink-500">{formatFileSize(file.size)}</span>
-            </div>
-          ) : null}
-          {fileError ? <p className="text-xs text-red-700">{fileError}</p> : null}
 
           <div className="space-y-2">
             <Label htmlFor="illustration-caption">Подпись</Label>
@@ -214,17 +120,17 @@ function UploadIllustrationDialog({
             type="button"
             variant="outline"
             onClick={() => handleOpenChange(false)}
-            disabled={upload.isPending}
+            disabled={save.isPending}
           >
             Отмена
           </Button>
           <Button
             type="button"
             variant="accent"
-            disabled={!file || upload.isPending}
-            onClick={() => upload.mutate()}
+            disabled={!urlValid || save.isPending}
+            onClick={() => save.mutate()}
           >
-            {upload.isPending ? 'Загружаем…' : 'Загрузить'}
+            {save.isPending ? 'Сохраняем…' : 'Добавить'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -304,7 +210,7 @@ type IllustrationsTabProps = {
 
 export function IllustrationsTab({ character, canEdit }: IllustrationsTabProps) {
   const queryClient = useQueryClient();
-  const [uploadOpen, setUploadOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const [captionTarget, setCaptionTarget] = useState<Attachment | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Attachment | null>(null);
 
@@ -349,9 +255,9 @@ export function IllustrationsTab({ character, canEdit }: IllustrationsTabProps) 
           </p>
         </div>
         {canEdit ? (
-          <Button variant="outline" onClick={() => setUploadOpen(true)}>
-            <Upload size={15} />
-            Загрузить
+          <Button variant="outline" onClick={() => setAddOpen(true)}>
+            <Plus size={15} />
+            Добавить по ссылке
           </Button>
         ) : null}
       </div>
@@ -377,13 +283,13 @@ export function IllustrationsTab({ character, canEdit }: IllustrationsTabProps) 
             <Images className="mx-auto text-ink-500" size={24} />
             <p className="mt-3 font-serif text-xl text-ink-900">Пока без картинок</p>
             <p className="mx-auto mt-1 max-w-md text-sm text-ink-500">
-              Загрузите портрет, набросок или кадр сцены — визуальная память помогает
-              держать образ.
+              Добавьте ссылку на портрет, набросок или кадр сцены — визуальная
+              память помогает держать образ.
             </p>
             {canEdit ? (
-              <Button className="mt-5" variant="outline" onClick={() => setUploadOpen(true)}>
-                <Upload size={15} />
-                Добавить иллюстрацию
+              <Button className="mt-5" variant="outline" onClick={() => setAddOpen(true)}>
+                <Plus size={15} />
+                Добавить по ссылке
               </Button>
             ) : null}
           </div>
@@ -401,6 +307,7 @@ export function IllustrationsTab({ character, canEdit }: IllustrationsTabProps) 
                       src={attachment.url}
                       alt={attachment.caption || 'Иллюстрация персонажа'}
                       loading="lazy"
+                      referrerPolicy="no-referrer"
                     />
                   ) : (
                     <span className="flex h-full items-center justify-center text-ink-500">
@@ -446,11 +353,11 @@ export function IllustrationsTab({ character, canEdit }: IllustrationsTabProps) 
         )}
       </div>
 
-      <UploadIllustrationDialog
+      <AddIllustrationDialog
         character={character}
         attachmentsCount={attachments.length}
-        open={uploadOpen}
-        onOpenChange={setUploadOpen}
+        open={addOpen}
+        onOpenChange={setAddOpen}
       />
 
       {captionTarget ? (

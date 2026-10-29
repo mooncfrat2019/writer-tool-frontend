@@ -80,23 +80,8 @@ test('edits a diagram with live collaboration and persists it', async ({
   await expect(canvas.getByText('Новая заметка')).toBeVisible();
   await save;
 
-  // The thumbnail is rendered on the client and uploaded through the asset
-  // pipeline before being attached to the diagram.
-  const thumbnail = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'POST' &&
-      /\/api\/v1\/diagrams\/[^/]+\/thumbnail$/.test(response.url()),
-  );
-  await page.getByRole('button', { name: 'Обновить миниатюру' }).click();
-  const thumbnailResponse = await thumbnail;
-  expect(thumbnailResponse.status()).toBe(200);
-  const thumbnailBody = (await thumbnailResponse.json()) as {
-    thumbnailUrl?: string | null;
-  };
-  expect(thumbnailBody.thumbnailUrl).toContain('/api/v1/dev/files/');
-  await expect(page.getByText('Миниатюра схемы обновлена')).toBeVisible();
-
   // Canonical React Flow JSON is stored in PostgreSQL and the Yjs room.
+  // Thumbnail generation is disabled together with new image uploads.
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Схема тестов' })).toBeVisible();
   await expect(

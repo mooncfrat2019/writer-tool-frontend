@@ -1,12 +1,7 @@
 import { expect, test } from '@playwright/test';
-import { login, openProjectSection } from './helpers';
+import { EXTERNAL_IMAGE_URL, login, openProjectSection } from './helpers';
 
-const PNG = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-  'base64',
-);
-
-test('uploads, persists and removes a book cover', async ({ page }) => {
+test('links, persists and removes a book cover', async ({ page }) => {
   await login(page);
   await openProjectSection(page, 'Структура');
 
@@ -15,11 +10,9 @@ test('uploads, persists and removes a book cover', async ({ page }) => {
   await expect(
     dialog.getByRole('heading', { name: 'Обложка книги' }),
   ).toBeVisible();
-  await dialog.locator('#book-cover-file').setInputFiles({
-    name: 'cover.png',
-    mimeType: 'image/png',
-    buffer: PNG,
-  });
+  await dialog.locator('#book-cover-url').fill(EXTERNAL_IMAGE_URL);
+  await dialog.getByRole('button', { name: 'Проверить' }).click();
+  await expect(dialog.getByTestId('book-cover-url-preview')).toBeVisible();
   await dialog.getByRole('button', { name: 'Сохранить обложку' }).click();
   await expect(dialog).toBeHidden();
   await expect(page.getByAltText(/^Обложка /)).toBeVisible();

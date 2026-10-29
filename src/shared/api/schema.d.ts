@@ -1859,8 +1859,16 @@ export interface components {
             version?: number;
         };
         BookCoverRequest: {
-            /** Format: uuid */
-            assetId: string;
+            /**
+             * Format: uuid
+             * @description Legacy ready asset. Prefer url for new covers.
+             */
+            assetId?: string;
+            /**
+             * Format: uri
+             * @description Direct https/http image URL. Mutually exclusive with assetId.
+             */
+            url?: string;
         };
         /** @enum {string} */
         BookStatus: "planning" | "drafting" | "revising" | "final" | "published";
@@ -2186,9 +2194,14 @@ export interface components {
         WorldMapRequest: {
             /**
              * Format: uuid
-             * @description Ready image asset owned by the same project.
+             * @description Legacy ready asset owned by the same project.
              */
-            assetId: string;
+            assetId?: string;
+            /**
+             * Format: uri
+             * @description Direct https/http image URL. Mutually exclusive with assetId.
+             */
+            url?: string;
         };
         WorldRule: {
             /** Format: uuid */
@@ -2471,8 +2484,11 @@ export interface components {
         Attachment: {
             /** Format: uuid */
             id: string;
-            /** Format: uuid */
-            assetId: string;
+            /**
+             * Format: uuid
+             * @description Set for legacy uploaded assets; null for external links.
+             */
+            assetId?: string;
             /** @enum {string} */
             targetType: "character" | "world" | "location" | "faction" | "timeline_event" | "document";
             /** Format: uuid */
@@ -2494,8 +2510,16 @@ export interface components {
             nextCursor?: string | null;
         };
         AttachmentCreate: {
-            /** Format: uuid */
-            assetId: string;
+            /**
+             * Format: uuid
+             * @description Existing ready asset. New uploads are disabled; prefer url.
+             */
+            assetId?: string;
+            /**
+             * Format: uri
+             * @description Direct https/http image URL. Mutually exclusive with assetId.
+             */
+            url?: string;
             role: components["schemas"]["AttachmentRole"];
             caption?: string;
             sortOrder?: number;

@@ -81,9 +81,7 @@ test('links several cards to one and deletes with key or button', async ({
   await expect(canvas.locator('.react-flow__edge')).toHaveCount(0);
 });
 
-test('arranges cards by relationships and uploads a thumbnail', async ({
-  page,
-}) => {
+test('arranges cards by relationships', async ({ page }) => {
   await login(page);
   await openProjectSection(page, 'Схемы');
 
@@ -124,18 +122,14 @@ test('arranges cards by relationships and uploads a thumbnail', async ({
   expect(Math.abs(mira.x - kay.x)).toBeLessThan(2);
   expect(selina.x).toBeGreaterThan(mira.x + 100);
 
-  const thumbnail = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'POST' &&
-      /\/api\/v1\/diagrams\/[^/]+\/thumbnail$/.test(response.url()),
-  );
-  await page.getByRole('button', { name: 'Обновить миниатюру' }).click();
-  await thumbnail;
-  await expect(page.getByText('Миниатюра схемы обновлена')).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Обновить миниатюру' }),
+  ).toHaveCount(0);
 
   await page.getByRole('link', { name: /Все схемы/ }).click();
-  const card = page.getByRole('link').filter({ hasText: 'Схема миниатюр' });
-  await expect(card.locator('img')).toBeVisible();
+  await expect(
+    page.getByRole('link').filter({ hasText: 'Схема миниатюр' }),
+  ).toBeVisible();
 });
 
 test('creates and deletes a diagram', async ({ page }) => {

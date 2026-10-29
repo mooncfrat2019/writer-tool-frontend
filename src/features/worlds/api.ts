@@ -46,11 +46,11 @@ export async function updateWorld(worldId: string, body: WorldUpdate) {
   );
 }
 
-export async function setWorldMap(worldId: string, assetId: string) {
+export async function setWorldMap(worldId: string, url: string) {
   return unwrap(
     await api.PUT('/worlds/{worldId}/map', {
       params: { path: { worldId } },
-      body: { assetId },
+      body: { url },
     }),
   );
 }

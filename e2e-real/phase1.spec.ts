@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { registerAndVerify } from './helpers';
+import { EXTERNAL_IMAGE_URL, registerAndVerify } from './helpers';
 
 test('registers, restores the session and writes through the real API', async ({
   page,
@@ -143,18 +143,15 @@ test('registers, restores the session and writes through the real API', async ({
   ).toBeVisible();
 
   await page.getByRole('tab', { name: 'Иллюстрации' }).click();
-  await page.getByRole('button', { name: 'Загрузить' }).click();
+  await page.getByRole('button', { name: 'Добавить по ссылке' }).click();
   const uploadDialog = page.getByRole('dialog');
-  await uploadDialog.locator('#illustration-file').setInputFiles({
-    name: 'portrait.png',
-    mimeType: 'image/png',
-    buffer: Buffer.from(
-      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-      'base64',
-    ),
+  await uploadDialog.locator('#illustration-url').fill(EXTERNAL_IMAGE_URL);
+  await uploadDialog.getByRole('button', { name: 'Проверить' }).click();
+  await expect(uploadDialog.getByTestId('illustration-url-preview')).toBeVisible({
+    timeout: 15_000,
   });
   await uploadDialog.getByLabel('Подпись').fill('Интеграционный портрет');
-  await uploadDialog.getByRole('button', { name: 'Загрузить' }).click();
+  await uploadDialog.getByRole('button', { name: 'Добавить', exact: true }).click();
   await expect(uploadDialog).toBeHidden();
   await expect(page.getByText('Интеграционный портрет')).toBeVisible({
     timeout: 15_000,

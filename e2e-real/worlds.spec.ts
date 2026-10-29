@@ -1,10 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { registerAndVerify } from './helpers';
-
-const PNG = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-  'base64',
-);
+import { EXTERNAL_IMAGE_URL, registerAndVerify } from './helpers';
 
 test('creates a world and fills it through the real API', async ({ page, request }) => {
   test.setTimeout(180_000);
@@ -106,14 +101,17 @@ test('creates a world and fills it through the real API', async ({ page, request
   );
   await page.getByRole('dialog').getByLabel('Закрыть').click();
 
-  // The map background is uploaded through the shared asset pipeline.
+  // The map background is attached as an external image link.
   await page.getByRole('tab', { name: 'Локации' }).click();
   await page.getByRole('button', { name: 'Карта' }).click();
-  await page.getByTestId('map-file-input').setInputFiles({
-    name: 'map.png',
-    mimeType: 'image/png',
-    buffer: PNG,
+  await page.getByRole('button', { name: 'Указать фон' }).click();
+  const mapDialog = page.getByRole('dialog');
+  await mapDialog.locator('#world-map-url').fill(EXTERNAL_IMAGE_URL);
+  await mapDialog.getByRole('button', { name: 'Проверить' }).click();
+  await expect(mapDialog.getByTestId('world-map-url-preview')).toBeVisible({
+    timeout: 15_000,
   });
+  await mapDialog.getByRole('button', { name: 'Сохранить фон' }).click();
   await expect(page.getByTestId('location-map-background')).toBeVisible({
     timeout: 15_000,
   });

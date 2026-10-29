@@ -33,7 +33,6 @@ import { DiagramCanvas, type SaveStatus } from './DiagramCanvas';
 import {
   deleteDiagram,
   updateDiagram,
-  uploadDiagramThumbnail,
   type Diagram,
   type DiagramType,
 } from './api';
@@ -128,16 +127,6 @@ export function DiagramEditorPage() {
       queryClient.setQueryData(diagramKeys.detail(diagramId), updated);
     },
     [diagramId, queryClient],
-  );
-
-  const onUploadThumbnail = useCallback(
-    async (blob: Blob) => {
-      const updated = await uploadDiagramThumbnail(projectId, diagramId, blob);
-      versionRef.current = updated.version;
-      queryClient.setQueryData(diagramKeys.detail(diagramId), updated);
-      void queryClient.invalidateQueries({ queryKey: ['diagrams', projectId] });
-    },
-    [diagramId, projectId, queryClient],
   );
 
   if (diagramQuery.isLoading) {
@@ -264,7 +253,6 @@ export function DiagramEditorPage() {
             newEdgeLabel={newEdgeLabel}
             onSaveStatus={setSaveStatus}
             onSaved={onSaved}
-            onUploadThumbnail={onUploadThumbnail}
             projectId={projectId}
             provider={collabSession?.provider ?? null}
             ready={ready}

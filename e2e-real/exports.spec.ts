@@ -1,10 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { registerAndVerify } from './helpers';
-
-const PNG = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-  'base64',
-);
+import { EXTERNAL_IMAGE_URL, registerAndVerify } from './helpers';
 
 test('exports a book as DOCX and downloads the generated file', async ({
   page,
@@ -30,13 +25,14 @@ test('exports a book as DOCX and downloads the generated file', async ({
   await bookDialog.getByRole('button', { name: 'Создать книгу' }).click();
   await expect(bookDialog).toBeHidden();
 
-  // Upload a cover: it must reach the generated DOCX title page.
+  // Link a cover. Exports do not fetch third-party images, so the DOCX must
+  // report a warning and contain no media entry.
   await page.getByRole('button', { name: 'Обложка' }).click();
   const coverDialog = page.getByRole('dialog');
-  await coverDialog.locator('#book-cover-file').setInputFiles({
-    name: 'cover.png',
-    mimeType: 'image/png',
-    buffer: PNG,
+  await coverDialog.locator('#book-cover-url').fill(EXTERNAL_IMAGE_URL);
+  await coverDialog.getByRole('button', { name: 'Проверить' }).click();
+  await expect(coverDialog.getByTestId('book-cover-url-preview')).toBeVisible({
+    timeout: 15_000,
   });
   await coverDialog.getByRole('button', { name: 'Сохранить обложку' }).click();
   await expect(coverDialog).toBeHidden();
@@ -78,6 +74,7 @@ test('exports a book as DOCX and downloads the generated file', async ({
     .first();
   await expect(job).toBeVisible();
   await expect(job.getByText('Готово')).toBeVisible({ timeout: 30_000 });
+  await expect(job.getByText(/внешние ссылки/)).toBeVisible();
 
   const download = job.getByRole('link', { name: 'Скачать' });
   await expect(download).toHaveAttribute('href', /\/api\/v1\/dev\/files\//);
@@ -90,7 +87,6 @@ test('exports a book as DOCX and downloads the generated file', async ({
   expect(response.headers()['content-disposition']).toContain('.docx');
   const body = await response.body();
   expect(body.subarray(0, 2).toString()).toBe('PK');
-  // ZIP entry names are stored uncompressed, so the cover media is visible in
-  // the raw archive.
-  expect(body.includes(Buffer.from('word/media/'))).toBe(true);
+  // External cover links are skipped with a warning, never downloaded.
+  expect(body.includes(Buffer.from('word/media/'))).toBe(false);
 });

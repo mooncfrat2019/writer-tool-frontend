@@ -1,8 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
-import { ImageIcon, Trash2, Upload } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { ImageIcon, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 import { toast } from 'sonner';
-import { uploadProjectImage } from '@/shared/api/assets';
 import { api } from '@/shared/api/client';
 import { getApiErrorMessage } from '@/shared/api/errors';
 import { unwrap } from '@/shared/api/request';
@@ -16,13 +15,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/ui/dialog';
+import { ImageUrlField } from '@/shared/ui/image-url-field';
 
 type Book = components['schemas']['Book'];
 
-const MAX_FILE_SIZE = 20 * 1024 * 1024;
-
 type BookCoverDialogProps = {
-  projectId: string;
   book: Book;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -30,84 +27,41 @@ type BookCoverDialogProps = {
 };
 
 export function BookCoverDialog({
-  projectId,
   book,
   open,
   onOpenChange,
   onUpdated,
 }: BookCoverDialogProps) {
-  const [file, setFile] = useState<File | null>(null);
-  const [fileError, setFileError] = useState<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const previewRef = useRef<string | null>(null);
+  const [url, setUrl] = useState('');
+  const [urlValid, setUrlValid] = useState(false);
 
-  useEffect(
-    () => () => {
-      if (previewRef.current) {
-        URL.revokeObjectURL(previewRef.current);
-      }
-    },
-    [],
-  );
-
-  const clearPreview = () => {
-    if (previewRef.current) {
-      URL.revokeObjectURL(previewRef.current);
-      previewRef.current = null;
-    }
-    setPreviewUrl(null);
-  };
-
-  const handleFile = (selected: File | null) => {
-    clearPreview();
-    setFile(null);
-    setFileError(null);
-    if (!selected) {
-      return;
-    }
-    if (!selected.type.startsWith('image/')) {
-      setFileError('Поддерживаются только изображения.');
-      return;
-    }
-    if (selected.size > MAX_FILE_SIZE) {
-      setFileError('Файл больше 20 МБ.');
-      return;
-    }
-    setFile(selected);
-    const url = URL.createObjectURL(selected);
-    previewRef.current = url;
-    setPreviewUrl(url);
+  const reset = () => {
+    setUrl('');
+    setUrlValid(false);
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
-      clearPreview();
-      setFile(null);
-      setFileError(null);
+      reset();
     }
     onOpenChange(nextOpen);
   };
 
-  const upload = useMutation({
-    mutationFn: async () => {
-      if (!file) {
-        throw new Error('Выберите файл');
-      }
-      const asset = await uploadProjectImage(projectId, file);
-      return unwrap(
+  const save = useMutation({
+    mutationFn: async () =>
+      unwrap(
         await api.PUT('/books/{bookId}/cover', {
           params: { path: { bookId: book.id } },
-          body: { assetId: asset.id },
+          body: { url: url.trim() },
         }),
-      );
-    },
+      ),
     onSuccess: (updated) => {
       toast.success('Обложка обновлена');
       onUpdated(updated);
       handleOpenChange(false);
     },
     onError: (error) => {
-      toast.error(getApiErrorMessage(error, 'Не удалось загрузить обложку.'));
+      toast.error(getApiErrorMessage(error, 'Не удалось сохранить обложку.'));
     },
   });
 
@@ -128,8 +82,7 @@ export function BookCoverDialog({
     },
   });
 
-  const currentCover = previewUrl ?? book.coverUrl ?? null;
-  const pending = upload.isPending || remove.isPending;
+  const pending = save.isPending || remove.isPending;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -137,57 +90,39 @@ export function BookCoverDialog({
         <DialogHeader>
           <DialogTitle>Обложка книги</DialogTitle>
           <DialogDescription>
-            Обложка попадёт на титульную страницу DOCX и в титул FB2.
-            Поддерживаются JPG, PNG и GIF до 20 МБ.
+            Укажите прямую ссылку на изображение. Обложка показывается в
+            карточке книги, а хранится на стороннем сайте. В DOCX и FB2
+            внешняя обложка не встраивается — экспорт покажет предупреждение.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          {currentCover ? (
-            <img
-              alt={`Обложка ${book.title}`}
-              className="max-h-72 w-full rounded-md border border-paper-200 bg-paper-100 object-contain"
-              src={currentCover}
-            />
+          {book.coverUrl ? (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-ink-500">Текущая обложка</p>
+              <img
+                alt={`Обложка ${book.title}`}
+                className="max-h-72 w-full rounded-md border border-paper-200 bg-paper-100 object-contain"
+                referrerPolicy="no-referrer"
+                src={book.coverUrl}
+              />
+            </div>
           ) : (
-            <label
-              className="flex cursor-pointer flex-col items-center rounded-lg border border-dashed border-paper-300 bg-paper-100/40 px-6 py-10 text-center transition hover:border-accent-500/60 hover:bg-paper-100"
-              htmlFor="book-cover-file"
-            >
+            <div className="flex flex-col items-center rounded-lg border border-dashed border-paper-300 bg-paper-100/40 px-6 py-8 text-center">
               <ImageIcon className="text-ink-500" size={22} />
-              <span className="mt-2 text-sm font-medium text-ink-900">
-                Выбрать изображение
-              </span>
-              <span className="mt-1 text-xs text-ink-500">
-                JPG, PNG или GIF · до 20 МБ
-              </span>
-            </label>
+              <p className="mt-2 text-sm text-ink-500">Обложка пока не задана</p>
+            </div>
           )}
 
-          <input
-            accept="image/jpeg,image/png,image/gif"
-            className="sr-only"
-            id="book-cover-file"
-            onChange={(event) => handleFile(event.target.files?.[0] ?? null)}
-            type="file"
+          <ImageUrlField
+            id="book-cover-url"
+            label="Ссылка на обложку"
+            value={url}
+            onChange={setUrl}
+            onValidityChange={setUrlValid}
+            helpText="Поддерживаются JPG, PNG, GIF и другие форматы, которые открывает браузер. Ссылка проверяется до сохранения."
+            disabled={pending}
           />
-
-          {currentCover ? (
-            <label
-              className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-accent-700 underline"
-              htmlFor="book-cover-file"
-            >
-              <Upload size={12} />
-              Выбрать другое изображение
-            </label>
-          ) : null}
-
-          {file ? (
-            <p className="text-xs text-ink-500">
-              {file.name} · {(file.size / (1024 * 1024)).toFixed(1)} МБ
-            </p>
-          ) : null}
-          {fileError ? <p className="text-xs text-red-700">{fileError}</p> : null}
         </div>
 
         <DialogFooter className="gap-2 sm:justify-between">
@@ -215,12 +150,12 @@ export function BookCoverDialog({
               Отмена
             </Button>
             <Button
-              disabled={!file || pending}
-              onClick={() => upload.mutate()}
+              disabled={!urlValid || pending}
+              onClick={() => save.mutate()}
               type="button"
               variant="accent"
             >
-              {upload.isPending ? 'Загружаем…' : 'Сохранить обложку'}
+              {save.isPending ? 'Сохраняем…' : 'Сохранить обложку'}
             </Button>
           </div>
         </DialogFooter>

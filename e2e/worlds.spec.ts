@@ -1,23 +1,23 @@
 import { expect, test } from '@playwright/test';
-import { login, openProjectSection } from './helpers';
+import {
+  EXTERNAL_IMAGE_URL,
+  login,
+  openProjectSection,
+} from './helpers';
 
-const PNG = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-  'base64',
-);
-
-test('uploads, persists and removes a world map background', async ({ page }) => {
+test('links, persists and removes a world map background', async ({ page }) => {
   await login(page);
   await openProjectSection(page, 'Миры');
   await page.getByTestId('world-card').filter({ hasText: 'Астрал' }).click();
 
   await page.getByRole('tab', { name: 'Локации' }).click();
   await page.getByRole('button', { name: 'Карта' }).click();
-  await page.getByTestId('map-file-input').setInputFiles({
-    name: 'map.png',
-    mimeType: 'image/png',
-    buffer: PNG,
-  });
+  await page.getByRole('button', { name: 'Указать фон' }).click();
+  const mapDialog = page.getByRole('dialog');
+  await mapDialog.locator('#world-map-url').fill(EXTERNAL_IMAGE_URL);
+  await mapDialog.getByRole('button', { name: 'Проверить' }).click();
+  await expect(mapDialog.getByTestId('world-map-url-preview')).toBeVisible();
+  await mapDialog.getByRole('button', { name: 'Сохранить фон' }).click();
   await expect(page.getByTestId('location-map-background')).toBeVisible();
 
   await page.reload();

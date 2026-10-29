@@ -42,7 +42,6 @@ import {
   updateDiagram,
   type Diagram,
 } from './api';
-import { renderDiagramThumbnail } from './thumbnail';
 
 type Character = components['schemas']['Character'];
 
@@ -70,7 +69,6 @@ type DiagramCanvasProps = {
   provider: HocuspocusProvider | null;
   onSaved: (diagram: Diagram) => void;
   onSaveStatus: (status: SaveStatus) => void;
-  onUploadThumbnail: (blob: Blob) => Promise<void>;
 };
 
 const LOCAL_ORIGIN = Symbol('diagram-local');
@@ -239,7 +237,6 @@ export function DiagramCanvas({
   provider,
   onSaved,
   onSaveStatus,
-  onUploadThumbnail,
 }: DiagramCanvasProps) {
   const navigate = useNavigate();
   const nodesMap = useMemo(() => ydoc.getMap<NodeRecord>('nodes'), [ydoc]);
@@ -252,7 +249,6 @@ export function DiagramCanvas({
     edgeIds: string[];
   }>({ nodeIds: [], edgeIds: [] });
   const [linkTargetId, setLinkTargetId] = useState('');
-  const [thumbnailBusy, setThumbnailBusy] = useState(false);
   const nodesRef = useRef<RFNode[]>([]);
   const edgesRef = useRef<Edge[]>([]);
   useEffect(() => {
@@ -911,29 +907,6 @@ export function DiagramCanvas({
     setNodes(next);
   };
 
-  const makeThumbnail = async () => {
-    if (!canEdit || thumbnailBusy) {
-      return;
-    }
-    setThumbnailBusy(true);
-    try {
-      const blob = await renderDiagramThumbnail(
-        nodesRef.current,
-        edgesRef.current,
-      );
-      await onUploadThumbnail(blob);
-      toast.success('Миниатюра схемы обновлена');
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Не удалось обновить миниатюру',
-      );
-    } finally {
-      setThumbnailBusy(false);
-    }
-  };
-
   const undo = () => {
     undoManagerRef.current?.undo();
     setNodes(readNodes());
@@ -1003,9 +976,7 @@ export function DiagramCanvas({
           onAddNote={addNoteNode}
           onArrange={arrange}
           onRedo={redo}
-          onThumbnail={() => void makeThumbnail()}
           onUndo={undo}
-          thumbnailBusy={thumbnailBusy}
         />
         <div className="space-y-2 border-t border-paper-200 pt-2">
           <p className="text-xs font-medium uppercase tracking-[0.12em] text-ink-500">
@@ -1119,17 +1090,13 @@ function ButtonRow({
   onAddNote,
   onArrange,
   onRedo,
-  onThumbnail,
   onUndo,
-  thumbnailBusy,
 }: {
   canEdit: boolean;
   onAddNote: () => void;
   onArrange: () => void;
   onRedo: () => void;
-  onThumbnail: () => void;
   onUndo: () => void;
-  thumbnailBusy: boolean;
 }) {
   return (
     <div className="space-y-1 border-t border-paper-200 pt-2">
@@ -1148,14 +1115,6 @@ function ButtonRow({
         type="button"
       >
         Упорядочить по связям
-      </button>
-      <button
-        className="w-full rounded px-2 py-1.5 text-left text-xs text-ink-700 hover:bg-paper-50 disabled:opacity-50"
-        disabled={!canEdit || thumbnailBusy}
-        onClick={onThumbnail}
-        type="button"
-      >
-        {thumbnailBusy ? 'Готовим миниатюру…' : 'Обновить миниатюру'}
       </button>
       <div className="flex gap-1">
         <button

@@ -38,6 +38,15 @@ type Diagram = components['schemas']['Diagram'];
 const api = '/api/v1';
 const EXPORT_DURATION_MS = 2_600;
 
+/** A loadable image for URL fields while the app runs in mock mode. */
+export const MOCK_EXTERNAL_IMAGE = 'https://images.example.test/illustration.png';
+const MOCK_EXTERNAL_IMAGE_BYTES = Uint8Array.from(
+  atob(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+  ),
+  (char) => char.charCodeAt(0),
+);
+
 // The mock API has no mailbox. Remember the registration so the demo
 // confirmation button can start a session for the same identity.
 let pendingRegistration: { email: string; displayName: string } | null = null;
@@ -212,6 +221,13 @@ function advanceExports(): void {
 }
 
 export const handlers = [
+  http.get(
+    'https://images.example.test/:name',
+    () =>
+      new HttpResponse(MOCK_EXTERNAL_IMAGE_BYTES, {
+        headers: { 'Content-Type': 'image/png' },
+      }),
+  ),
   http.post(`${api}/auth/register`, async ({ request }) => {
     const body = (await request.json()) as {
       email?: string;
@@ -932,28 +948,37 @@ export const handlers = [
     if (!book) {
       return problem(404, 'not_found', 'Book not found');
     }
-    const body = (await request.json()) as { assetId?: string };
-    if (!body.assetId) {
-      return problem(422, 'validation_failed', 'Validation failed', 'assetId is required');
-    }
-    const asset = state.assets.find((item) => item.id === body.assetId);
-    if (!asset || asset.projectId !== book.projectId) {
+    const body = (await request.json()) as { assetId?: string; url?: string };
+    if ((body.assetId === undefined) === (body.url === undefined)) {
       return problem(
         422,
         'validation_failed',
         'Validation failed',
-        'Asset belongs to another project',
+        'Provide exactly one of assetId or url',
       );
     }
-    if (asset.status !== 'ready' || !asset.mime.startsWith('image/')) {
-      return problem(
-        422,
-        'validation_failed',
-        'Validation failed',
-        'Asset must be a ready image',
-      );
+    if (body.url !== undefined) {
+      book.coverUrl = body.url;
+    } else {
+      const asset = state.assets.find((item) => item.id === body.assetId);
+      if (!asset || asset.projectId !== book.projectId) {
+        return problem(
+          422,
+          'validation_failed',
+          'Validation failed',
+          'Asset belongs to another project',
+        );
+      }
+      if (asset.status !== 'ready' || !asset.mime.startsWith('image/')) {
+        return problem(
+          422,
+          'validation_failed',
+          'Validation failed',
+          'Asset must be a ready image',
+        );
+      }
+      book.coverUrl = asset.url ?? asset.thumbUrl ?? `/api/v1/dev/files/${asset.id}`;
     }
-    book.coverUrl = asset.url ?? asset.thumbUrl ?? `/api/v1/dev/files/${asset.id}`;
     book.version += 1;
     book.updatedAt = new Date().toISOString();
     saveMockState();
@@ -1558,20 +1583,40 @@ export const handlers = [
     }
     const body = (await request.json()) as {
       assetId?: string;
+      url?: string;
       role?: Attachment['role'];
       caption?: string;
       sortOrder?: number;
     };
-    if (!body.assetId || !body.role) {
-      return problem(422, 'validation_failed', 'Validation failed', 'Asset and role are required');
+    if (!body.role) {
+      return problem(422, 'validation_failed', 'Validation failed', 'Role is required');
     }
-    const asset = state.assets.find((item) => item.id === body.assetId);
-    if (!asset) {
+    if ((body.assetId === undefined) === (body.url === undefined)) {
+      return problem(
+        422,
+        'validation_failed',
+        'Validation failed',
+        'Provide exactly one of assetId or url',
+      );
+    }
+    if (body.role === 'avatar' && body.url !== undefined) {
+      return problem(
+        422,
+        'validation_failed',
+        'Validation failed',
+        'Avatar images must use an existing asset',
+      );
+    }
+    const asset = body.assetId
+      ? state.assets.find((item) => item.id === body.assetId)
+      : undefined;
+    if (body.assetId && !asset) {
       return problem(422, 'validation_failed', 'Validation failed', 'Asset not found');
     }
+    const imageUrl = body.url ?? asset?.url ?? asset?.thumbUrl ?? null;
     const attachment: Attachment = {
       id: crypto.randomUUID(),
-      assetId: asset.id,
+      ...(asset ? { assetId: asset.id } : {}),
       targetType: 'character',
       targetId: character.id,
       role: body.role,
@@ -1579,13 +1624,13 @@ export const handlers = [
       sortOrder:
         body.sortOrder ??
         state.attachments.filter((item) => item.targetId === character.id).length,
-      url: asset.url ?? null,
-      thumbUrl: asset.thumbUrl ?? null,
+      url: imageUrl,
+      thumbUrl: imageUrl,
       createdAt: new Date().toISOString(),
     };
     state.attachments = [...state.attachments, attachment];
-    if (body.role === 'avatar') {
-      character.avatarUrl = asset.url ?? null;
+    if (body.role === 'avatar' && asset) {
+      character.avatarUrl = imageUrl;
       character.updatedAt = new Date().toISOString();
       character.version += 1;
     }
@@ -1872,12 +1917,24 @@ export const handlers = [
     if (!world) {
       return problem(404, 'not_found', 'World not found');
     }
-    const body = (await request.json()) as { assetId?: string };
-    const asset = state.assets.find((item) => item.id === body.assetId);
-    if (!asset) {
-      return problem(422, 'validation_failed', 'Validation failed', 'Asset not found');
+    const body = (await request.json()) as { assetId?: string; url?: string };
+    if ((body.assetId === undefined) === (body.url === undefined)) {
+      return problem(
+        422,
+        'validation_failed',
+        'Validation failed',
+        'Provide exactly one of assetId or url',
+      );
     }
-    world.mapUrl = asset.url ?? null;
+    if (body.url !== undefined) {
+      world.mapUrl = body.url;
+    } else {
+      const asset = state.assets.find((item) => item.id === body.assetId);
+      if (!asset) {
+        return problem(422, 'validation_failed', 'Validation failed', 'Asset not found');
+      }
+      world.mapUrl = asset.url ?? null;
+    }
     world.version += 1;
     world.updatedAt = new Date().toISOString();
     touchProject(world.projectId);

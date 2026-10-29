@@ -13,6 +13,9 @@ export const VIEWER_CHAPTER_ID = '55555555-5555-4555-8555-555555555554';
 export const VIEWER_DOCUMENT_ID = '88888888-8888-4888-8888-888888888890';
 export const MIRA_ID = '99999999-9999-4999-8999-999999999999';
 export const KAY_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+// Served by the MSW image handler in src/shared/mocks/handlers.ts.
+export const EXTERNAL_IMAGE_URL =
+  'https://images.example.test/illustration.png';
 
 export async function login(page: Page): Promise<void> {
   await page.goto('/login');

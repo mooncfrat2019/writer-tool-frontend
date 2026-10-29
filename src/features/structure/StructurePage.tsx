@@ -453,6 +453,7 @@ export function StructurePage() {
                   <img
                     alt={`Обложка ${selectedBook.title}`}
                     className="h-32 w-24 shrink-0 rounded-md border border-paper-200 object-cover"
+                    referrerPolicy="no-referrer"
                     src={bookCoverUrl}
                   />
                 ) : null}
@@ -614,7 +615,6 @@ export function StructurePage() {
               void queryClient.invalidateQueries({ queryKey: ['book-tree', bookId] });
             }
           }}
-          projectId={projectId}
         />
       ) : null}
 
