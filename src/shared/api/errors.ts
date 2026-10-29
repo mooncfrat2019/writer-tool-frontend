@@ -15,6 +15,9 @@ export function getApiErrorMessage(
   fallback = 'Не удалось выполнить действие. Попробуйте ещё раз.',
 ): string {
   if (error instanceof ApiError) {
+    if (error.problem.code === 'image_uploads_pro_only') {
+      return 'Загрузка изображений доступна на тарифе Pro.';
+    }
     return statusMessages[error.problem.status] ?? fallback;
   }
   if (error instanceof TypeError) {

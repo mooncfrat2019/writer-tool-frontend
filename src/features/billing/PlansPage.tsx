@@ -170,6 +170,10 @@ function PlanCard({ plan, current }: PlanCardProps) {
             used={usage ? formatBytes(usage.storageBytes) : undefined}
             progress={usage ? share(usage.storageBytes, limits.storageBytes) : undefined}
           />
+          <LimitRow
+            label="Изображения"
+            limit={plan.id === 'pro' ? 'Доступны' : 'Только на Pro'}
+          />
         </div>
       </CardContent>
     </Card>
