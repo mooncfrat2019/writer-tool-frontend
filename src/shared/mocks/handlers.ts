@@ -602,6 +602,83 @@ export const handlers = [
     return HttpResponse.json(mockUser);
   }),
 
+  http.get(`${api}/billing/plans`, () => {
+    const freeLimits = {
+      projects: 1,
+      books: 1,
+      characters: 30,
+      timelineEvents: 150,
+      worlds: 1,
+      locations: 20,
+      factions: 10,
+      loreEntries: 20,
+      storageBytes: 1024 ** 3,
+      manuscriptCharacters: 200_000,
+    };
+    const proLimits = {
+      projects: 20,
+      books: 20,
+      characters: 500,
+      timelineEvents: 5000,
+      worlds: 10,
+      locations: 500,
+      factions: 200,
+      loreEntries: 500,
+      storageBytes: 50 * 1024 ** 3,
+      manuscriptCharacters: 7_000_000,
+    };
+    return HttpResponse.json({
+      items: [
+        {
+          id: 'free',
+          name: 'Бесплатный',
+          description: 'Небольшой роман: одна книга до 5 авторских листов.',
+          limits: freeLimits,
+        },
+        {
+          id: 'pro',
+          name: 'Профессиональный',
+          description:
+            'Серия книг: до 20 книг и около 175 авторских листов, расширенные справочники и хранилище.',
+          limits: proLimits,
+        },
+      ],
+    });
+  }),
+
+  http.get(`${api}/billing/me`, () => {
+    if (!hasMockSession()) {
+      return problem(401, 'unauthorized', 'Authentication required');
+    }
+    return HttpResponse.json({
+      plan: 'pro',
+      limits: {
+        projects: 20,
+        books: 20,
+        characters: 500,
+        timelineEvents: 5000,
+        worlds: 10,
+        locations: 500,
+        factions: 200,
+        loreEntries: 500,
+        storageBytes: 50 * 1024 ** 3,
+        manuscriptCharacters: 7_000_000,
+      },
+      usage: {
+        projects: 2,
+        books: 2,
+        characters: 3,
+        timelineEvents: 4,
+        worlds: 1,
+        locations: 3,
+        factions: 1,
+        loreEntries: 2,
+        storageBytes: 12 * 1024 ** 2,
+        manuscriptCharacters: 48_000,
+      },
+    });
+  }),
+
   http.get(`${api}/projects`, async () => {
     const state = getMockState();
     recalculateMockState(state);

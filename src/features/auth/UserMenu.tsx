@@ -1,5 +1,11 @@
 import { useNavigate } from '@tanstack/react-router';
-import { ChevronDown, LogOut, Settings, UserRound } from 'lucide-react';
+import {
+  ChevronDown,
+  CreditCard,
+  LogOut,
+  Settings,
+  UserRound,
+} from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import {
   DropdownMenu,
@@ -50,6 +56,10 @@ export function UserMenu({ align = 'end' }: UserMenuProps) {
           </span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => void navigate({ to: '/plans' })}>
+          <CreditCard size={15} />
+          Тарифы
+        </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => void navigate({ to: '/settings' })}>
           <Settings size={15} />
           Настройки

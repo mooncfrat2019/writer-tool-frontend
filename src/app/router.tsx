@@ -13,6 +13,7 @@ import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
 import { ConfirmEmailChangePage } from '@/features/auth/ConfirmEmailChangePage';
 import { bootstrapSession, useSession } from '@/features/auth/session';
+import { PlansPage } from '@/features/billing/PlansPage';
 import { CharactersPage } from '@/features/characters/CharactersPage';
 import { ExportsPage } from '@/features/exports/ExportsPage';
 import { DiagramsPage } from '@/features/diagrams/DiagramsPage';
@@ -162,6 +163,13 @@ const settingsRoute = createRoute({
   component: SettingsPage,
 });
 
+const plansRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/plans',
+  beforeLoad: requireAuth,
+  component: PlansPage,
+});
+
 const projectRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/projects/$projectId',
@@ -275,6 +283,7 @@ const routeTree = rootRoute.addChildren([
   sharedDocumentRoute,
   projectsRoute,
   settingsRoute,
+  plansRoute,
   projectRoute.addChildren([
     structureRoute,
     charactersRoute,

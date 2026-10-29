@@ -1502,6 +1502,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/billing/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getBillingPlans"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getBillingMe"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1628,6 +1660,44 @@ export interface components {
             accessToken: string;
             /** Format: date-time */
             accessTokenExpiresAt: string;
+        };
+        BillingCounters: {
+            /** Format: int64 */
+            projects: number;
+            /** Format: int64 */
+            books: number;
+            /** Format: int64 */
+            characters: number;
+            /** Format: int64 */
+            timelineEvents: number;
+            /** Format: int64 */
+            worlds: number;
+            /** Format: int64 */
+            locations: number;
+            /** Format: int64 */
+            factions: number;
+            /** Format: int64 */
+            loreEntries: number;
+            /** Format: int64 */
+            storageBytes: number;
+            /** Format: int64 */
+            manuscriptCharacters: number;
+        };
+        BillingPlan: {
+            /** @enum {string} */
+            id: "free" | "pro";
+            name: string;
+            description: string;
+            limits: components["schemas"]["BillingCounters"];
+        };
+        BillingPlanList: {
+            items: components["schemas"]["BillingPlan"][];
+        };
+        BillingMe: {
+            /** @enum {string} */
+            plan: "free" | "pro";
+            limits: components["schemas"]["BillingCounters"];
+            usage: components["schemas"]["BillingCounters"];
         };
         User: {
             /** Format: uuid */
@@ -6314,6 +6384,48 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getBillingPlans: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Available plans and their limits */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillingPlanList"];
+                };
+            };
+        };
+    };
+    getBillingMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current plan, limits and usage */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillingMe"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            429: components["responses"]["TooManyRequests"];
         };
     };
 }

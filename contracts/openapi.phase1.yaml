@@ -2700,6 +2700,35 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationFailed'
 
+  /billing/plans:
+    get:
+      tags: [Billing]
+      operationId: getBillingPlans
+      security: []
+      responses:
+        '200':
+          description: Available plans and their limits
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillingPlanList'
+
+  /billing/me:
+    get:
+      tags: [Billing]
+      operationId: getBillingMe
+      responses:
+        '200':
+          description: Current plan, limits and usage
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillingMe'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -3193,6 +3222,83 @@ components:
         accessTokenExpiresAt:
           type: string
           format: date-time
+
+    BillingCounters:
+      type: object
+      required:
+        - projects
+        - books
+        - characters
+        - timelineEvents
+        - worlds
+        - locations
+        - factions
+        - loreEntries
+        - storageBytes
+        - manuscriptCharacters
+      properties:
+        projects:
+          type: integer
+          format: int64
+        books:
+          type: integer
+          format: int64
+        characters:
+          type: integer
+          format: int64
+        timelineEvents:
+          type: integer
+          format: int64
+        worlds:
+          type: integer
+          format: int64
+        locations:
+          type: integer
+          format: int64
+        factions:
+          type: integer
+          format: int64
+        loreEntries:
+          type: integer
+          format: int64
+        storageBytes:
+          type: integer
+          format: int64
+        manuscriptCharacters:
+          type: integer
+          format: int64
+    BillingPlan:
+      type: object
+      required: [id, name, description, limits]
+      properties:
+        id:
+          type: string
+          enum: [free, pro]
+        name:
+          type: string
+        description:
+          type: string
+        limits:
+          $ref: '#/components/schemas/BillingCounters'
+    BillingPlanList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BillingPlan'
+    BillingMe:
+      type: object
+      required: [plan, limits, usage]
+      properties:
+        plan:
+          type: string
+          enum: [free, pro]
+        limits:
+          $ref: '#/components/schemas/BillingCounters'
+        usage:
+          $ref: '#/components/schemas/BillingCounters'
 
     User:
       type: object
