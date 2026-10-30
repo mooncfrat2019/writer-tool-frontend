@@ -1,0 +1,176 @@
+name: deploy-prod
+
+# Manual release: push a new tag, then run this workflow from the Actions tab
+# and pass that tag. It builds the frontend image and upgrades the Helm release
+# on the self-hosted runner.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Git tag to build and deploy (for example v1.0.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-writer-frontend-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    environment: main
+    timeout-minutes: 45
+    env:
+      NAMESPACE: writer-tool
+      PULL_SECRET: timeweb-registry
+      RELEASE_TAG: ${{ inputs.tag }}
+      DEPLOYMENT_NAME: ${{ vars.DEPLOYMENT_NAME }}
+      IMAGE_NAME: ${{ vars.IMAGE_NAME }}
+      REGISTRY_URL: ${{ secrets.REGISTRY_URL }}
+      REGISTRY_LOGIN: ${{ secrets.REGISTRY_LOGIN }}
+      REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+      # Absolute path to the Timeweb kubeconfig on the runner.
+      KUBECONFIG: ${{ vars.KUBECONFIG_PATH }}
+      K8S_CONTEXT: ${{ vars.K8S_CONTEXT }}
+    steps:
+      - name: Check out the requested tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+
+      - name: Verify that the ref is a pushed tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${RELEASE_TAG:?tag input is required}"
+          git fetch --tags --force
+          if ! git rev-parse --verify "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "ref '$RELEASE_TAG' is not a tag; create and push a tag first" >&2
+            exit 1
+          fi
+          test "$(git rev-parse HEAD)" = "$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")"
+          git fetch origin main --force
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "tag '$RELEASE_TAG' does not point to a commit on main" >&2
+            exit 1
+          fi
+          case "$RELEASE_TAG" in
+            *[!A-Za-z0-9_.-]*)
+              echo "tag '$RELEASE_TAG' cannot be used as a container image tag" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Check the runner tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker version >/dev/null
+          kubectl version --client >/dev/null
+          helm version --short >/dev/null
+
+      - name: Select the Timeweb cluster
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${KUBECONFIG:?set the KUBECONFIG_PATH environment variable to twc-writer-tool-config.yaml}"
+          test -f "$KUBECONFIG" || { echo "kubeconfig not found: $KUBECONFIG" >&2; exit 1; }
+          expected="${K8S_CONTEXT:-twc-writer-tool}"
+          actual="$(kubectl config current-context)"
+          echo "kubeconfig=$KUBECONFIG context=$actual"
+          test "$actual" = "$expected" || { echo "expected context $expected, got $actual" >&2; exit 1; }
+          kubectl get nodes >/dev/null
+
+      - name: Log in to the container registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${REGISTRY_URL:?REGISTRY_URL secret is required}"
+          : "${REGISTRY_LOGIN:?REGISTRY_LOGIN secret is required}"
+          : "${REGISTRY_TOKEN:?REGISTRY_TOKEN secret is required}"
+          : "${IMAGE_NAME:?IMAGE_NAME variable is required}"
+          : "${DEPLOYMENT_NAME:?DEPLOYMENT_NAME variable is required}"
+          registry="${REGISTRY_URL#http://}"
+          registry="${registry#https://}"
+          registry="${registry%/}"
+          echo "$REGISTRY_TOKEN" | docker login "$registry" \
+            --username "$REGISTRY_LOGIN" --password-stdin
+
+      - name: Build and push the image
+        shell: bash
+        run: |
+          set -euo pipefail
+          registry="${REGISTRY_URL#http://}"
+          registry="${registry#https://}"
+          registry="${registry%/}"
+          image="$registry/$IMAGE_NAME"
+          docker build --pull \
+            --build-arg VITE_API_MODE=real \
+            --build-arg VITE_COLLAB_ENABLED=true \
+            --label "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --label "org.opencontainers.image.version=$RELEASE_TAG" \
+            -t "$image:latest" -t "$image:$RELEASE_TAG" .
+          docker push "$image:latest"
+          docker push "$image:$RELEASE_TAG"
+
+      - name: Ensure the namespace and registry pull secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          registry="${REGISTRY_URL#http://}"
+          registry="${registry#https://}"
+          registry="${registry%/}"
+          kubectl get namespace "$NAMESPACE" >/dev/null 2>&1 \
+            || kubectl create namespace "$NAMESPACE"
+          kubectl -n "$NAMESPACE" create secret docker-registry "$PULL_SECRET" \
+            --docker-server="$registry" \
+            --docker-username="$REGISTRY_LOGIN" \
+            --docker-password="$REGISTRY_TOKEN" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Helm upgrade --install
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${DEPLOYMENT_NAME:?DEPLOYMENT_NAME variable is required}"
+          : "${IMAGE_NAME:?IMAGE_NAME variable is required}"
+          : "${RELEASE_TAG:?tag input is required}"
+          registry="${REGISTRY_URL#http://}"
+          registry="${registry#https://}"
+          registry="${registry%/}"
+          helm upgrade --install "$DEPLOYMENT_NAME" deploy/helm/writer-frontend \
+            -f deploy/helm/writer-frontend/values-prod.yaml \
+            --namespace "$NAMESPACE" \
+            --create-namespace \
+            --set "image.repository=$registry/$IMAGE_NAME" \
+            --set "image.tag=$RELEASE_TAG" \
+            --set "image.pullPolicy=Always" \
+            --set "fullnameOverride=$DEPLOYMENT_NAME" \
+            --set "imagePullSecrets[0].name=$PULL_SECRET" \
+            --set "apiUpstream=http://writer-backend:8087" \
+            --set "collabUpstream=http://writer-backend:8087" \
+            --atomic \
+            --wait \
+            --timeout 5m
+
+      - name: Verify the rollout
+        shell: bash
+        run: |
+          set -euo pipefail
+          kubectl -n "$NAMESPACE" rollout restart "deployment/$DEPLOYMENT_NAME"
+          kubectl -n "$NAMESPACE" rollout status "deployment/$DEPLOYMENT_NAME" --timeout=180s
+          kubectl -n "$NAMESPACE" get pods \
+            -l "app.kubernetes.io/instance=$DEPLOYMENT_NAME"
+
+      - name: Log out of the container registry
+        if: always()
+        shell: bash
+        run: |
+          registry="${REGISTRY_URL#http://}"
+          registry="${registry#https://}"
+          docker logout "${registry%/}" || true

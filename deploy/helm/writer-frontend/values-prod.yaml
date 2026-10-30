@@ -1,0 +1,54 @@
+# Timeweb Cloud production overrides.
+# Deployed by .github/workflows/deploy-prod.yml; the home-cluster deploy keeps
+# using values.yaml and .github/workflows/deploy.yml.
+replicaCount: 2
+
+# Keep one frontend pod per node. With externalTrafficPolicy: Local this makes
+# both Timeweb load-balancer backends healthy and preserves the client address.
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          topologyKey: kubernetes.io/hostname
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: writer-frontend
+
+service:
+  type: LoadBalancer
+  externalIPs: []
+  # Preserve the client address for the frontend nginx and the backend audit
+  # log. Timeweb routes only to nodes that actually run a frontend pod.
+  externalTrafficPolicy: Local
+  annotations:
+    # Timeweb Cloud assigns the external IP and terminates TLS on the load
+    # balancer. The DNS A record must point to the assigned IP before
+    # Let's Encrypt can issue the certificate.
+    k8s.timeweb.cloud/attached-loadbalancer-ssl: "true"
+    k8s.timeweb.cloud/attached-loadbalancer-ssl-type: "lets_encrypt"
+    k8s.timeweb.cloud/attached-loadbalancer-ssl-fqdn: "tool.melzix.net"
+    k8s.timeweb.cloud/attached-loadbalancer-force-ssl: "true"
+    # For a custom certificate change ssl-type to "custom" and add:
+    # k8s.timeweb.cloud/attached-loadbalancer-ssl-secret-name: "writer-tool-tls"
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+    - name: https
+      port: 443
+      targetPort: http
+      protocol: TCP
+      appProtocol: k8s.timeweb.cloud/proto-https
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+
+apiUpstream: http://writer-backend:8087
+collabUpstream: http://writer-backend:8087

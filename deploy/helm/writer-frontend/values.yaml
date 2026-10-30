@@ -23,6 +23,12 @@ service:
   externalIPs:
     - 192.168.0.77
   annotations: {}
+  # Optional ports list used by values-prod.yaml for HTTP and HTTPS on the
+  # Timeweb load balancer. When empty, the chart renders the single
+  # service.port entry above.
+  ports: []
+  externalTrafficPolicy: ""
+  loadBalancerSourceRanges: []
 
 podAnnotations: {}
 
