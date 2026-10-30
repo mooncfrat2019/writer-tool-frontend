@@ -3559,7 +3559,7 @@ components:
 
     User:
       type: object
-      required: [id, email, displayName, emailVerified, twoFactorEnabled, twoFactorMethod, createdAt]
+      required: [id, email, displayName, hasPassword, emailVerified, twoFactorEnabled, twoFactorMethod, createdAt]
       properties:
         id:
           type: string
@@ -3569,6 +3569,9 @@ components:
           format: email
         displayName:
           type: string
+        hasPassword:
+          type: boolean
+          description: False for pseudonymous OAuth-only accounts.
         avatarUrl:
           type: [string, 'null']
           format: uri
@@ -3679,16 +3682,13 @@ components:
       enum: [owner, editor, viewer]
     ProjectMember:
       type: object
-      required: [userId, displayName, email, role, joinedAt]
+      required: [userId, displayName, role, joinedAt]
       properties:
         userId:
           type: string
           format: uuid
         displayName:
           type: string
-        email:
-          type: string
-          format: email
         avatarUrl:
           type: [string, 'null']
           format: uri

@@ -47,7 +47,15 @@ test('signs in through an OAuth provider', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Проекты' })).toBeVisible();
   await page.getByRole('button', { name: 'Меню пользователя' }).click();
   const accountMenu = page.getByRole('menu', { name: 'Меню пользователя' });
-  await expect(accountMenu.getByText('Автор')).toBeVisible();
+  await expect(accountMenu.getByText('Тихий Архивариус 4821')).toBeVisible();
+  await expect(accountMenu.getByText('oauth-mock@invalid.local')).toHaveCount(0);
+
+  await page.getByRole('menuitem', { name: 'Настройки' }).click();
+  await expect(page).toHaveURL(/\/settings$/);
+  await expect(page.getByText('Псевдоним', { exact: true })).toBeVisible();
+  await expect(page.getByRole('definition')).toHaveText('Тихий Архивариус 4821');
+  await expect(page.getByText('oauth-mock@invalid.local')).toHaveCount(0);
+  await expect(page.getByText('Смена пароля')).toHaveCount(0);
 });
 
 test('asks to restart when the OAuth callback has no pending attempt', async ({
@@ -78,7 +86,7 @@ test('registers a new account and opens the project library', async ({ page }) =
   await page.getByRole('button', { name: 'Меню пользователя' }).click();
   const accountMenu = page.getByRole('menu', { name: 'Меню пользователя' });
   await expect(accountMenu.getByText('Иван Читатель')).toBeVisible();
-  await expect(accountMenu.getByText('reader@example.com')).toBeVisible();
+  await expect(accountMenu.getByText('reader@example.com')).toHaveCount(0);
 });
 
 test('asks for a code after confirming email when 2FA is enabled', async ({ page }) => {
@@ -224,19 +232,4 @@ test('enables TOTP authentication from settings', async ({ page }) => {
 
   await expect(page.getByText('Сейчас включена:')).toBeVisible();
   await expect(page.getByText('приложение-аутентификатор')).toBeVisible();
-});
-
-test('starts an email change from settings and confirms it', async ({ page }) => {
-  await login(page);
-  await page.goto('/settings');
-
-  await page.locator('#newEmail').fill('new-author@example.com');
-  await page.locator('#emailCurrentPassword').fill('password123');
-  await page.getByRole('button', { name: 'Сменить email' }).click();
-  await expect(
-    page.getByText(/Письмо для подтверждения отправлено на/),
-  ).toBeVisible();
-
-  await page.goto('/confirm-email-change?token=mock-email-change');
-  await expect(page.getByRole('heading', { name: 'Email обновлён' })).toBeVisible();
 });

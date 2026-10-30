@@ -1826,6 +1826,8 @@ export interface components {
             /** Format: email */
             email: string;
             displayName: string;
+            /** @description False for pseudonymous OAuth-only accounts. */
+            hasPassword: boolean;
             /** Format: uri */
             avatarUrl?: string | null;
             emailVerified: boolean;
@@ -1884,8 +1886,6 @@ export interface components {
             /** Format: uuid */
             userId: string;
             displayName: string;
-            /** Format: email */
-            email: string;
             /** Format: uri */
             avatarUrl?: string | null;
             role: components["schemas"]["ProjectRole"];

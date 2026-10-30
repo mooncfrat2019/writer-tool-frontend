@@ -192,7 +192,7 @@ export function TwoFactorCard() {
             <p className="text-sm text-ink-700">
               {challenge.method === 'totp'
                 ? 'Введите шестизначный код из приложения.'
-                : `Код отправлен на ${user?.email ?? 'вашу почту'}.`}{' '}
+                : 'Код отправлен на почту аккаунта.'}{' '}
               {mode === 'enable' ? 'Это включит защиту.' : 'Это выключит защиту.'}
             </p>
 

@@ -21,8 +21,9 @@ import {
 import { getAuthRedirect, redirectQuery } from './redirect';
 import { setSessionFromAuth } from './session';
 
-const isMockMode =
-  import.meta.env.DEV && (import.meta.env.VITE_API_MODE ?? 'mock') === 'mock';
+const isMockMode = import.meta.env.DEV && (import.meta.env.VITE_API_MODE ?? 'mock') === 'mock';
+const allowServiceLogin =
+  isMockMode || new URLSearchParams(window.location.search).get('service') === '1';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -30,6 +31,7 @@ export function LoginPage() {
   const redirect = getAuthRedirect();
   const [formError, setFormError] = useState<string | null>(null);
   const [oauthError, setOauthError] = useState<string | null>(null);
+  const [showEmailForm, setShowEmailForm] = useState(allowServiceLogin);
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
   const [twoFactor, setTwoFactor] = useState<{
     challengeToken: string;
@@ -170,23 +172,17 @@ export function LoginPage() {
         <form
           className="space-y-5"
           noValidate
-          onSubmit={twoFactorForm.handleSubmit((values) =>
-            verifyTwoFactor.mutate(values),
-          )}
+          onSubmit={twoFactorForm.handleSubmit((values) => verifyTwoFactor.mutate(values))}
         >
           <div className="space-y-2">
-            <Label htmlFor="code">
-              {fromApp ? 'Код из приложения' : 'Код из письма'}
-            </Label>
+            <Label htmlFor="code">{fromApp ? 'Код из приложения' : 'Код из письма'}</Label>
             <Input
               id="code"
               inputMode="numeric"
               autoComplete="one-time-code"
               maxLength={6}
               aria-invalid={Boolean(twoFactorForm.formState.errors.code)}
-              aria-describedby={
-                twoFactorForm.formState.errors.code ? 'code-error' : undefined
-              }
+              aria-describedby={twoFactorForm.formState.errors.code ? 'code-error' : undefined}
               {...twoFactorForm.register('code')}
             />
             {twoFactorForm.formState.errors.code ? (
@@ -205,11 +201,7 @@ export function LoginPage() {
             </p>
           ) : null}
 
-          <Button
-            className="w-full"
-            type="submit"
-            disabled={verifyTwoFactor.isPending}
-          >
+          <Button className="w-full" type="submit" disabled={verifyTwoFactor.isPending}>
             {verifyTwoFactor.isPending ? 'Проверяем…' : 'Подтвердить код'}
           </Button>
         </form>
@@ -234,115 +226,133 @@ export function LoginPage() {
         </p>
       }
     >
-      <OAuthButtons
-        redirect={redirect}
-        disabled={login.isPending}
-        onError={setOauthError}
-      />
+      <OAuthButtons redirect={redirect} disabled={login.isPending} onError={setOauthError} />
 
-      <div className="my-6 flex items-center gap-3">
-        <span className="h-px flex-1 bg-paper-200" />
-        <span className="text-xs uppercase tracking-[0.14em] text-ink-500">
-          или по почте
-        </span>
-        <span className="h-px flex-1 bg-paper-200" />
-      </div>
+      <p className="mt-4 text-xs leading-relaxed text-ink-500">
+        Аккаунт создаётся автоматически при первом входе. Почта и пароль для новых аккаунтов не
+        используются.
+      </p>
 
-      <form
-        className="space-y-5"
-        noValidate
-        onSubmit={handleSubmit((values) => login.mutate(values))}
+      {oauthError ? (
+        <p
+          role="alert"
+          className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+        >
+          {oauthError}
+        </p>
+      ) : null}
+
+      {allowServiceLogin ? (
+        <>
+      <button
+        className="mt-5 text-xs font-medium text-ink-500 underline-offset-4 hover:text-accent-700 hover:underline"
+        type="button"
+        data-testid="service-login-toggle"
+        onClick={() => setShowEmailForm((value) => !value)}
       >
-        {oauthError ? (
-          <p
-            role="alert"
-            className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
-          >
-            {oauthError}
-          </p>
-        ) : null}
+        {showEmailForm ? 'Скрыть служебный вход' : 'Служебный вход по почте'}
+      </button>
 
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            autoComplete="email"
-            aria-invalid={Boolean(errors.email)}
-            aria-describedby={errors.email ? 'email-error' : undefined}
-            {...register('email')}
-          />
-          {errors.email ? (
-            <p id="email-error" className="text-xs text-red-700">
-              {errors.email.message}
-            </p>
-          ) : null}
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex items-center justify-between gap-3">
-            <Label htmlFor="password">Пароль</Label>
-            <a
-              className="text-xs font-medium text-accent-700 underline-offset-4 hover:underline"
-              href="/forgot-password"
-            >
-              Забыли пароль?
-            </a>
+      {showEmailForm ? (
+        <>
+          <div className="my-5 flex items-center gap-3">
+            <span className="h-px flex-1 bg-paper-200" />
+            <span className="text-xs uppercase tracking-[0.14em] text-ink-500">или по почте</span>
+            <span className="h-px flex-1 bg-paper-200" />
           </div>
-          <Input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            aria-invalid={Boolean(errors.password)}
-            aria-describedby={errors.password ? 'password-error' : undefined}
-            {...register('password')}
-          />
-          {errors.password ? (
-            <p id="password-error" className="text-xs text-red-700">
-              {errors.password.message}
-            </p>
-          ) : null}
-        </div>
 
-        {formError ? (
-          <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
-            {formError}
-          </p>
-        ) : null}
-
-        {unverifiedEmail ? (
-          <div
-            role="alert"
-            className="space-y-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900"
+          <form
+            className="space-y-5"
+            noValidate
+            onSubmit={handleSubmit((values) => login.mutate(values))}
           >
-            <p>
-              Почта <strong>{unverifiedEmail}</strong> ещё не подтверждена. Перейдите
-              по ссылке из письма, запросите новое или дождитесь подтверждения
-              администратором.
-            </p>
-            <Button
-              className="w-full"
-              type="button"
-              variant="outline"
-              disabled={resend.isPending}
-              onClick={() => resend.mutate(unverifiedEmail)}
-            >
-              {resend.isPending ? 'Отправляем…' : 'Отправить письмо ещё раз'}
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                aria-invalid={Boolean(errors.email)}
+                aria-describedby={errors.email ? 'email-error' : undefined}
+                {...register('email')}
+              />
+              {errors.email ? (
+                <p id="email-error" className="text-xs text-red-700">
+                  {errors.email.message}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="password">Пароль</Label>
+                <a
+                  className="text-xs font-medium text-accent-700 underline-offset-4 hover:underline"
+                  href="/forgot-password"
+                >
+                  Забыли пароль?
+                </a>
+              </div>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                aria-invalid={Boolean(errors.password)}
+                aria-describedby={errors.password ? 'password-error' : undefined}
+                {...register('password')}
+              />
+              {errors.password ? (
+                <p id="password-error" className="text-xs text-red-700">
+                  {errors.password.message}
+                </p>
+              ) : null}
+            </div>
+
+            {formError ? (
+              <p
+                role="alert"
+                className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+              >
+                {formError}
+              </p>
+            ) : null}
+
+            {unverifiedEmail ? (
+              <div
+                role="alert"
+                className="space-y-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900"
+              >
+                <p>
+                  Почта <strong>{unverifiedEmail}</strong> ещё не подтверждена. Перейдите по ссылке
+                  из письма, запросите новое или дождитесь подтверждения администратором.
+                </p>
+                <Button
+                  className="w-full"
+                  type="button"
+                  variant="outline"
+                  disabled={resend.isPending}
+                  onClick={() => resend.mutate(unverifiedEmail)}
+                >
+                  {resend.isPending ? 'Отправляем…' : 'Отправить письмо ещё раз'}
+                </Button>
+              </div>
+            ) : null}
+
+            <Button className="w-full" type="submit" disabled={login.isPending}>
+              {login.isPending ? 'Входим…' : 'Войти'}
             </Button>
-          </div>
-        ) : null}
 
-        <Button className="w-full" type="submit" disabled={login.isPending}>
-          {login.isPending ? 'Входим…' : 'Войти'}
-        </Button>
-
-        {isMockMode ? (
-          <p className="rounded-md border border-paper-200 bg-paper-100/70 px-3 py-2 text-xs leading-relaxed text-ink-500">
-            Демо-доступ уже подставлен: author@example.com / password123. Данные
-            сохраняются только в вашем браузере.
-          </p>
-        ) : null}
-      </form>
+            {isMockMode ? (
+              <p className="rounded-md border border-paper-200 bg-paper-100/70 px-3 py-2 text-xs leading-relaxed text-ink-500">
+                Демо-доступ уже подставлен: author@example.com / password123. Данные сохраняются
+                только в вашем браузере.
+              </p>
+            ) : null}
+          </form>
+        </>
+      ) : null}
+        </>
+      ) : null}
     </AuthLayout>
   );
 }

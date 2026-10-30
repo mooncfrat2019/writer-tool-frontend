@@ -86,6 +86,7 @@ export const mockUser: User = {
   id: '11111111-1111-4111-8111-111111111111',
   email: 'author@example.com',
   displayName: 'Анна Автор',
+  hasPassword: true,
   avatarUrl: null,
   emailVerified: true,
   twoFactorEnabled: false,

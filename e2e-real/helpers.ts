@@ -45,7 +45,7 @@ export async function registerAndVerify(
   request: APIRequestContext,
   registration: Registration,
 ): Promise<void> {
-  await page.goto('/register');
+  await page.goto('/register?service=1');
   await completeRegistration(page, request, registration);
 }
 

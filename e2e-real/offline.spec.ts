@@ -51,7 +51,7 @@ test('merges offline edits after the editor reconnects', async ({
   const editorUrl = page.url();
   const secondContext = await browser.newContext();
   const second = await secondContext.newPage();
-  await second.goto('/login');
+  await second.goto('/login?service=1');
   await second.getByLabel('Email').fill(email);
   await second.getByLabel('Пароль').fill('password123');
   await second.getByRole('button', { name: 'Войти' }).click();

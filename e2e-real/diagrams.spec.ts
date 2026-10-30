@@ -46,7 +46,7 @@ test('edits a diagram with live collaboration and persists it', async ({
   const secondContext = await page.context().browser()!.newContext();
   const secondPage = await secondContext.newPage();
   const origin = new URL(page.url()).origin;
-  await secondPage.goto(`${origin}/login`);
+  await secondPage.goto(`${origin}/login?service=1`);
   await secondPage.getByLabel('Email').fill(`diagrams+${stamp}@example.com`);
   await secondPage.getByLabel('Пароль').fill('password123');
   await secondPage.getByRole('button', { name: 'Войти' }).click();

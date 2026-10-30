@@ -385,7 +385,8 @@ export const handlers = [
       user: {
         ...mockUser,
         email: 'oauth-mock@invalid.local',
-        displayName: 'Автор',
+        displayName: 'Тихий Архивариус 4821',
+        hasPassword: false,
         emailVerified: true,
       },
     });
@@ -856,7 +857,6 @@ export const handlers = [
         {
           userId: mockUser.id,
           displayName: mockUser.displayName,
-          email: mockUser.email,
           avatarUrl: null,
           role: project.role,
           joinedAt: project.createdAt,

@@ -16,8 +16,9 @@ import { registerSchema, type RegisterValues } from './schemas';
 import { getAuthRedirect, redirectQuery } from './redirect';
 import { setSessionFromAuth } from './session';
 
-const isMockMode =
-  import.meta.env.DEV && (import.meta.env.VITE_API_MODE ?? 'mock') === 'mock';
+const isMockMode = import.meta.env.DEV && (import.meta.env.VITE_API_MODE ?? 'mock') === 'mock';
+const allowServiceRegistration =
+  isMockMode || new URLSearchParams(window.location.search).get('service') === '1';
 
 export function RegisterPage() {
   const navigate = useNavigate();
@@ -122,6 +123,43 @@ export function RegisterPage() {
     },
   });
 
+  if (!allowServiceRegistration) {
+    return (
+      <AuthLayout
+        eyebrow="Начало работы"
+        title="Создать аккаунт"
+        description="Аккаунт создаётся через Яндекс ID или VK ID. Почта и пароль для новых пользователей не используются."
+        footer={
+          <p>
+            Уже есть аккаунт?{' '}
+            <a
+              className="font-medium text-accent-700 underline-offset-4 hover:underline"
+              href={`/login${redirectQuery(redirect)}`}
+            >
+              Войти
+            </a>
+          </p>
+        }
+      >
+        <OAuthButtons redirect={redirect} disabled={signUp.isPending} onError={setOauthError} />
+
+        <p className="mt-4 text-xs leading-relaxed text-ink-500">
+          При первом входе мы создадим уникальный псевдоним. Указать своё настоящее имя или email
+          нельзя.
+        </p>
+
+        {oauthError ? (
+          <p
+            role="alert"
+            className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+          >
+            {oauthError}
+          </p>
+        ) : null}
+      </AuthLayout>
+    );
+  }
+
   if (submittedEmail) {
     const awaitingAdmin = verification === 'admin';
     return (
@@ -149,14 +187,13 @@ export function RegisterPage() {
           <p className="rounded-md border border-paper-200 bg-paper-100/70 px-3 py-2 text-sm leading-relaxed text-ink-700">
             {awaitingAdmin ? (
               <>
-                Аккаунт для <strong>{submittedEmail}</strong> создан. Администратор
-                подтвердит его вручную — после этого можно будет войти с этим email и
-                паролем.
+                Аккаунт для <strong>{submittedEmail}</strong> создан. Администратор подтвердит его
+                вручную — после этого можно будет войти с этим email и паролем.
               </>
             ) : (
               <>
-                Письмо отправлено на <strong>{submittedEmail}</strong>. Перейдите по
-                ссылке из него, чтобы подтвердить адрес и войти.
+                Письмо отправлено на <strong>{submittedEmail}</strong>. Перейдите по ссылке из него,
+                чтобы подтвердить адрес и войти.
               </>
             )}
           </p>
@@ -187,13 +224,13 @@ export function RegisterPage() {
 
           {awaitingAdmin ? (
             <p className="text-xs leading-relaxed text-ink-500">
-              Если у вас есть код приглашения, вернитесь к форме и введите его — тогда
-              аккаунт подтвердится сразу.
+              Если у вас есть код приглашения, вернитесь к форме и введите его — тогда аккаунт
+              подтвердится сразу.
             </p>
           ) : (
             <p className="text-xs leading-relaxed text-ink-500">
-              Письма нет? Проверьте папку «Спам» и правильность адреса. Повторная
-              отправка доступна раз в минуту.
+              Письма нет? Проверьте папку «Спам» и правильность адреса. Повторная отправка доступна
+              раз в минуту.
             </p>
           )}
         </div>
@@ -218,17 +255,11 @@ export function RegisterPage() {
         </p>
       }
     >
-      <OAuthButtons
-        redirect={redirect}
-        disabled={signUp.isPending}
-        onError={setOauthError}
-      />
+      <OAuthButtons redirect={redirect} disabled={signUp.isPending} onError={setOauthError} />
 
       <div className="my-6 flex items-center gap-3">
         <span className="h-px flex-1 bg-paper-200" />
-        <span className="text-xs uppercase tracking-[0.14em] text-ink-500">
-          или по почте
-        </span>
+        <span className="text-xs uppercase tracking-[0.14em] text-ink-500">или по почте</span>
         <span className="h-px flex-1 bg-paper-200" />
       </div>
 
@@ -315,7 +346,10 @@ export function RegisterPage() {
         </div>
 
         {formError ? (
-          <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+          <p
+            role="alert"
+            className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+          >
             {formError}
           </p>
         ) : null}
@@ -325,8 +359,8 @@ export function RegisterPage() {
         </Button>
 
         <p className="text-xs leading-relaxed text-ink-500">
-          Без кода приглашения аккаунт подтверждает письмо или администратор. Почту
-          указывать обязательно.
+          Без кода приглашения аккаунт подтверждает письмо или администратор. Почту указывать
+          обязательно.
         </p>
       </form>
     </AuthLayout>

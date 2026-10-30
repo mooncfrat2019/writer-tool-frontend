@@ -18,7 +18,6 @@ import {
 } from '@/shared/ui/card';
 import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
-import { ChangeEmailCard } from './ChangeEmailCard';
 import { TwoFactorCard } from './TwoFactorCard';
 import {
   changePasswordSchema,
@@ -107,8 +106,9 @@ export function SettingsPage() {
         </p>
         <h1 className="mt-3 font-serif text-3xl text-ink-900">Настройки</h1>
         <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-500">
-          Управляйте доступом к своей мастерской. Смена пароля завершит все
-          остальные сессии, но оставит текущую открытой.
+          {user?.hasPassword
+            ? 'Управляйте доступом к своей мастерской. Смена пароля завершит все остальные сессии, но оставит текущую открытой.'
+            : 'Аккаунт создан через внешний сервис входа. Почта и пароль в нём не используются.'}
         </p>
 
         <Card className="mt-8">
@@ -118,31 +118,24 @@ export function SettingsPage() {
               <CardTitle>Профиль</CardTitle>
             </div>
             <CardDescription>
-              Данные аккаунта, к которому привязаны проекты.
+              Псевдоним, под которым вас видят участники проектов.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <dl className="grid gap-4 sm:grid-cols-2">
+            <dl>
               <div>
                 <dt className="text-xs uppercase tracking-[0.12em] text-ink-500">
-                  Имя
+                  Псевдоним
                 </dt>
                 <dd className="mt-1 text-sm text-ink-900">
                   {user?.displayName ?? '—'}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs uppercase tracking-[0.12em] text-ink-500">
-                  Email
-                </dt>
-                <dd className="mt-1 break-all text-sm text-ink-900">
-                  {user?.email ?? '—'}
                 </dd>
               </div>
             </dl>
           </CardContent>
         </Card>
 
+        {user?.hasPassword ? (
         <Card className="mt-6">
           <CardHeader>
             <div className="flex items-center gap-2">
@@ -231,9 +224,9 @@ export function SettingsPage() {
             </form>
           </CardContent>
         </Card>
+        ) : null}
 
-        <ChangeEmailCard />
-        <TwoFactorCard />
+        {user?.hasPassword ? <TwoFactorCard /> : null}
       </main>
     </div>
   );

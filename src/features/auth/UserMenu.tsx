@@ -51,9 +51,6 @@ export function UserMenu({ align = 'end' }: UserMenuProps) {
           <span className="block truncate normal-case tracking-normal text-sm font-medium text-ink-900">
             {user?.displayName}
           </span>
-          <span className="mt-0.5 block truncate normal-case tracking-normal text-xs font-normal text-ink-500">
-            {user?.email}
-          </span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => void navigate({ to: '/plans' })}>
