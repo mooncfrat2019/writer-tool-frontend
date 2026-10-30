@@ -25,7 +25,7 @@ export const LEGAL = {
   },
   contacts: {
     email: 'support@tool.melzix.net',
-    phone: '+7 999 195-88-80',
+    phone: '+7 931 706-70-55',
   },
   pro: {
     priceMonthlyRub: 299,

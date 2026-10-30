@@ -397,7 +397,7 @@ export const termsDocument: LegalDocument = {
     },
     {
       "type": "p",
-      "text": "Контактный телефон: +7 999 195-88-80"
+      "text": "Контактный телефон: +7 931 706-70-55"
     },
     {
       "type": "p",

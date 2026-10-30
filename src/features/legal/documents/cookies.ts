@@ -152,7 +152,7 @@ export const cookiesDocument: LegalDocument = {
     },
     {
       "type": "p",
-      "text": "Телефон: +7 999 195-88-80"
+      "text": "Телефон: +7 931 706-70-55"
     },
     {
       "type": "p",

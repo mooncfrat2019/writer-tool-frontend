@@ -17,7 +17,7 @@ test('opens the public landing without redirecting to login', async ({ page }) =
   await expect(
     page.getByRole('link', { name: 'support@tool.melzix.net' }).first(),
   ).toBeVisible();
-  await expect(page.getByRole('link', { name: '+7 999 195-88-80' }).first()).toBeVisible();
+  await expect(page.getByRole('link', { name: '+7 931 706-70-55' }).first()).toBeVisible();
   await expect(page.getByRole('link', { name: 'Публичная оферта' })).toHaveAttribute(
     'href',
     '/legal/offer',
