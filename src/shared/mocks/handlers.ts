@@ -351,10 +351,22 @@ export const handlers = [
     });
   }),
 
-  http.post(`${api}/auth/oauth/:provider/start`, async ({ params }) => {
+  http.post(`${api}/auth/oauth/:provider/start`, async ({ params, request }) => {
     const provider = String(params.provider);
     if (provider !== 'yandex' && provider !== 'vk') {
       return problem(400, 'invalid_provider', 'Unknown provider');
+    }
+    const body = (await request.json()) as {
+      offerVersion?: string;
+      termsVersion?: string;
+    };
+    if (!body.offerVersion || !body.termsVersion) {
+      return problem(
+        422,
+        'validation_failed',
+        'Consent required',
+        'Accept the public offer and the user agreement.',
+      );
     }
     await delay(120);
     return HttpResponse.json({

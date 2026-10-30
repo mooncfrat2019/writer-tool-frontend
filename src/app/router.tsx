@@ -79,6 +79,30 @@ const oauthCallbackRoute = createRoute({
   component: OAuthCallbackPage,
 });
 
+const legalOfferRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/legal/offer',
+  component: lazyRouteComponent(() => import('@/features/legal/OfferPage'), 'OfferPage'),
+});
+
+const legalTermsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/legal/terms',
+  component: lazyRouteComponent(() => import('@/features/legal/TermsPage'), 'TermsPage'),
+});
+
+const legalPrivacyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/legal/privacy',
+  component: lazyRouteComponent(() => import('@/features/legal/PrivacyPage'), 'PrivacyPage'),
+});
+
+const legalCookiesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/legal/cookies',
+  component: lazyRouteComponent(() => import('@/features/legal/CookiesPage'), 'CookiesPage'),
+});
+
 const verifyEmailRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/verify-email',
@@ -282,6 +306,10 @@ const routeTree = rootRoute.addChildren([
   loginRoute,
   registerRoute,
   oauthCallbackRoute,
+  legalOfferRoute,
+  legalTermsRoute,
+  legalPrivacyRoute,
+  legalCookiesRoute,
   verifyEmailRoute,
   forgotPasswordRoute,
   resetPasswordRoute,

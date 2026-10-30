@@ -3435,6 +3435,14 @@ components:
           type: string
           maxLength: 500
           description: Optional same-origin path to return to after sign-in.
+        offerVersion:
+          type: string
+          maxLength: 50
+          description: Public offer version accepted by the user. Required for sign-in.
+        termsVersion:
+          type: string
+          maxLength: 50
+          description: User agreement version accepted by the user. Required for sign-in.
     OAuthStartResponse:
       type: object
       required: [authorizationUrl, expiresAt]

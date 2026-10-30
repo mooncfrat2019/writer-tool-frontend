@@ -1,7 +1,9 @@
 import { useMutation } from '@tanstack/react-query';
 import { LoaderCircle } from 'lucide-react';
 import { useState } from 'react';
+import { LEGAL_LINKS } from '@/shared/legal';
 import { Button } from '@/shared/ui/button';
+import { Checkbox } from '@/shared/ui/checkbox';
 import { beginOAuth, oauthErrorMessage, type OAuthProvider } from './oauth';
 
 type OAuthButtonsProps = {
@@ -16,6 +18,7 @@ const providers: Array<{ id: OAuthProvider; label: string; mark: string }> = [
 ];
 
 export function OAuthButtons({ redirect, disabled = false, onError }: OAuthButtonsProps) {
+  const [accepted, setAccepted] = useState(false);
   const [pending, setPending] = useState<OAuthProvider | null>(null);
   const start = useMutation({
     mutationFn: (provider: OAuthProvider) => beginOAuth(provider, redirect),
@@ -29,7 +32,37 @@ export function OAuthButtons({ redirect, disabled = false, onError }: OAuthButto
   });
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-3">
+      <label className="flex items-start gap-2.5 text-xs leading-relaxed text-ink-600">
+        <Checkbox
+          className="mt-0.5"
+          checked={accepted}
+          data-testid="legal-acceptance"
+          onChange={(event) => setAccepted(event.target.checked)}
+        />
+        <span>
+          Я принимаю{' '}
+          <a
+            className="font-medium text-accent-700 underline-offset-4 hover:underline"
+            href={LEGAL_LINKS.offer}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Публичную оферту
+          </a>{' '}
+          и{' '}
+          <a
+            className="font-medium text-accent-700 underline-offset-4 hover:underline"
+            href={LEGAL_LINKS.terms}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Пользовательское соглашение
+          </a>
+          .
+        </span>
+      </label>
+
       {providers.map((provider) => {
         const isPending = pending === provider.id && start.isPending;
         return (
@@ -38,7 +71,7 @@ export function OAuthButtons({ redirect, disabled = false, onError }: OAuthButto
             className="w-full justify-center gap-2.5"
             type="button"
             variant="outline"
-            disabled={disabled || start.isPending}
+            disabled={!accepted || disabled || start.isPending}
             data-testid={`oauth-${provider.id}`}
             onClick={() => start.mutate(provider.id)}
           >

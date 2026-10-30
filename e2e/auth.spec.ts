@@ -39,8 +39,16 @@ test('rejects invalid credentials with a readable error', async ({ page }) => {
   await expect(page).toHaveURL(/\/login$/);
 });
 
+test('requires accepting the offer before OAuth sign-in', async ({ page }) => {
+  await page.goto('/login');
+  await expect(page.getByTestId('oauth-yandex')).toBeDisabled();
+  await page.getByTestId('legal-acceptance').check();
+  await expect(page.getByTestId('oauth-yandex')).toBeEnabled();
+});
+
 test('signs in through an OAuth provider', async ({ page }) => {
   await page.goto('/login');
+  await page.getByTestId('legal-acceptance').check();
   await page.getByTestId('oauth-yandex').click();
 
   await expect(page).toHaveURL(/\/projects$/);

@@ -2,6 +2,7 @@ import { api } from '@/shared/api/client';
 import { getApiProblemCode } from '@/shared/api/errors';
 import { unwrap } from '@/shared/api/request';
 import type { components } from '@/shared/api/schema';
+import { LEGAL_VERSIONS } from '@/shared/legal';
 
 export type OAuthProvider = 'yandex' | 'vk';
 
@@ -61,7 +62,10 @@ export async function beginOAuth(
   const response = unwrap(
     await api.POST('/auth/oauth/{provider}/start', {
       params: { path: { provider } },
-      body: redirect ? { redirect } : {},
+      body: {
+        ...LEGAL_VERSIONS,
+        ...(redirect ? { redirect } : {}),
+      },
     }),
   );
   savePendingOAuth({ provider, redirect });

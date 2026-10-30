@@ -1760,6 +1760,10 @@ export interface components {
         OAuthStartRequest: {
             /** @description Optional same-origin path to return to after sign-in. */
             redirect?: string;
+            /** @description Public offer version accepted by the user. Required for sign-in. */
+            offerVersion?: string;
+            /** @description User agreement version accepted by the user. Required for sign-in. */
+            termsVersion?: string;
         };
         OAuthStartResponse: {
             /** Format: uri */
