@@ -1,10 +1,12 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { BookOpen, CreditCard } from 'lucide-react';
+import { toast } from 'sonner';
 import { UserMenu } from '@/features/auth/UserMenu';
 import { api } from '@/shared/api/client';
-import { unwrap } from '@/shared/api/request';
+import { ApiError, unwrap } from '@/shared/api/request';
 import type { components } from '@/shared/api/schema';
+import { formatProPrice, formatRub, LEGAL } from '@/shared/legal';
 import { Badge } from '@/shared/ui/badge';
 import {
   Card,
@@ -18,7 +20,31 @@ import { formatAuthorSheets, formatBytes, formatNumber } from './planDisplay';
 
 type BillingCounters = components['schemas']['BillingCounters'];
 type BillingMe = components['schemas']['BillingMe'];
+type BillingPeriod = components['schemas']['BillingPeriod'];
 type BillingPlan = components['schemas']['BillingPlan'];
+
+function formatPlanDate(value: string): string {
+  return new Intl.DateTimeFormat('ru-RU', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(value));
+}
+
+function checkoutErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.problem.code === 'payments_unavailable') {
+      return 'Онлайн-оплата пока недоступна на этом сервере. Напишите в поддержку.';
+    }
+    if (error.problem.code === 'unauthorized') {
+      return 'Сессия истекла. Войдите снова, чтобы оплатить Pro.';
+    }
+    if (error.problem.code === 'plan_perpetual') {
+      return 'Pro уже активирован бессрочно — продление не требуется.';
+    }
+  }
+  return 'Не удалось создать платёж. Попробуйте ещё раз через минуту.';
+}
 
 type LimitRowProps = {
   label: string;
@@ -51,10 +77,20 @@ function LimitRow({ label, limit, used, progress }: LimitRowProps) {
 type PlanCardProps = {
   plan: BillingPlan;
   current: BillingMe | undefined;
+  checkoutPeriod: BillingPeriod | null;
+  onCheckout: (period: BillingPeriod) => void;
 };
 
-function PlanCard({ plan, current }: PlanCardProps) {
+function PlanCard({
+  plan,
+  current,
+  checkoutPeriod,
+  onCheckout,
+}: PlanCardProps) {
   const isCurrent = current?.plan === plan.id;
+  const perpetualPro =
+    isCurrent && current?.plan === 'pro' && current.planExpiresAt === null;
+  const canPurchase = Boolean(current?.paymentsEnabled) && !perpetualPro;
   const limits = plan.limits;
   const usage: BillingCounters | undefined = isCurrent ? current?.usage : undefined;
   const share = (used: number, limit: number) =>
@@ -150,6 +186,51 @@ function PlanCard({ plan, current }: PlanCardProps) {
           />
           <LimitRow label="Изображения по ссылке" limit="Доступны" />
         </div>
+
+        {plan.id === 'pro' ? (
+          <div className="mt-6 border-t border-paper-200 pt-5">
+            {isCurrent && current?.planExpiresAt ? (
+              <p className="mb-3 text-xs text-ink-500">
+                Pro активен до {formatPlanDate(current.planExpiresAt)}
+              </p>
+            ) : null}
+            {perpetualPro ? (
+              <p className="text-xs leading-relaxed text-ink-500">
+                Pro активирован бессрочно. Продлевать его не нужно.
+              </p>
+            ) : (
+              <>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <button
+                    className="inline-flex h-10 flex-1 items-center justify-center rounded-md bg-ink-900 px-3 text-sm font-medium text-paper-50 hover:bg-ink-700 disabled:cursor-not-allowed disabled:bg-ink-400"
+                    disabled={!canPurchase || checkoutPeriod !== null}
+                    onClick={() => onCheckout('month')}
+                    type="button"
+                  >
+                    {checkoutPeriod === 'month'
+                      ? 'Создаём платёж…'
+                      : `${isCurrent ? 'Продлить Pro' : 'Оплатить Pro'} — ${formatProPrice('month')}`}
+                  </button>
+                  <button
+                    className="inline-flex h-10 flex-1 items-center justify-center rounded-md border border-ink-300 bg-white px-3 text-sm font-medium text-ink-800 hover:bg-paper-100 disabled:cursor-not-allowed disabled:text-ink-400"
+                    disabled={!canPurchase || checkoutPeriod !== null}
+                    onClick={() => onCheckout('year')}
+                    type="button"
+                  >
+                    {checkoutPeriod === 'year'
+                      ? 'Создаём платёж…'
+                      : `Оплатить год — ${formatRub(LEGAL.pro.priceYearlyRub)}`}
+                  </button>
+                </div>
+                <p className="mt-3 text-xs leading-relaxed text-ink-500">
+                  {current?.paymentsEnabled
+                    ? 'Оплата через «РОБОКАССА». Автопродления нет: следующий период можно оплатить заранее, он добавится к текущему.'
+                    : 'Онлайн-оплата пока недоступна на этом сервере.'}
+                </p>
+              </>
+            )}
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -164,6 +245,20 @@ export function PlansPage() {
     queryKey: ['billing', 'me'],
     queryFn: async () => unwrap(await api.GET('/billing/me')),
     retry: false,
+  });
+  const checkoutMutation = useMutation({
+    mutationFn: async (period: BillingPeriod) =>
+      unwrap(
+        await api.POST('/billing/checkout', {
+          body: { period },
+        }),
+      ),
+    onSuccess: (checkout) => {
+      window.location.assign(checkout.paymentUrl);
+    },
+    onError: (error) => {
+      toast.error(checkoutErrorMessage(error));
+    },
   });
 
   return (
@@ -218,7 +313,17 @@ export function PlansPage() {
         {plansQuery.data ? (
           <div className="mt-8 grid gap-6 md:grid-cols-2">
             {plansQuery.data.items.map((plan) => (
-              <PlanCard key={plan.id} plan={plan} current={meQuery.data} />
+              <PlanCard
+                key={plan.id}
+                plan={plan}
+                current={meQuery.data}
+                checkoutPeriod={
+                  checkoutMutation.isPending
+                    ? (checkoutMutation.variables ?? null)
+                    : null
+                }
+                onCheckout={(period) => checkoutMutation.mutate(period)}
+              />
             ))}
           </div>
         ) : null}

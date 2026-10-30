@@ -1630,6 +1630,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/billing/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Creates a pending Robokassa invoice and returns the redirect URL. The amount is fixed by the backend; the client chooses only the period. */
+        post: operations["createBillingCheckout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing/payments/{invoiceId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoiceId: components["parameters"]["InvoiceId"];
+            };
+            cookie?: never;
+        };
+        /** @description Returns the current status of a payment belonging to the authenticated account. The browser uses this after the SuccessURL redirect; the authoritative activation still happens on ResultURL. */
+        get: operations["getBillingPayment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing/robokassa/result": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Robokassa server-to-server payment notification. The signature is verified against ROBOKASSA_PASSWORD2 and a successful callback is answered with OK{InvId}. GET is accepted because the cabinet allows choosing the method; POST is recommended. */
+        get: operations["robokassaResultGet"];
+        put?: never;
+        /** @description Same as the GET ResultURL handler; Robokassa POSTs a form body. */
+        post: operations["robokassaResultPost"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1819,10 +1873,56 @@ export interface components {
             items: components["schemas"]["BillingPlan"][];
         };
         BillingMe: {
-            /** @enum {string} */
+            /**
+             * @description Effective plan; an expired paid period reads as free.
+             * @enum {string}
+             */
             plan: "free" | "pro";
             limits: components["schemas"]["BillingCounters"];
             usage: components["schemas"]["BillingCounters"];
+            /**
+             * Format: date-time
+             * @description End of the paid period; null for manually assigned plans.
+             */
+            planExpiresAt: string | null;
+            /** @description True when Robokassa credentials are configured. */
+            paymentsEnabled: boolean;
+        };
+        /** @enum {string} */
+        BillingPeriod: "month" | "year";
+        BillingCheckoutRequest: {
+            period: components["schemas"]["BillingPeriod"];
+        };
+        BillingCheckout: {
+            /** Format: int64 */
+            invoiceId: number;
+            /** Format: uri */
+            paymentUrl: string;
+            /** Format: int64 */
+            amountKopecks: number;
+            /** @enum {string} */
+            currency: "RUB";
+            period: components["schemas"]["BillingPeriod"];
+        };
+        /** @enum {string} */
+        BillingPaymentStatus: "pending" | "paid" | "failed";
+        BillingPayment: {
+            /** Format: int64 */
+            invoiceId: number;
+            status: components["schemas"]["BillingPaymentStatus"];
+            /** @enum {string} */
+            plan: "pro";
+            period: components["schemas"]["BillingPeriod"];
+            /** Format: int64 */
+            amountKopecks: number;
+            /** @enum {string} */
+            currency: "RUB";
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            paidAt?: string | null;
+            /** Format: date-time */
+            planExpiresAt?: string | null;
         };
         User: {
             /** Format: uuid */
@@ -3170,6 +3270,7 @@ export interface components {
         EventId: string;
         LinkId: string;
         DiagramId: string;
+        InvoiceId: number;
         Cursor: string;
         Limit: number;
     };
@@ -6815,7 +6916,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Current plan, limits and usage */
+            /** @description Current plan, effective expiry, limits and usage */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -6826,6 +6927,164 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             429: components["responses"]["TooManyRequests"];
+        };
+    };
+    createBillingCheckout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillingCheckoutRequest"];
+            };
+        };
+        responses: {
+            /** @description Pending payment and Robokassa redirect URL */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillingCheckout"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Pro is assigned without an expiry and cannot be extended */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
+            429: components["responses"]["TooManyRequests"];
+            /** @description Payment provider is not configured on this deployment */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getBillingPayment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoiceId: components["parameters"]["InvoiceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Payment status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillingPayment"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    robokassaResultGet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Notification accepted; body is OK{InvId} */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
+                };
+            };
+            /** @description Invalid signature, method or payload */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The payment could not be applied */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Payment provider is not configured */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    robokassaResultPost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/x-www-form-urlencoded": {
+                    [key: string]: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Notification accepted; body is OK{InvId} */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
+                };
+            };
+            /** @description Invalid signature, method or payload */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The payment could not be applied */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Payment provider is not configured */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
 }

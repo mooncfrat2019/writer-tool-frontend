@@ -35,6 +35,7 @@ tags:
   - name: Assets
   - name: Exports
   - name: Sharing
+  - name: Billing
 
 paths:
   /auth/register:
@@ -2918,7 +2919,7 @@ paths:
       operationId: getBillingMe
       responses:
         '200':
-          description: Current plan, limits and usage
+          description: Current plan, effective expiry, limits and usage
           content:
             application/json:
               schema:
@@ -2927,6 +2928,119 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+
+  /billing/checkout:
+    post:
+      tags: [Billing]
+      operationId: createBillingCheckout
+      description: >-
+        Creates a pending Robokassa invoice and returns the redirect URL. The
+        amount is fixed by the backend; the client chooses only the period.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BillingCheckoutRequest'
+      responses:
+        '201':
+          description: Pending payment and Robokassa redirect URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillingCheckout'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Pro is assigned without an expiry and cannot be extended
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          description: Payment provider is not configured on this deployment
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /billing/payments/{invoiceId}:
+    parameters:
+      - $ref: '#/components/parameters/InvoiceId'
+    get:
+      tags: [Billing]
+      operationId: getBillingPayment
+      description: >-
+        Returns the current status of a payment belonging to the authenticated
+        account. The browser uses this after the SuccessURL redirect; the
+        authoritative activation still happens on ResultURL.
+      responses:
+        '200':
+          description: Payment status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillingPayment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /billing/robokassa/result:
+    get:
+      tags: [Billing]
+      operationId: robokassaResultGet
+      security: []
+      description: >-
+        Robokassa server-to-server payment notification. The signature is
+        verified against ROBOKASSA_PASSWORD2 and a successful callback is
+        answered with OK{InvId}. GET is accepted because the cabinet allows
+        choosing the method; POST is recommended.
+      responses:
+        '200':
+          description: Notification accepted; body is OK{InvId}
+          content:
+            text/plain:
+              schema:
+                type: string
+        '400':
+          description: Invalid signature, method or payload
+        '500':
+          description: The payment could not be applied
+        '503':
+          description: Payment provider is not configured
+    post:
+      tags: [Billing]
+      operationId: robokassaResultPost
+      security: []
+      description: Same as the GET ResultURL handler; Robokassa POSTs a form body.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties:
+                type: string
+      responses:
+        '200':
+          description: Notification accepted; body is OK{InvId}
+          content:
+            text/plain:
+              schema:
+                type: string
+        '400':
+          description: Invalid signature, method or payload
+        '500':
+          description: The payment could not be applied
+        '503':
+          description: Payment provider is not configured
 
 components:
   securitySchemes:
@@ -3104,6 +3218,14 @@ components:
       schema:
         type: string
         format: uuid
+    InvoiceId:
+      name: invoiceId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
     Cursor:
       name: cursor
       in: query
@@ -3555,15 +3677,82 @@ components:
             $ref: '#/components/schemas/BillingPlan'
     BillingMe:
       type: object
-      required: [plan, limits, usage]
+      required: [plan, limits, usage, planExpiresAt, paymentsEnabled]
       properties:
         plan:
           type: string
           enum: [free, pro]
+          description: Effective plan; an expired paid period reads as free.
         limits:
           $ref: '#/components/schemas/BillingCounters'
         usage:
           $ref: '#/components/schemas/BillingCounters'
+        planExpiresAt:
+          type: [string, 'null']
+          format: date-time
+          description: End of the paid period; null for manually assigned plans.
+        paymentsEnabled:
+          type: boolean
+          description: True when Robokassa credentials are configured.
+    BillingPeriod:
+      type: string
+      enum: [month, year]
+    BillingCheckoutRequest:
+      type: object
+      required: [period]
+      properties:
+        period:
+          $ref: '#/components/schemas/BillingPeriod'
+    BillingCheckout:
+      type: object
+      required: [invoiceId, paymentUrl, amountKopecks, currency, period]
+      properties:
+        invoiceId:
+          type: integer
+          format: int64
+        paymentUrl:
+          type: string
+          format: uri
+        amountKopecks:
+          type: integer
+          format: int64
+        currency:
+          type: string
+          enum: [RUB]
+        period:
+          $ref: '#/components/schemas/BillingPeriod'
+    BillingPaymentStatus:
+      type: string
+      enum: [pending, paid, failed]
+    BillingPayment:
+      type: object
+      required: [invoiceId, status, plan, period, amountKopecks, currency, createdAt]
+      properties:
+        invoiceId:
+          type: integer
+          format: int64
+        status:
+          $ref: '#/components/schemas/BillingPaymentStatus'
+        plan:
+          type: string
+          enum: [pro]
+        period:
+          $ref: '#/components/schemas/BillingPeriod'
+        amountKopecks:
+          type: integer
+          format: int64
+        currency:
+          type: string
+          enum: [RUB]
+        createdAt:
+          type: string
+          format: date-time
+        paidAt:
+          type: [string, 'null']
+          format: date-time
+        planExpiresAt:
+          type: [string, 'null']
+          format: date-time
 
     User:
       type: object

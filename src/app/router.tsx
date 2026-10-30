@@ -15,6 +15,10 @@ import { ConfirmEmailChangePage } from '@/features/auth/ConfirmEmailChangePage';
 import { OAuthCallbackPage } from '@/features/auth/OAuthCallbackPage';
 import { bootstrapSession } from '@/features/auth/session';
 import { PlansPage } from '@/features/billing/PlansPage';
+import {
+  PaymentFailPage,
+  PaymentSuccessPage,
+} from '@/features/billing/PaymentResultPage';
 import { CharactersPage } from '@/features/characters/CharactersPage';
 import { LandingPage } from '@/features/marketing/LandingPage';
 import { PricingPage } from '@/features/marketing/PricingPage';
@@ -205,6 +209,24 @@ const plansRoute = createRoute({
   component: PlansPage,
 });
 
+const paymentSuccessRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/payment/success',
+  beforeLoad: async () => {
+    await bootstrapSession();
+  },
+  component: PaymentSuccessPage,
+});
+
+const paymentFailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/payment/fail',
+  beforeLoad: () => {
+    void bootstrapSession();
+  },
+  component: PaymentFailPage,
+});
+
 const projectRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/projects/$projectId',
@@ -324,6 +346,8 @@ const routeTree = rootRoute.addChildren([
   projectsRoute,
   settingsRoute,
   plansRoute,
+  paymentSuccessRoute,
+  paymentFailRoute,
   projectRoute.addChildren([
     structureRoute,
     charactersRoute,

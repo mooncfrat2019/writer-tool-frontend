@@ -24,6 +24,7 @@ function isPublicPath(path: string): boolean {
   return (
     publicPaths.has(path) ||
     path.startsWith('/legal/') ||
+    path.startsWith('/payment/') ||
     path.startsWith('/share/')
   );
 }

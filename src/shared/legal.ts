@@ -32,7 +32,6 @@ export const LEGAL = {
     priceYearlyRub: 2990,
     autoRenew: false,
   },
-  paymentsEnabled: false,
 } as const;
 
 export function formatRub(value: number): string {

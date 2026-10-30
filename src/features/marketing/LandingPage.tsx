@@ -333,9 +333,23 @@ export function LandingPage() {
                           ? 'mt-6 inline-flex h-10 w-full items-center justify-center rounded-md bg-ink-900 px-4 text-sm font-medium text-paper-50 hover:bg-ink-700'
                           : 'mt-6 inline-flex h-10 w-full items-center justify-center rounded-md border border-paper-300 bg-white/70 px-4 text-sm font-medium text-ink-800 hover:bg-paper-100'
                       }
-                      href={isPro ? '/login?redirect=%2Fplans' : '/login'}
+                      href={
+                        isPro
+                          ? authenticated
+                            ? '/plans'
+                            : '/login?redirect=%2Fplans'
+                          : authenticated
+                            ? '/projects'
+                            : '/login'
+                      }
                     >
-                      {isPro ? 'Войти, чтобы подключить Pro' : 'Начать бесплатно'}
+                      {isPro
+                        ? authenticated
+                          ? 'Перейти к оплате Pro'
+                          : 'Войти, чтобы подключить Pro'
+                        : authenticated
+                          ? 'Открыть приложение'
+                          : 'Начать бесплатно'}
                     </a>
                   </article>
                 );

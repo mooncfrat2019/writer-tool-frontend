@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Check } from 'lucide-react';
 import { api } from '@/shared/api/client';
 import { unwrap } from '@/shared/api/request';
+import { useSession } from '@/features/auth/session';
 import { FALLBACK_PLANS, planLimitRows } from '@/features/billing/planDisplay';
 import { usePageMeta } from '@/shared/lib/usePageMeta';
 import { formatProPrice, LEGAL, LEGAL_LINKS } from '@/shared/legal';
@@ -13,6 +14,8 @@ export function PricingPage() {
     'Тарифы Writer Tool: бесплатный тариф для небольшого романа и Pro за 299 ₽ в месяц или 2990 ₽ в год. Лимиты проектов, книг, персонажей и хранилища.',
   );
 
+  const session = useSession();
+  const authenticated = session.status === 'authenticated';
   const plansQuery = useQuery({
     queryKey: ['billing', 'plans', 'public'],
     queryFn: async () => unwrap(await api.GET('/billing/plans')),
@@ -113,9 +116,23 @@ export function PricingPage() {
                           ? 'mt-7 inline-flex h-11 w-full items-center justify-center rounded-md bg-ink-900 px-5 text-sm font-medium text-paper-50 hover:bg-ink-700'
                           : 'mt-7 inline-flex h-11 w-full items-center justify-center rounded-md border border-paper-300 bg-white/70 px-5 text-sm font-medium text-ink-800 hover:bg-paper-100'
                       }
-                      href={isPro ? '/login?redirect=%2Fplans' : '/login'}
+                      href={
+                        isPro
+                          ? authenticated
+                            ? '/plans'
+                            : '/login?redirect=%2Fplans'
+                          : authenticated
+                            ? '/projects'
+                            : '/login'
+                      }
                     >
-                      {isPro ? 'Войти, чтобы подключить Pro' : 'Начать бесплатно'}
+                      {isPro
+                        ? authenticated
+                          ? 'Перейти к оплате Pro'
+                          : 'Войти, чтобы подключить Pro'
+                        : authenticated
+                          ? 'Открыть приложение'
+                          : 'Начать бесплатно'}
                     </a>
                   </article>
                 );

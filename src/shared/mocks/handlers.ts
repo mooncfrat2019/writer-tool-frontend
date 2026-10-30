@@ -52,6 +52,64 @@ const MOCK_EXTERNAL_IMAGE_BYTES = Uint8Array.from(
 let pendingRegistration: { email: string; displayName: string } | null = null;
 let mockTwoFactorMethod: 'email' | 'totp' = 'email';
 
+type MockPayment = {
+  invoiceId: number;
+  status: 'pending' | 'paid' | 'failed';
+  plan: 'pro';
+  period: 'month' | 'year';
+  amountKopecks: number;
+  currency: 'RUB';
+  createdAt: string;
+  paidAt: string | null;
+  planExpiresAt: string | null;
+};
+
+const MOCK_PAYMENTS_KEY = 'writer-tool.mock.payments.v1';
+
+function loadMockPayments(): Record<string, MockPayment> {
+  try {
+    const raw = window.localStorage.getItem(MOCK_PAYMENTS_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, MockPayment>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveMockPayments(payments: Record<string, MockPayment>): void {
+  try {
+    window.localStorage.setItem(MOCK_PAYMENTS_KEY, JSON.stringify(payments));
+  } catch {
+    // Mock persistence is optional.
+  }
+}
+
+function createMockPayment(period: 'month' | 'year'): MockPayment {
+  const payments = loadMockPayments();
+  const invoiceId = 100000 + Object.keys(payments).length + 1;
+  const amountKopecks = period === 'month' ? 29_900 : 299_000;
+  const now = new Date();
+  const expiry = new Date(now);
+  if (period === 'month') {
+    expiry.setMonth(expiry.getMonth() + 1);
+  } else {
+    expiry.setFullYear(expiry.getFullYear() + 1);
+  }
+  const payment: MockPayment = {
+    invoiceId,
+    status: 'paid',
+    plan: 'pro',
+    period,
+    amountKopecks,
+    currency: 'RUB',
+    createdAt: now.toISOString(),
+    paidAt: now.toISOString(),
+    planExpiresAt: expiry.toISOString(),
+  };
+  payments[String(invoiceId)] = payment;
+  saveMockPayments(payments);
+  return payment;
+}
+
 function problem(status: number, code: string, title: string, detail?: string) {
   return HttpResponse.json(
     {
@@ -721,6 +779,8 @@ export const handlers = [
     }
     return HttpResponse.json({
       plan: 'pro',
+      planExpiresAt: '2027-01-01T00:00:00.000Z',
+      paymentsEnabled: true,
       limits: {
         projects: 20,
         books: 20,
@@ -746,6 +806,41 @@ export const handlers = [
         manuscriptCharacters: 48_000,
       },
     });
+  }),
+
+  http.post(`${api}/billing/checkout`, async ({ request }) => {
+    if (!hasMockSession()) {
+      return problem(401, 'unauthorized', 'Authentication required');
+    }
+    const body = (await request.json()) as { period?: 'month' | 'year' };
+    if (body.period !== 'month' && body.period !== 'year') {
+      return problem(422, 'validation_failed', 'Validation failed', 'period must be month or year');
+    }
+    const payment = createMockPayment(body.period);
+    await delay(180);
+    return HttpResponse.json(
+      {
+        invoiceId: payment.invoiceId,
+        paymentUrl: `/payment/success?InvId=${payment.invoiceId}&OutSum=${
+          payment.amountKopecks / 100
+        }`,
+        amountKopecks: payment.amountKopecks,
+        currency: 'RUB',
+        period: payment.period,
+      },
+      { status: 201 },
+    );
+  }),
+
+  http.get(`${api}/billing/payments/:invoiceId`, ({ params }) => {
+    if (!hasMockSession()) {
+      return problem(401, 'unauthorized', 'Authentication required');
+    }
+    const payment = loadMockPayments()[String(params.invoiceId)];
+    if (!payment) {
+      return problem(404, 'not_found', 'Not found', 'Payment not found.');
+    }
+    return HttpResponse.json(payment);
   }),
 
   http.get(`${api}/projects`, async () => {
