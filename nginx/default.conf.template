@@ -41,6 +41,15 @@ server {
         try_files $uri =404;
     }
 
+    # These documents are intentionally unpublished for now.
+    location ^~ /legal/privacy {
+        return 404;
+    }
+
+    location ^~ /legal/consent {
+        return 404;
+    }
+
     location / {
         try_files $uri $uri/ /index.html;
     }

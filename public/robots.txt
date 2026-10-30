@@ -2,6 +2,8 @@ User-agent: *
 Allow: /
 Allow: /pricing
 Allow: /legal/
+Disallow: /legal/privacy
+Disallow: /legal/consent
 Disallow: /projects
 Disallow: /settings
 Disallow: /plans
