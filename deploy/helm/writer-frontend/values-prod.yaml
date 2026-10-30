@@ -27,7 +27,7 @@ service:
     # Let's Encrypt can issue the certificate.
     k8s.timeweb.cloud/attached-loadbalancer-ssl: "true"
     k8s.timeweb.cloud/attached-loadbalancer-ssl-type: "lets_encrypt"
-    k8s.timeweb.cloud/attached-loadbalancer-ssl-fqdn: "tool.melzix.net"
+    k8s.timeweb.cloud/attached-loadbalancer-ssl-fqdn: "writer-tool.ru"
     k8s.timeweb.cloud/attached-loadbalancer-force-ssl: "true"
     # For a custom certificate change ssl-type to "custom" and add:
     # k8s.timeweb.cloud/attached-loadbalancer-ssl-secret-name: "writer-tool-tls"
