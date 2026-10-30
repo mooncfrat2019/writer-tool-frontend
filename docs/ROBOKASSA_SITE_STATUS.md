@@ -25,6 +25,11 @@
 - Публичные URL проверены 30.10.2026: `/`, `/pricing`, `/legal/offer`,
   `/legal/terms`, `/legal/cookies` и `/api/v1/billing/plans` отвечают 200
   без редиректа на вход; mixed content не найден.
+- 30.10.2026 задеплоены frontend `v1.12.1` (commit `4bb1bd4`, run
+  [41121410906](https://github.com/mooncfrat2019/writer-tool-frontend/actions/runs/41121410906))
+  и backend `v1.16.1` (commit `3c74b3a`, run
+  [41121405532](https://github.com/mooncfrat2019/writer-tool-backend/actions/runs/41121405532)):
+  публичный телефон заменён на `+7 931 706-70-55`, старый номер удалён.
 - Следующий шаг — активация магазина в ЛК Robokassa и модерация; затем
   `ROBOKASSA_IS_TEST=false`, боевой платёж и проверка чека НПД. Подробности —
   `writer-tool-backend/docs/ROBOKASSA_PAYMENTS.md`.
