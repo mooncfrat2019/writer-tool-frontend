@@ -16,6 +16,8 @@ import { OAuthCallbackPage } from '@/features/auth/OAuthCallbackPage';
 import { bootstrapSession } from '@/features/auth/session';
 import { PlansPage } from '@/features/billing/PlansPage';
 import { CharactersPage } from '@/features/characters/CharactersPage';
+import { LandingPage } from '@/features/marketing/LandingPage';
+import { PricingPage } from '@/features/marketing/PricingPage';
 import { ExportsPage } from '@/features/exports/ExportsPage';
 import { DiagramsPage } from '@/features/diagrams/DiagramsPage';
 import { ProjectsPage } from '@/features/projects/ProjectsPage';
@@ -43,10 +45,19 @@ const rootRoute = createRootRoute({
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  beforeLoad: async () => {
-    const session = await bootstrapSession();
-    throw redirect({ to: session.status === 'authenticated' ? '/projects' : '/login' });
+  beforeLoad: () => {
+    void bootstrapSession();
   },
+  component: LandingPage,
+});
+
+const pricingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/pricing',
+  beforeLoad: () => {
+    void bootstrapSession();
+  },
+  component: PricingPage,
 });
 
 const loginRoute = createRoute({
@@ -89,12 +100,6 @@ const legalTermsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/legal/terms',
   component: lazyRouteComponent(() => import('@/features/legal/TermsPage'), 'TermsPage'),
-});
-
-const legalPrivacyRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/legal/privacy',
-  component: lazyRouteComponent(() => import('@/features/legal/PrivacyPage'), 'PrivacyPage'),
 });
 
 const legalCookiesRoute = createRoute({
@@ -303,12 +308,12 @@ const editorRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
+  pricingRoute,
   loginRoute,
   registerRoute,
   oauthCallbackRoute,
   legalOfferRoute,
   legalTermsRoute,
-  legalPrivacyRoute,
   legalCookiesRoute,
   verifyEmailRoute,
   forgotPasswordRoute,

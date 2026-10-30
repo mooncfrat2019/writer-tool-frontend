@@ -21,6 +21,6 @@ test('opens the plans page from the user menu and shows both tiers', async ({
   await expect(page.getByText(/175 а\.л\./)).toBeVisible();
   await expect(page.getByText(/Использовано:/).first()).toBeVisible();
   await expect(
-    page.getByText(/Самостоятельная оплата ещё не подключена/),
+    page.getByText(/Оплата проходит через «РОБОКАССА»/),
   ).toBeVisible();
 });

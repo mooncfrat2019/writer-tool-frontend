@@ -26,7 +26,7 @@ export const cookiesDocument: LegalDocument = {
     },
     {
       "type": "p",
-      "text": "1.4. Политика дополняет Политику обработки персональных данных (https://tool.melzix.net/legal/privacy)."
+      "text": "1.4. Политика применяется вместе с Публичной офертой и Пользовательским соглашением."
     },
     {
       "type": "h2",

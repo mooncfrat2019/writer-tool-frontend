@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
+import { usePageMeta } from '@/shared/lib/usePageMeta';
 import { LegalLayout } from './LegalLayout';
 import type { LegalBlock, LegalDocument } from './types';
 
@@ -75,7 +76,19 @@ function Block({ block }: { block: LegalBlock }) {
   );
 }
 
-export function LegalPage({ document }: { document: LegalDocument }) {
+export function LegalPage({
+  document,
+  noIndex = false,
+}: {
+  document: LegalDocument;
+  noIndex?: boolean;
+}) {
+  usePageMeta(
+    `${document.title} — Writer Tool`,
+    `${document.title}: редакция от ${document.updatedAt}. Writer Tool — мастерская текста.`,
+    noIndex,
+  );
+
   return (
     <LegalLayout>
       <main className="mx-auto w-full max-w-3xl px-5 pb-16 pt-10 sm:px-8 sm:pt-14">

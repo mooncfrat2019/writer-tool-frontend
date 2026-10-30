@@ -179,7 +179,7 @@ export function ProjectLayout() {
         <div className="mt-auto border-t border-paper-200 pt-4">
           <UserMenu align="start" />
           <p className="mt-3 px-2 text-[11px] uppercase tracking-[0.12em] text-ink-500/80">
-            Phase 1 · рабочая версия
+            Writer Tool · мастерская текста
           </p>
         </div>
       </aside>

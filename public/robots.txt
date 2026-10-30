@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+Allow: /pricing
+Allow: /legal/
+Disallow: /projects
+Disallow: /settings
+Disallow: /plans
+Disallow: /login
+Disallow: /register
+Disallow: /auth
+Disallow: /share
+Disallow: /verify-email
+Disallow: /reset-password
+Disallow: /forgot-password
+Disallow: /confirm-email-change
+
+Sitemap: https://tool.melzix.net/sitemap.xml

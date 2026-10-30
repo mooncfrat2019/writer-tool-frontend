@@ -1,5 +1,6 @@
 import { BookOpen } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { LEGAL, LEGAL_LINKS } from '@/shared/legal';
 
 type AuthLayoutProps = {
   eyebrow: string;
@@ -54,6 +55,33 @@ export function AuthLayout({ eyebrow, title, description, children, footer }: Au
           <p className="mt-3 text-sm leading-relaxed text-ink-500">{description}</p>
           <div className="mt-8">{children}</div>
           <div className="mt-8 text-sm text-ink-500">{footer}</div>
+
+          <div className="mt-10 space-y-1.5 border-t border-paper-200 pt-4 text-[11px] leading-relaxed text-ink-500">
+            <p>
+              {LEGAL.seller.status} {LEGAL.seller.fullName}, ИНН {LEGAL.seller.inn},{' '}
+              г. {LEGAL.seller.city}
+            </p>
+            <p>
+              <a className="hover:text-accent-700" href={`mailto:${LEGAL.contacts.email}`}>
+                {LEGAL.contacts.email}
+              </a>
+              {' · '}
+              <a
+                className="hover:text-accent-700"
+                href={`tel:${LEGAL.contacts.phone.replace(/[^\d+]/g, '')}`}
+              >
+                {LEGAL.contacts.phone}
+              </a>
+            </p>
+            <p className="flex flex-wrap gap-x-3 gap-y-1">
+              <a className="hover:text-accent-700" href={LEGAL_LINKS.offer}>
+                Оферта
+              </a>
+              <a className="hover:text-accent-700" href={LEGAL_LINKS.terms}>
+                Соглашение
+              </a>
+            </p>
+          </div>
         </div>
       </section>
     </main>

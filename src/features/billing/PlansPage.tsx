@@ -14,33 +14,11 @@ import {
   CardTitle,
 } from '@/shared/ui/card';
 import { Progress } from '@/shared/ui/progress';
+import { formatAuthorSheets, formatBytes, formatNumber } from './planDisplay';
 
 type BillingCounters = components['schemas']['BillingCounters'];
 type BillingMe = components['schemas']['BillingMe'];
 type BillingPlan = components['schemas']['BillingPlan'];
-
-const AUTHOR_SHEET = 40_000;
-
-function formatNumber(value: number): string {
-  return value.toLocaleString('ru-RU');
-}
-
-function formatAuthorSheets(characters: number): string {
-  const sheets = characters / AUTHOR_SHEET;
-  return `${formatNumber(characters)} символов · ${sheets.toLocaleString('ru-RU', {
-    maximumFractionDigits: 1,
-  })} а.л.`;
-}
-
-function formatBytes(bytes: number): string {
-  const gibibyte = 1024 ** 3;
-  if (bytes >= gibibyte) {
-    return `${(bytes / gibibyte).toLocaleString('ru-RU', {
-      maximumFractionDigits: 1,
-    })} ГБ`;
-  }
-  return `${Math.round(bytes / 1024 / 1024)} МБ`;
-}
 
 type LimitRowProps = {
   label: string;
@@ -248,12 +226,11 @@ export function PlansPage() {
         <div className="mt-8 space-y-2 text-xs leading-relaxed text-ink-500">
           <p>
             Лимиты на проекты, книги, персонажей, события, миры, локации,
-            фракции, лор и хранилище применяются автоматически. Ограничение
-            объёма рукописи пока справочное — оно появится вместе с подпиской.
+            фракции, лор и хранилище применяются автоматически.
           </p>
           <p>
-            Самостоятельная оплата ещё не подключена: тариф переключает
-            администратор.
+            Тариф Pro предоставляется на условиях публичной оферты. Оплата
+            проходит через «РОБОКАССА»; автопродления нет.
           </p>
         </div>
       </main>

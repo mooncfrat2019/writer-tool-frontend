@@ -47,22 +47,6 @@ const DOCUMENTS = [
     },
   },
   {
-    slug: 'privacy',
-    source: 'politika-obrabotki-personalnyh-dannyh.md',
-    exportName: 'privacyDocument',
-    title: 'Политика обработки персональных данных',
-    anchors: {
-      1: 'general',
-      3: 'legal-basis',
-      4: 'purposes',
-      5: 'categories',
-      7: 'third-parties',
-      8: 'cookies',
-      10: 'rights',
-      11: 'contacts',
-    },
-  },
-  {
     slug: 'cookies',
     source: 'politika-obrabotki-failov-kuki-cookies.md',
     exportName: 'cookiesDocument',
