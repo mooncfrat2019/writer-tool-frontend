@@ -12,7 +12,8 @@ import { VerifyEmailPage } from '@/features/auth/VerifyEmailPage';
 import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
 import { ConfirmEmailChangePage } from '@/features/auth/ConfirmEmailChangePage';
-import { bootstrapSession, useSession } from '@/features/auth/session';
+import { OAuthCallbackPage } from '@/features/auth/OAuthCallbackPage';
+import { bootstrapSession } from '@/features/auth/session';
 import { PlansPage } from '@/features/billing/PlansPage';
 import { CharactersPage } from '@/features/characters/CharactersPage';
 import { ExportsPage } from '@/features/exports/ExportsPage';
@@ -28,17 +29,13 @@ import { ProjectLayout } from './ProjectLayout';
 import { SplashScreen } from './SplashScreen';
 
 function RootComponent() {
-  const session = useSession();
-  if (session.status === 'initializing') {
-    return <SplashScreen />;
-  }
+  // Public pages render immediately; auth and protected routes bootstrap the
+  // session in their own beforeLoad. This keeps the OAuth callback independent
+  // from a refresh request that may still be in flight.
   return <Outlet />;
 }
 
 const rootRoute = createRootRoute({
-  beforeLoad: async () => {
-    await bootstrapSession();
-  },
   component: RootComponent,
   notFoundComponent: NotFoundPage,
 });
@@ -74,6 +71,12 @@ const registerRoute = createRoute({
     }
   },
   component: RegisterPage,
+});
+
+const oauthCallbackRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/auth',
+  component: OAuthCallbackPage,
 });
 
 const verifyEmailRoute = createRoute({
@@ -133,6 +136,9 @@ async function requireAuth() {
 const shareRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/share/$token',
+  beforeLoad: async () => {
+    await bootstrapSession();
+  },
   component: lazyRouteComponent(
     () => import('@/features/sharing/SharePage'),
     'SharePage',
@@ -275,6 +281,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
   registerRoute,
+  oauthCallbackRoute,
   verifyEmailRoute,
   forgotPasswordRoute,
   resetPasswordRoute,

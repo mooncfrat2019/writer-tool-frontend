@@ -39,6 +39,28 @@ test('rejects invalid credentials with a readable error', async ({ page }) => {
   await expect(page).toHaveURL(/\/login$/);
 });
 
+test('signs in through an OAuth provider', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByTestId('oauth-yandex').click();
+
+  await expect(page).toHaveURL(/\/projects$/);
+  await expect(page.getByRole('heading', { name: 'Проекты' })).toBeVisible();
+  await page.getByRole('button', { name: 'Меню пользователя' }).click();
+  const accountMenu = page.getByRole('menu', { name: 'Меню пользователя' });
+  await expect(accountMenu.getByText('Автор')).toBeVisible();
+});
+
+test('asks to restart when the OAuth callback has no pending attempt', async ({
+  page,
+}) => {
+  await page.goto('/auth?code=orphan&state=orphan');
+
+  await expect(
+    page.getByRole('heading', { name: 'Вход не завершён' }),
+  ).toBeVisible();
+  await expect(page.getByText('Не удалось определить провайдера')).toBeVisible();
+});
+
 test('registers a new account and opens the project library', async ({ page }) => {
   await page.goto('/register');
 

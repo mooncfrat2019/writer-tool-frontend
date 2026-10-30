@@ -11,6 +11,7 @@ import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
 import { AuthLayout } from './AuthLayout';
+import { OAuthButtons } from './OAuthButtons';
 import { registerSchema, type RegisterValues } from './schemas';
 import { getAuthRedirect, redirectQuery } from './redirect';
 import { setSessionFromAuth } from './session';
@@ -23,6 +24,7 @@ export function RegisterPage() {
   const queryClient = useQueryClient();
   const redirect = getAuthRedirect();
   const [formError, setFormError] = useState<string | null>(null);
+  const [oauthError, setOauthError] = useState<string | null>(null);
   const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
   const [verification, setVerification] = useState<'email' | 'admin'>('email');
   const {
@@ -47,7 +49,10 @@ export function RegisterPage() {
         }),
       );
     },
-    onMutate: () => setFormError(null),
+    onMutate: () => {
+      setFormError(null);
+      setOauthError(null);
+    },
     onSuccess: (data) => {
       if ('accessToken' in data) {
         setSessionFromAuth(data);
@@ -213,11 +218,34 @@ export function RegisterPage() {
         </p>
       }
     >
+      <OAuthButtons
+        redirect={redirect}
+        disabled={signUp.isPending}
+        onError={setOauthError}
+      />
+
+      <div className="my-6 flex items-center gap-3">
+        <span className="h-px flex-1 bg-paper-200" />
+        <span className="text-xs uppercase tracking-[0.14em] text-ink-500">
+          или по почте
+        </span>
+        <span className="h-px flex-1 bg-paper-200" />
+      </div>
+
       <form
         className="space-y-5"
         noValidate
         onSubmit={handleSubmit((values) => signUp.mutate(values))}
       >
+        {oauthError ? (
+          <p
+            role="alert"
+            className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+          >
+            {oauthError}
+          </p>
+        ) : null}
+
         <div className="space-y-2">
           <Label htmlFor="displayName">Как вас зовут</Label>
           <Input

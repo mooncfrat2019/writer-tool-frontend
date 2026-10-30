@@ -8,6 +8,26 @@ import { Toaster } from '@/shared/ui/toaster';
 import { MockModeIndicator } from './MockModeIndicator';
 import { router } from './router';
 
+const publicPaths = new Set([
+  '/',
+  '/login',
+  '/register',
+  '/auth',
+  '/pricing',
+  '/verify-email',
+  '/reset-password',
+  '/forgot-password',
+  '/confirm-email-change',
+]);
+
+function isPublicPath(path: string): boolean {
+  return (
+    publicPaths.has(path) ||
+    path.startsWith('/legal/') ||
+    path.startsWith('/share/')
+  );
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -37,10 +57,11 @@ function SessionExpiryHandler() {
         const currentPath = router.state.location.pathname;
         clearSessionState();
         localQueryClient.clear();
-        toast.error('Сессия истекла. Войдите снова, чтобы продолжить.');
-        if (currentPath !== '/login' && currentPath !== '/register') {
-          void router.navigate({ to: '/login' });
+        if (isPublicPath(currentPath)) {
+          return;
         }
+        toast.error('Сессия истекла. Войдите снова, чтобы продолжить.');
+        void router.navigate({ to: '/login' });
       }),
     [localQueryClient],
   );

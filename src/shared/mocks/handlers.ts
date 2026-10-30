@@ -351,6 +351,46 @@ export const handlers = [
     });
   }),
 
+  http.post(`${api}/auth/oauth/:provider/start`, async ({ params }) => {
+    const provider = String(params.provider);
+    if (provider !== 'yandex' && provider !== 'vk') {
+      return problem(400, 'invalid_provider', 'Unknown provider');
+    }
+    await delay(120);
+    return HttpResponse.json({
+      authorizationUrl: '/auth?code=mock-oauth-code&state=mock-oauth-state',
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+    });
+  }),
+
+  http.post(`${api}/auth/oauth/:provider/callback`, async ({ params, request }) => {
+    const provider = String(params.provider);
+    const body = (await request.json()) as { code?: string; state?: string };
+    if (
+      (provider !== 'yandex' && provider !== 'vk') ||
+      !body.code ||
+      !body.state
+    ) {
+      return problem(
+        400,
+        'invalid_oauth_state',
+        'Invalid OAuth state',
+        'Start sign-in again.',
+      );
+    }
+    startMockSession();
+    await delay(150);
+    return HttpResponse.json({
+      ...authResponse(),
+      user: {
+        ...mockUser,
+        email: 'oauth-mock@invalid.local',
+        displayName: 'Автор',
+        emailVerified: true,
+      },
+    });
+  }),
+
   http.post(`${api}/auth/refresh`, async () => {
     await delay(80);
     if (!hasMockSession()) {

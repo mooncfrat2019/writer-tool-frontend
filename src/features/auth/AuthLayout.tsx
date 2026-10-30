@@ -35,7 +35,7 @@ export function AuthLayout({ eyebrow, title, description, children, footer }: Au
           </p>
         </div>
         <p className="relative text-xs uppercase tracking-[0.18em] text-paper-300/60">
-          Phase 1 · рабочая мастерская
+          Writer Tool · мастерская текста
         </p>
       </section>
 

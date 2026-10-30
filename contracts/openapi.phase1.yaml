@@ -519,6 +519,205 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /auth/oauth/{provider}/start:
+    post:
+      tags: [Auth]
+      operationId: startOAuth
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/OAuthProvider'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OAuthStartRequest'
+      responses:
+        '200':
+          description: Authorization URL and state cookie
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: HttpOnly OAuth state cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthStartResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          description: The provider is not configured on this deployment
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /auth/oauth/{provider}/callback:
+    post:
+      tags: [Auth]
+      operationId: completeOAuth
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/OAuthProvider'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OAuthCallbackRequest'
+      responses:
+        '200':
+          description: Signed in with a pseudonymous account
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: HttpOnly refresh token cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Invalid state, provider error or missing provider subject
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: The provider identity belongs to another account
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          description: The provider is not configured on this deployment
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /auth/oauth/{provider}/link/start:
+    post:
+      tags: [Auth]
+      operationId: startOAuthLink
+      parameters:
+        - $ref: '#/components/parameters/OAuthProvider'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OAuthStartRequest'
+      responses:
+        '200':
+          description: Authorization URL and state cookie for linking
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: HttpOnly OAuth state cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthStartResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: The provider is already linked
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          description: The provider is not configured on this deployment
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /auth/oauth/{provider}/link/callback:
+    post:
+      tags: [Auth]
+      operationId: completeOAuthLink
+      parameters:
+        - $ref: '#/components/parameters/OAuthProvider'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OAuthCallbackRequest'
+      responses:
+        '200':
+          description: Provider linked to the current account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthAccount'
+        '400':
+          description: Invalid state, provider error or missing provider subject
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: The provider or identity is already linked
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          description: The provider is not configured on this deployment
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /auth/oauth/accounts:
+    get:
+      tags: [Auth]
+      operationId: listOAuthAccounts
+      responses:
+        '200':
+          description: Linked providers
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthAccountList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/oauth/{provider}:
+    delete:
+      tags: [Auth]
+      operationId: unlinkOAuth
+      parameters:
+        - $ref: '#/components/parameters/OAuthProvider'
+      responses:
+        '204':
+          description: Provider unlinked
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: The provider is the last way to sign in
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
   /projects:
     get:
       tags: [Projects]
@@ -2737,6 +2936,13 @@ components:
       bearerFormat: JWT
 
   parameters:
+    OAuthProvider:
+      name: provider
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [yandex, vk]
     ProjectId:
       name: projectId
       in: path
@@ -3222,6 +3428,57 @@ components:
         accessTokenExpiresAt:
           type: string
           format: date-time
+    OAuthStartRequest:
+      type: object
+      properties:
+        redirect:
+          type: string
+          maxLength: 500
+          description: Optional same-origin path to return to after sign-in.
+    OAuthStartResponse:
+      type: object
+      required: [authorizationUrl, expiresAt]
+      properties:
+        authorizationUrl:
+          type: string
+          format: uri
+        expiresAt:
+          type: string
+          format: date-time
+    OAuthCallbackRequest:
+      type: object
+      required: [code, state]
+      properties:
+        code:
+          type: string
+          minLength: 1
+          maxLength: 2048
+        state:
+          type: string
+          minLength: 1
+          maxLength: 200
+        deviceId:
+          type: string
+          maxLength: 200
+          description: VK ID returns this value in the callback and requires it during the code exchange.
+    OAuthAccount:
+      type: object
+      required: [provider, linkedAt]
+      properties:
+        provider:
+          type: string
+          enum: [yandex, vk]
+        linkedAt:
+          type: string
+          format: date-time
+    OAuthAccountList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OAuthAccount'
 
     BillingCounters:
       type: object

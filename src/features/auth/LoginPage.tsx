@@ -11,6 +11,7 @@ import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
 import { AuthLayout } from './AuthLayout';
+import { OAuthButtons } from './OAuthButtons';
 import {
   loginSchema,
   twoFactorCodeSchema,
@@ -28,6 +29,7 @@ export function LoginPage() {
   const queryClient = useQueryClient();
   const redirect = getAuthRedirect();
   const [formError, setFormError] = useState<string | null>(null);
+  const [oauthError, setOauthError] = useState<string | null>(null);
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
   const [twoFactor, setTwoFactor] = useState<{
     challengeToken: string;
@@ -69,6 +71,7 @@ export function LoginPage() {
       ),
     onMutate: () => {
       setFormError(null);
+      setOauthError(null);
       setUnverifiedEmail(null);
     },
     onSuccess: (data) => {
@@ -101,7 +104,10 @@ export function LoginPage() {
         }),
       );
     },
-    onMutate: () => setFormError(null),
+    onMutate: () => {
+      setFormError(null);
+      setOauthError(null);
+    },
     onSuccess: (data) => finishLogin(data),
     onError: (error) => {
       const code = getApiProblemCode(error);
@@ -228,11 +234,34 @@ export function LoginPage() {
         </p>
       }
     >
+      <OAuthButtons
+        redirect={redirect}
+        disabled={login.isPending}
+        onError={setOauthError}
+      />
+
+      <div className="my-6 flex items-center gap-3">
+        <span className="h-px flex-1 bg-paper-200" />
+        <span className="text-xs uppercase tracking-[0.14em] text-ink-500">
+          или по почте
+        </span>
+        <span className="h-px flex-1 bg-paper-200" />
+      </div>
+
       <form
         className="space-y-5"
         noValidate
         onSubmit={handleSubmit((values) => login.mutate(values))}
       >
+        {oauthError ? (
+          <p
+            role="alert"
+            className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+          >
+            {oauthError}
+          </p>
+        ) : null}
+
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
           <Input
