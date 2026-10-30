@@ -33,7 +33,7 @@ jobs:
       REGISTRY_LOGIN: ${{ secrets.REGISTRY_LOGIN }}
       REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
       # Absolute path to the Timeweb kubeconfig on the runner.
-      KUBECONFIG: ${{ vars.KUBECONFIG_PATH }}
+      KUBECONFIG: ${{ secrets.KUBECONFIG_PATH || vars.KUBECONFIG_PATH }}
       K8S_CONTEXT: ${{ vars.K8S_CONTEXT }}
     steps:
       - name: Check out the requested tag
