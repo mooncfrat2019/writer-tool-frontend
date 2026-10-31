@@ -3,8 +3,8 @@
  * source for the landing page, pricing, footer and auth consent links.
  */
 export const LEGAL_VERSIONS = {
-  offerVersion: '2026-10-30',
-  termsVersion: '2026-10-30',
+  offerVersion: '2026-10-31',
+  termsVersion: '2026-10-31',
 } as const;
 
 export const LEGAL_LINKS = {
@@ -28,8 +28,8 @@ export const LEGAL = {
     phone: '+7 931 706-70-55',
   },
   pro: {
-    priceMonthlyRub: 299,
-    priceYearlyRub: 2990,
+    priceMonthlyRub: 399,
+    priceYearlyRub: 3990,
     autoRenew: false,
   },
 } as const;

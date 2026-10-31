@@ -29,8 +29,8 @@ test('opens public pricing with real prices and legal links', async ({ page }) =
   await page.goto('/pricing');
 
   await expect(page.getByRole('heading', { name: 'Выберите масштаб мастерской' })).toBeVisible();
-  await expect(page.getByText('299 ₽/мес').first()).toBeVisible();
-  await expect(page.getByText(/2.{0,2}990 ₽\/год/).first()).toBeVisible();
+  await expect(page.getByText('399 ₽/мес').first()).toBeVisible();
+  await expect(page.getByText(/3.{0,2}990 ₽\/год/).first()).toBeVisible();
   await expect(page.getByRole('link', { name: 'Условия оплаты' })).toHaveAttribute(
     'href',
     '/legal/offer#payment',

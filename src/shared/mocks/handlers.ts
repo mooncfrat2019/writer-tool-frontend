@@ -86,7 +86,7 @@ function saveMockPayments(payments: Record<string, MockPayment>): void {
 function createMockPayment(period: 'month' | 'year'): MockPayment {
   const payments = loadMockPayments();
   const invoiceId = 100000 + Object.keys(payments).length + 1;
-  const amountKopecks = period === 'month' ? 29_900 : 299_000;
+  const amountKopecks = period === 'month' ? 39_900 : 399_000;
   const now = new Date();
   const expiry = new Date(now);
   if (period === 'month') {

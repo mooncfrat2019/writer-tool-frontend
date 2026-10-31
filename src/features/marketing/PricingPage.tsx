@@ -11,7 +11,7 @@ import { MarketingLayout } from './MarketingLayout';
 export function PricingPage() {
   usePageMeta(
     'Тарифы Writer Tool — Free и Pro',
-    'Тарифы Writer Tool: бесплатный тариф для небольшого романа и Pro за 299 ₽ в месяц или 2990 ₽ в год. Лимиты проектов, книг, персонажей и хранилища.',
+    'Тарифы Writer Tool: бесплатный тариф для небольшого романа и Pro за 399 ₽ в месяц или 3990 ₽ в год. Лимиты проектов, книг, персонажей и хранилища.',
   );
 
   const session = useSession();
