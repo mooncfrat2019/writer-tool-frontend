@@ -33,6 +33,8 @@
 - TLS: `deploy-prod` устанавливает платный сертификат из secrets
   `TLS_CERT_B64`/`TLS_KEY_B64` в Secret `writer-tool-tls`; инструкция —
   [`TLS_CERTIFICATE.md`](TLS_CERTIFICATE.md).
+- Доменные профили и различия `tool.melzix.net`/`writer-tool.ru` описаны в
+  [`DOMAIN_PROFILES.md`](DOMAIN_PROFILES.md).
 - 30.10.2026 ручной тестовый платёж в тестовом режиме прошёл успешно:
   ResultURL вернул `OK{InvId}`, страница success показала подтверждение,
   план стал `pro`. Чек НПД в тестовом режиме не формируется.

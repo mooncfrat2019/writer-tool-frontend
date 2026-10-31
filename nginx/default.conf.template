@@ -1,3 +1,9 @@
+map $host $writer_site_url {
+    default https://tool.melzix.net;
+    writer-tool.ru https://writer-tool.ru;
+    www.writer-tool.ru https://writer-tool.ru;
+}
+
 server {
     listen 8080;
     server_name _;
@@ -41,6 +47,26 @@ server {
         try_files $uri =404;
     }
 
+    location = /robots.txt {
+        gzip off;
+        sub_filter 'https://tool.melzix.net' $writer_site_url;
+        sub_filter_once off;
+        sub_filter_types text/plain;
+    }
+
+    location = /sitemap.xml {
+        gzip off;
+        sub_filter 'https://tool.melzix.net' $writer_site_url;
+        sub_filter_once off;
+        sub_filter_types application/xml text/xml;
+    }
+
+    location = /index.html {
+        gzip off;
+        sub_filter 'https://tool.melzix.net' $writer_site_url;
+        sub_filter_once off;
+    }
+
     # These documents are intentionally unpublished for now.
     location ^~ /legal/privacy {
         return 404;
@@ -51,6 +77,9 @@ server {
     }
 
     location / {
+        gzip off;
+        sub_filter 'https://tool.melzix.net' $writer_site_url;
+        sub_filter_once off;
         try_files $uri $uri/ /index.html;
     }
 }

@@ -7,6 +7,7 @@ import { api } from '@/shared/api/client';
 import { unwrap } from '@/shared/api/request';
 import { usePageMeta } from '@/shared/lib/usePageMeta';
 import { MarketingLayout } from '@/features/marketing/MarketingLayout';
+import { LEGAL } from '@/shared/legal';
 
 function formatPlanDate(value: string): string {
   return new Intl.DateTimeFormat('ru-RU', {
@@ -109,7 +110,7 @@ export function PaymentSuccessPage() {
           <PaymentState title="Не указан номер платежа" tone="error">
             <p>
               Robokassa вернула на страницу без номера заказа. Если деньги
-              списались, напишите на support@tool.melzix.net — мы проверим
+              списались, напишите на {LEGAL.contacts.email} — мы проверим
               платёж по вашей почте и времени оплаты.
             </p>
             <PaymentActions />
@@ -163,8 +164,8 @@ export function PaymentSuccessPage() {
               начали оплату.
             </p>
             <p>
-              Если деньги списались, а доступа нет, напишите на
-              support@tool.melzix.net и укажите номер платежа.
+              Если деньги списались, а доступа нет, напишите на {LEGAL.contacts.email}{' '}
+              и укажите номер платежа.
             </p>
             <PaymentActions />
           </PaymentState>
@@ -224,7 +225,7 @@ export function PaymentSuccessPage() {
           </p>
           <p className="text-xs text-ink-500">
             Не закрывайте страницу и не оплачивайте повторно. Если статус не
-            изменился через несколько минут, напишите на support@tool.melzix.net.
+            изменился через несколько минут, напишите на {LEGAL.contacts.email}.
           </p>
         </PaymentState>
       </main>

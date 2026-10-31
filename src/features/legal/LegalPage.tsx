@@ -1,8 +1,16 @@
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
+import { localizeLegalText } from '@/shared/legal';
 import { usePageMeta } from '@/shared/lib/usePageMeta';
 import { LegalLayout } from './LegalLayout';
 import type { LegalBlock, LegalDocument } from './types';
+
+function localizeBlock(block: LegalBlock): LegalBlock {
+  if (block.type === 'ul') {
+    return { ...block, items: block.items.map((item) => localizeLegalText(item)) };
+  }
+  return { ...block, text: localizeLegalText(block.text) };
+}
 
 function InlineText({ text }: { text: string }) {
   const tokens = text.split(/(`[^`]+`|https?:\/\/[^\s)]+)/g);
@@ -89,6 +97,11 @@ export function LegalPage({
     noIndex,
   );
 
+  const localizedDocument = {
+    ...document,
+    blocks: document.blocks.map(localizeBlock),
+  };
+
   return (
     <LegalLayout>
       <main className="mx-auto w-full max-w-3xl px-5 pb-16 pt-10 sm:px-8 sm:pt-14">
@@ -106,7 +119,7 @@ export function LegalPage({
         </p>
 
         <article className="mt-8 border-t border-paper-200 pt-2">
-          {document.blocks.map((block, index) => (
+          {localizedDocument.blocks.map((block, index) => (
             <Block key={index} block={block} />
           ))}
         </article>
