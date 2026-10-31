@@ -1,6 +1,6 @@
 # Статус: публичный сайт Writer Tool и подключение Robokassa
 
-Дата среза: **30.10.2026**
+Дата среза: **31.10.2026**
 
 Полный план: [`docs/ROBOKASSA_SITE_PLAN.md`](ROBOKASSA_SITE_PLAN.md).
 Юридические тексты: `writer-tool-backend/docs/block/updated/`.
@@ -34,7 +34,14 @@
   `TLS_CERT_B64`/`TLS_KEY_B64` в Secret `writer-tool-tls`; инструкция —
   [`TLS_CERTIFICATE.md`](TLS_CERTIFICATE.md).
 - Доменные профили и различия `tool.melzix.net`/`writer-tool.ru` описаны в
-  [`DOMAIN_PROFILES.md`](DOMAIN_PROFILES.md).
+  [`DOMAIN_PROFILES.md`](DOMAIN_PROFILES.md). Задеплоены frontend `v1.15.0`
+  (commit `172e0aa`, runs
+  [41218664981](https://github.com/mooncfrat2019/writer-tool-frontend/actions/runs/41218664981)
+  home и
+  [41218506723](https://github.com/mooncfrat2019/writer-tool-frontend/actions/runs/41218506723)
+  cloud) и backend `v1.19.0` (commit `58f83b0`). OAuth на `writer-tool.ru`
+  ведёт на `https://writer-tool.ru/auth`, на `tool.melzix.net` — на старый
+  домен; canonical, OG, robots и sitemap у каждого домена свои.
 - 30.10.2026 ручной тестовый платёж в тестовом режиме прошёл успешно:
   ResultURL вернул `OK{InvId}`, страница success показала подтверждение,
   план стал `pro`. Чек НПД в тестовом режиме не формируется.
