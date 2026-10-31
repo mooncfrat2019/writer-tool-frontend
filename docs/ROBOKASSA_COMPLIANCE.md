@@ -1,8 +1,8 @@
 # Проверка требований Robokassa
 
-Дата: 30.10.2026  
-Проверяемая версия: frontend `v1.12.0` (commit `b906ac4`), backend `v1.16.0`
-(commit `d173d49`); оба задеплоены 30.10.2026.
+Дата: 31.10.2026  
+Проверяемая версия: frontend `v1.14.0` (commit `cde6928`), backend `v1.18.0`
+(commit `22ded32`); оба задеплоены 31.10.2026, цена Pro — 399/3 990.
 
 Источник требований: [robokassa.com/how-works](https://robokassa.com/how-works/)
 и рабочий чек-лист [`ROBOKASSA_SITE_STATUS.md`](ROBOKASSA_SITE_STATUS.md).

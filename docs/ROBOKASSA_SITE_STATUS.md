@@ -19,6 +19,17 @@
 - Интеграция оплаты Robokassa реализована и задеплоена: frontend `v1.12.0`
   (commit `b906ac4`), backend `v1.16.0` (commit `d173d49`). Deploy workflows
   `41107835777` и `41107805547` завершились успешно.
+- 31.10.2026 цена Pro изменена на **399 ₽/мес** и **3 990 ₽/год** и
+  задеплоена: frontend `v1.14.0` (runs
+  [41208737953](https://github.com/mooncfrat2019/writer-tool-frontend/actions/runs/41208737953)
+  home,
+  [41208740132](https://github.com/mooncfrat2019/writer-tool-frontend/actions/runs/41208740132)
+  cloud), backend `v1.18.0` (runs
+  [41208625793](https://github.com/mooncfrat2019/writer-tool-backend/actions/runs/41208625793)
+  home,
+  [41208629002](https://github.com/mooncfrat2019/writer-tool-backend/actions/runs/41208629002)
+  cloud). На `tool.melzix.net` и `writer-tool.ru` в бандле 399/3990, старой
+  цены нет.
 - 30.10.2026 ручной тестовый платёж в тестовом режиме прошёл успешно:
   ResultURL вернул `OK{InvId}`, страница success показала подтверждение,
   план стал `pro`. Чек НПД в тестовом режиме не формируется.
