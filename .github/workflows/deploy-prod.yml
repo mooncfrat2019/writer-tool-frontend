@@ -35,6 +35,8 @@ jobs:
       # Absolute path to the Timeweb kubeconfig on the runner.
       KUBECONFIG: ${{ secrets.KUBECONFIG_PATH || vars.KUBECONFIG_PATH }}
       K8S_CONTEXT: ${{ vars.K8S_CONTEXT }}
+      TLS_SECRET_NAME: ${{ vars.TLS_SECRET_NAME || 'writer-tool-tls' }}
+      TLS_FQDN: ${{ vars.TLS_FQDN || 'writer-tool.ru' }}
     steps:
       - name: Check out the requested tag
         uses: actions/checkout@v4
@@ -133,6 +135,39 @@ jobs:
             --docker-password="$REGISTRY_TOKEN" \
             --dry-run=client -o yaml | kubectl apply -f -
 
+      - name: Install the TLS certificate
+        shell: bash
+        env:
+          TLS_CERT_B64: ${{ secrets.TLS_CERT_B64 }}
+          TLS_KEY_B64: ${{ secrets.TLS_KEY_B64 }}
+        run: |
+          set -euo pipefail
+          : "${TLS_CERT_B64:?TLS_CERT_B64 secret is required}"
+          : "${TLS_KEY_B64:?TLS_KEY_B64 secret is required}"
+          dir="$(mktemp -d "${RUNNER_TEMP:-/tmp}/writer-tls.XXXXXX")"
+          trap 'rm -rf "$dir"' EXIT
+          umask 077
+          printf '%s' "$TLS_CERT_B64" | base64 -d > "$dir/tls.crt"
+          printf '%s' "$TLS_KEY_B64" | base64 -d > "$dir/tls.key"
+          if ! openssl x509 -in "$dir/tls.crt" -noout -checkhost "$TLS_FQDN" >/dev/null 2>&1; then
+            echo "TLS certificate does not cover $TLS_FQDN" >&2
+            exit 1
+          fi
+          if ! openssl x509 -in "$dir/tls.crt" -noout -checkend 2592000 >/dev/null 2>&1; then
+            echo "TLS certificate expires within 30 days" >&2
+            exit 1
+          fi
+          cert_pub="$(openssl x509 -in "$dir/tls.crt" -noout -pubkey)"
+          key_pub="$(openssl pkey -in "$dir/tls.key" -pubout)"
+          if [ "$cert_pub" != "$key_pub" ]; then
+            echo "TLS certificate and private key do not match" >&2
+            exit 1
+          fi
+          kubectl -n "$NAMESPACE" create secret tls "$TLS_SECRET_NAME" \
+            --cert="$dir/tls.crt" --key="$dir/tls.key" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n "$NAMESPACE" get secret "$TLS_SECRET_NAME" >/dev/null
+
       - name: Helm upgrade --install
         shell: bash
         run: |
@@ -154,9 +189,35 @@ jobs:
             --set "imagePullSecrets[0].name=$PULL_SECRET" \
             --set "apiUpstream=http://writer-backend:8087" \
             --set "collabUpstream=http://writer-backend:8087" \
+            --set-string "service.annotations.k8s\.timeweb\.cloud/attached-loadbalancer-ssl-fqdn=$TLS_FQDN" \
+            --set-string "service.annotations.k8s\.timeweb\.cloud/attached-loadbalancer-ssl-secret-name=$TLS_SECRET_NAME" \
             --atomic \
             --wait \
             --timeout 5m
+
+      - name: Reconfigure the load balancer certificate
+        shell: bash
+        run: |
+          set -euo pipefail
+          kubectl -n "$NAMESPACE" annotate svc "$DEPLOYMENT_NAME" \
+            k8s.timeweb.cloud/rotate-ts="$(date +%s)" --overwrite
+
+      - name: Verify the TLS certificate
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 30); do
+            certificate="$(openssl s_client -connect "$TLS_FQDN:443" -servername "$TLS_FQDN" </dev/null 2>/dev/null \
+              | openssl x509 -noout -text 2>/dev/null || true)"
+            if printf '%s' "$certificate" | grep -q "$TLS_FQDN"; then
+              echo "TLS certificate for $TLS_FQDN is active"
+              exit 0
+            fi
+            echo "attempt $attempt: certificate for $TLS_FQDN is not active yet"
+            sleep 10
+          done
+          echo "TLS certificate was not applied to the load balancer" >&2
+          exit 1
 
       - name: Verify the rollout
         shell: bash

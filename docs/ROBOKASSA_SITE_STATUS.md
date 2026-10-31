@@ -30,6 +30,9 @@
   [41208629002](https://github.com/mooncfrat2019/writer-tool-backend/actions/runs/41208629002)
   cloud). На `tool.melzix.net` и `writer-tool.ru` в бандле 399/3990, старой
   цены нет.
+- TLS: `deploy-prod` устанавливает платный сертификат из secrets
+  `TLS_CERT_B64`/`TLS_KEY_B64` в Secret `writer-tool-tls`; инструкция —
+  [`TLS_CERTIFICATE.md`](TLS_CERTIFICATE.md).
 - 30.10.2026 ручной тестовый платёж в тестовом режиме прошёл успешно:
   ResultURL вернул `OK{InvId}`, страница success показала подтверждение,
   план стал `pro`. Чек НПД в тестовом режиме не формируется.

@@ -23,14 +23,13 @@ service:
   externalTrafficPolicy: Local
   annotations:
     # Timeweb Cloud assigns the external IP and terminates TLS on the load
-    # balancer. The DNS A record must point to the assigned IP before
-    # Let's Encrypt can issue the certificate.
+    # balancer. The TLS certificate is a paid certificate stored in the
+    # writer-tool-tls Secret and installed by deploy-prod.yml.
     k8s.timeweb.cloud/attached-loadbalancer-ssl: "true"
-    k8s.timeweb.cloud/attached-loadbalancer-ssl-type: "lets_encrypt"
+    k8s.timeweb.cloud/attached-loadbalancer-ssl-type: "custom"
     k8s.timeweb.cloud/attached-loadbalancer-ssl-fqdn: "writer-tool.ru"
+    k8s.timeweb.cloud/attached-loadbalancer-ssl-secret-name: "writer-tool-tls"
     k8s.timeweb.cloud/attached-loadbalancer-force-ssl: "true"
-    # For a custom certificate change ssl-type to "custom" and add:
-    # k8s.timeweb.cloud/attached-loadbalancer-ssl-secret-name: "writer-tool-tls"
   ports:
     - name: http
       port: 80
